@@ -8,6 +8,7 @@ import express, { Request, Response } from 'express';
 import { Pool } from 'pg';
 import { getPostgresPool } from '../../db/pool';
 import { requireAuth } from '../middleware/auth';
+import { getTrackPreset, getTrackPresetIds } from '../data/trackPresets';
 
 const router = express.Router();
 
@@ -44,6 +45,11 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
     // L1 basic validation
     if (!trackId || typeof trackId !== 'string') {
         return res.status(400).json({ error: 'validation_error', message: 'trackId required' });
+    }
+    // Только известные пресеты (защита от фарма через произвольные trackId)
+    const knownTracks = new Set(getTrackPresetIds());
+    if (!knownTracks.has(trackId)) {
+        return res.status(400).json({ error: 'validation_error', message: 'unknown trackId' });
     }
     if (typeof finishMs !== 'number' || finishMs <= 0 || finishMs > 600_000) {
         return res.status(400).json({ error: 'validation_error', message: 'invalid finishMs' });
@@ -99,13 +105,8 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
             [userId, trackId, Math.round(finishMs), JSON.stringify(replayData)],
         );
 
-        // Монеты только при новом рекорде (защита от фарма повторными submit)
-        if (safeCoinCount > 0 && isNewRecord) {
-            await db.query(
-                `UPDATE wallets SET soft_currency = soft_currency + $1 WHERE user_id = $2`,
-                [safeCoinCount, userId],
-            );
-        }
+        // TODO: начисление монет отложено до медальной системы (GDD §7.2)
+        // MVP: монеты за медали, не за каждый заезд
 
         // Позиция в лидерборде по трассе
         const posResult = await db.query(
