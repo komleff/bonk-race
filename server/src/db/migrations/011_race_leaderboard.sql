@@ -2,7 +2,7 @@
 -- Stores best finish time per user per track
 
 CREATE TABLE IF NOT EXISTS race_leaderboard (
-    user_id   UUID NOT NULL REFERENCES users(id),
+    user_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     track_id  TEXT NOT NULL,
     best_finish_ms INTEGER NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
