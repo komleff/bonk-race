@@ -2,7 +2,7 @@
 -- Stores best replay per user per track
 
 CREATE TABLE IF NOT EXISTS ghost_replays (
-    user_id      TEXT NOT NULL REFERENCES users(id),
+    user_id      UUID NOT NULL REFERENCES users(id),
     track_id     TEXT NOT NULL,
     finish_ms    INTEGER NOT NULL,
     replay_data  JSONB NOT NULL,

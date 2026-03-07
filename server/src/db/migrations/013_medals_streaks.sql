@@ -2,7 +2,7 @@
 
 -- Medals earned by players per track
 CREATE TABLE IF NOT EXISTS medals (
-    user_id    TEXT NOT NULL REFERENCES users(id),
+    user_id    UUID NOT NULL REFERENCES users(id),
     track_id   TEXT NOT NULL,
     tier       TEXT NOT NULL CHECK (tier IN ('bronze', 'silver', 'gold', 'author')),
     finish_ms  INTEGER NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS medals (
 
 -- Daily streaks
 CREATE TABLE IF NOT EXISTS daily_streaks (
-    user_id              TEXT PRIMARY KEY REFERENCES users(id),
+    user_id              UUID PRIMARY KEY REFERENCES users(id),
     current_streak       INTEGER NOT NULL DEFAULT 0,
     longest_streak       INTEGER NOT NULL DEFAULT 0,
     last_finish_date     DATE,
