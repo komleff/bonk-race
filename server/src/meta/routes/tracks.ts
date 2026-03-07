@@ -9,7 +9,9 @@
 import express, { Request, Response } from 'express';
 import { Rng } from '@bonk-race/shared';
 import type { TrackConfig, TrackPhysicsConfig, TrackCheckpoint, TrackObstacle } from '@bonk-race/shared';
-import { getTrackPreset, getTrackPresetIds } from '../data/trackPresets';
+import { getTrackPreset, getTrackPresetIds, TRACK_STARTER_CIRCUIT } from '../data/trackPresets';
+
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 const router = express.Router();
 
@@ -61,15 +63,8 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
         });
     }
 
-    const physics: TrackPhysicsConfig = {
-        thrustForwardN: 9000,
-        thrustLateralN: 8500,
-        turnTorqueNm: 175,
-        linearDragK: 0.10,
-        comfortableBrakingTimeS: 3.5,
-        wallThrustCoeff: 0.3,
-        tickRate: 60,
-    };
+    // Reuse physics from starter-circuit as default for procedural tracks
+    const physics: TrackPhysicsConfig = { ...TRACK_STARTER_CIRCUIT.physics };
 
     return {
         id,
@@ -137,7 +132,7 @@ router.get('/list', (_req: Request, res: Response) => {
  */
 router.get('/:id', (req: Request, res: Response) => {
     const { id } = req.params;
-    if (!/^[a-z0-9\-_.]+$/i.test(id) || id.length > 128) {
+    if (DANGEROUS_KEYS.has(id) || !/^[a-z0-9\-_.]+$/i.test(id) || id.length > 128) {
         return res.status(400).json({ error: 'invalid_track_id' });
     }
     res.json(resolveTrack(id));

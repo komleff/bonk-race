@@ -37,6 +37,12 @@ const ANGULAR_DAMPING_COEFF = 3;
 const LATERAL_COMPENSATION_FACTOR = 0.3;
 const POINTER_DRAG_THRESHOLD_PX = 100;
 const STATIC_BOOST_FACTOR = 0.5;
+const WALL_THRUST_MIN_SPEED = 10;
+
+// ─── Camera / rendering constants ───────────────────────────────────────────
+const CAMERA_FOLLOW_LERP = 0.1;
+const COLOR_BG_DARK = "#1a1a2e";
+const COLOR_BG_GRID = "#2a2a3e";
 
 // ─── Player state ────────────────────────────────────────────────────────────
 
@@ -261,7 +267,7 @@ function closestPointOnSegment(
     const dx = x2 - x1;
     const dy = y2 - y1;
     const lenSq = dx * dx + dy * dy;
-    if (lenSq === 0) return { x: x1, y: y1 };
+    if (lenSq < 1e-6) return { x: x1, y: y1 };
     const t = clamp(((px - x1) * dx + (py - y1) * dy) / lenSq, 0, 1);
     return { x: x1 + t * dx, y: y1 + t * dy };
 }
@@ -388,7 +394,7 @@ function applyWallBounce(
 
         // Wall-thrust (GDD §3.4): tangential boost when sliding along safe wall
         const wallThrustCoeff = config.physics.wallThrustCoeff;
-        if (wallThrustCoeff > 0 && Math.abs(dotN) > 10) {
+        if (wallThrustCoeff > 0 && Math.abs(dotN) > WALL_THRUST_MIN_SPEED) {
             const tangentX = -normalY;
             const tangentY = normalX;
             const tangentV = player.vx * tangentX + player.vy * tangentY;
@@ -572,11 +578,11 @@ export class RaceGame {
         const H = canvas.height = canvas.clientHeight * devicePixelRatio;
 
         // Smooth camera follow
-        camera.x += (player.x - camera.x) * 0.1;
-        camera.y += (player.y - camera.y) * 0.1;
+        camera.x += (player.x - camera.x) * CAMERA_FOLLOW_LERP;
+        camera.y += (player.y - camera.y) * CAMERA_FOLLOW_LERP;
 
         // Background
-        ctx.fillStyle = "#1a1a2e";
+        ctx.fillStyle = COLOR_BG_DARK;
         ctx.fillRect(0, 0, W, H);
 
         ctx.save();
@@ -589,7 +595,7 @@ export class RaceGame {
         // Draw track arena background
         const hw = config.width / 2;
         const hh = config.height / 2;
-        ctx.fillStyle = "#2a2a3e";
+        ctx.fillStyle = COLOR_BG_GRID;
         ctx.fillRect(-hw, -hh, config.width, config.height);
 
         // Draw track elements
@@ -643,7 +649,8 @@ export class RaceGame {
         if (phase === RACE_PHASE_COUNTDOWN) {
             ctx.font = `bold ${fontSize * 4}px sans-serif`;
             ctx.textAlign = "center";
-            ctx.fillText("GET READY", W / 2, H / 2 - fontSize * 2);
+            const secondsLeft = Math.ceil(this.countdownTicks / this.config.physics.tickRate);
+            ctx.fillText(secondsLeft > 0 ? String(secondsLeft) : "GO!", W / 2, H / 2);
         } else if (phase === RACE_PHASE_RACING) {
             const elapsed = performance.now() - this.startTimeMs;
             ctx.textAlign = "left";
@@ -713,7 +720,7 @@ export async function bootstrapRace(
     if (!container) {
         container = document.createElement("div");
         container.id = containerId;
-        container.style.cssText = "position:fixed;inset:0;background:#1a1a2e;";
+        container.style.cssText = `position:fixed;inset:0;background:${COLOR_BG_DARK};`;
         document.body.appendChild(container);
     }
 
