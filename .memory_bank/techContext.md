@@ -1,99 +1,52 @@
-# Tech Context
-Технологический стек и ограничения.
+# Tech Context — BonkRace
 
-**Версия архитектуры:** SlimeArena-Architecture-v4.2.5 (4 части, Soft Launch)
+## Структура монорепо
+```
+bonk-race/
+  shared/          @bonk-race/shared — типы, константы, rng, mathUtils
+  server/          @bonk-race/server — meta-server (Express :3000) + match-server (Colyseus :2567, не используется в MVP)
+  client/          @bonk-race/client — Vite + Preact + Canvas
+  admin-dashboard/ — Admin UI (Preact)
+  docker/          — Dockerfiles, compose, entrypoints
+```
 
-## Структура репозитория
-- `client/`: Фронтенд-приложение (Vite + Canvas 2D).
-- `server/`: Бэкенд-приложение (Colyseus + Node.js).
-- `shared/`: Общий код, типы и конфигурации для клиента и сервера.
-- `config/`: Централизованные файлы игрового баланса (JSON).
-- `assets/`: Игровые ресурсы (спрайты, графика).
-- `docs/`: Техническая документация и GDD.
-- `docs/gdd/`: Модульный пакет GDD v3.3.2.
-- `scripts/`: Утилиты для разработки и автоматизации.
-- `tests/`: Тесты (включая проверку детерминизма).
-- `.github/`: CI/CD пайплайны и правила репозитория.
+## Ключевые файлы
+| Файл | Назначение |
+|------|------------|
+| `shared/src/trackConfig.ts` | TrackConfig, TrackPhysicsConfig, surface/pickup constants |
+| `shared/src/rng.ts` | Детерминированный LCG RNG |
+| `server/src/meta/routes/tracks.ts` | Tracks API (today/list/:id) |
+| `server/src/meta/data/trackPresets.ts` | Hand-crafted track: Starter Circuit |
+| `client/src/raceMain.ts` | Client-side physics, rendering, game loop |
+| `client/src/game/GhostRecorder.ts` | Ghost recording |
+| `client/src/game/GhostPlayer.ts` | Ghost playback |
+| `client/src/rendering/blob.ts` | Player blob rendering |
+| `client/src/rendering/track.ts` | Track elements rendering |
+| `server/src/db/pool.ts` | PostgreSQL + Redis connection |
+| `server/src/db/migrate.ts` | Migration runner |
 
-## Стек технологий (Architecture v4.2.5)
+## БД
+- **PostgreSQL:** bonk_race (user: bonk, pass: bonk_dev_password, port: 5432)
+- **Redis:** localhost:6379
+- **Миграции:** 001-013 (001-010 от SlimeArena, 011-013 новые для BonkRace)
+- **Новые таблицы:** race_leaderboard, ghost_replays, medals, daily_streaks
 
-### Клиент
-| Компонент | Технология |
-|-----------|------------|
-| Язык | TypeScript |
-| Сборка | Vite |
-| Рендер (MVP) | Canvas 2D |
-| Рендер (позже) | PixiJS |
-| Аудио | Howler.js |
+## Сборка
+```bash
+npm run build       # shared -> server -> client -> admin
+npm run dev:client  # Vite HMR на :5173
+# Meta-server:
+cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts
+```
 
-### Сервер
-| Компонент | Технология |
-|-----------|------------|
-| Среда выполнения | Node.js |
-| Язык | TypeScript |
-| Сетевой фреймворк | Colyseus |
-| HTTP API | Express / Fastify |
+## Физика (client-side)
+- Fixed timestep accumulator (configurable tickRate, default 60 Hz)
+- FlightAssist -> Physics -> Collision -> CheckpointDetection
+- Named constants: WALL_RESTITUTION=1.6, OBSTACLE_RESTITUTION=1.8, BOOST_SPEED_CAP=200
+- Wall-thrust: boostForce = wallThrustCoeff * |dotN| * tangentDirection
 
-### Данные
-| Компонент | Технология |
-|-----------|------------|
-| База данных | PostgreSQL |
-| ORM | Prisma |
-| Кеш | Redis (опционально) |
-
-### Инфраструктура
-| Компонент | Технология |
-|-----------|------------|
-| Контейнеризация | Docker / Docker Compose |
-| CI/CD | GitHub Actions |
-
-## Технические параметры (GDD-Glossary.md)
-
-| Параметр | Значение | Описание |
-|---|---|---|
-| `baseMassKg` | 100 | Стартовая масса |
-| `baseRadiusM` | 10.0 | Радиус при 100 кг |
-| `minSlimeMassKg` | 50 | Минимум массы (гибель) |
-| `biteMassPercent` | 0.10 | Размер укуса (10%) |
-| `gcdTicks` | 3 | Глобальная перезарядка |
-| `tickRate` | 30 Гц | Частота сервера |
-| `tickMs` | 33.3 мс | Длительность тика |
-| `matchDurationSec` | 180 | Длительность матча |
-| `resultsDurationSec` | 12 | Экран результатов |
-| `respawnShieldSec` | 5 | Респаун-щит |
-| `spawnRetryCount` | 10 | Попыток спавна |
-| `restitution` | 0.3 | Упругость стен |
-
-## CI/CD и окружения
-- **GitHub Actions**:
-    - `ci.yml`: Автоматическая сборка (`npm run build`) при создании Pull Request в ветку `main`.
-    - `branch-protection.yml`: Проверка на прямые пуши в `main`. Рекомендуется использовать PR.
-- **Docker** (v0.5.2):
-    - `docker/docker-compose.yml` — разделённая архитектура (db + app).
-    - `docker/docker-compose.monolith-full.yml` — полный monolith (PostgreSQL + Redis + MetaServer + MatchServer + Client).
-    - `docker/monolith-full.Dockerfile` — сборка monolith-контейнера.
-    - `docker/supervisord.conf` — управление процессами внутри monolith.
-    - **Порты:**
-        - 3000: MetaServer (HTTP API)
-        - 2567: MatchServer (WebSocket/Colyseus)
-        - 5173: Client (статический сервер)
-    - **Важно:** порт клиента должен быть 5173 везде (Dockerfile, docker-compose, supervisord.conf).
-
-## Технические ограничения
-- **Тикрейт**: 30 тиков в секунду (фиксированный).
-- **GCD**: 3 тика = 100 мс (глобальная перезарядка).
-- **Детерминизм**: Симуляция должна быть идентичной на сервере (используется кастомный `Rng`).
-- **Сетевой протокол**: Colyseus (JSON/Schema), планируется переход на Protobuf.
-- **Матч**: 180 сек (3 минуты), фазы Рост/Охота/Финал по 60 сек.
-
-## Модульный пакет GDD v3.3.2
-
-| Документ | Содержание |
-|----------|------------|
-| `GDD-Core.md` | Базовые правила, классы, масса, фазы, GCD |
-| `GDD-Combat.md` | Бой, зоны слайма, урон, эффекты контроля |
-| `GDD-Abilities.md` | Умения, слоты, улучшения |
-| `GDD-Talents.md` | Таланты, редкости, карточки |
-| `GDD-Chests.md` | Сундуки, обручи, усиления |
-| `GDD-Arena.md` | Карты, зоны, препятствия |
-| `GDD-Glossary.md` | Единый глоссарий терминов |
+## Паттерны
+- Pool.ts default DATABASE_URL: `postgresql://bonk:bonk_dev_password@localhost:5432/bonk_race`
+- Track ID validation: DANGEROUS_KEYS blocklist + regex `^[a-z0-9\-_.]+$/i` + max 128 chars
+- `stringHash()` — generic hash for seeds and daily rotation
+- TICK_RATE constant in trackPresets.ts (used for both physics and inactivity threshold)

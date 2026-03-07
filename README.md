@@ -1,81 +1,56 @@
-# Slime Arena
+# BonkRace
 
-> **🧪 AI-Native Development Experiment**
+> **AI-Native Development Experiment**
 >
-> Этот проект интересен прежде всего своим **новаторским методом разработки**. Slime Arena создаётся **полностью силами ИИ** под управлением человека-оператора, который не пишет код вручную.
+> Этот проект создаётся **полностью силами ИИ** под управлением человека-оператора. Форк [SlimeArena](https://github.com/komleff/slime-arena) с другой игровой механикой — гоночный time-trial вместо арены.
 >
-> **Цель:** Отладить работу ИИ-агентов в оркестре и создать процесс полного цикла разработки малого и среднего масштаба (обычно требующих 5–15 человек и 1–3 года) силами одного оператора.
+> **ИИ отвечает за:** аналитику, гейм-дизайн, архитектуру, код, ревью, тесты, деплой.
 >
-> **ИИ полностью отвечает за:**
-> - 📊 Аналитику и Гейм-дизайн
-> - 🏗️ Проектирование и Планирование
-> - 💻 Кодирование и Баг-фиксинг
-> - 🔍 Ревью и Тестирование
-> - 🚀 Деплой и DevOps
->
-> **Методология и инструменты:**
-> - **Beads:** AI-native трекер задач для управления потоком работы.
-> - **Memory Bank:** Структурированная документация для сохранения контекста.
-> - **Роли агентов:** Строгое разделение ответственности (PM, Architect, Developer, Reviewer). Документ: [`.agents/AGENT_ROLES.md`](.agents/AGENT_ROLES.md).
-> - **Zero Trust:** Оператор не валидирует код технически, полагаясь на тесты и кросс-ревью агентов.
+> **Методология:** Beads (трекер задач), Memory Bank (контекст), Agent Roles (PM, Architect, Developer, Reviewer).
 
-**Soft Launch Status: READY** (6/6 критериев выполнено)
+Браузерная гоночная игра (time-trial). Игрок управляет блобом по трассе, собирает монетки, обходит препятствия, соревнуется с ghost-записями других игроков.
 
-Многопользовательская браузерная игра в реальном времени про боевых слаймов.
-Проект ориентирован на высокую производительность, детерминированную симуляцию и отзывчивое управление.
+## Архитектура
 
-### Результаты тестирования
+В отличие от SlimeArena (серверная физика через Colyseus), BonkRace использует **клиентскую физику** (GDD §10.1). Сервер принимает результаты через REST API.
 
-| Метрика | Результат |
-|---------|----------|
-| Stage D Integration Tests | 19/19 passed |
-| Load Test (k6) | CCU 500, 87k requests, 0% errors |
-| Backup/Restore | Verified (data integrity confirmed) |
-| joinToken Security | ✅ JWT validation в ArenaRoom.onAuth() |
+| Компонент | Назначение | Порт |
+|-----------|-----------|------|
+| Client (Vite + Preact + Canvas) | Физика, рендеринг, управление | :5173 |
+| Meta-server (Express) | Tracks API, runs, ghosts, auth | :3000 |
+| PostgreSQL | Пользователи, лидерборды, ghost-replays | :5432 |
+| Redis | Кэш, сессии | :6379 |
+
+## Ключевые механики
+
+- **Wall-thrust** — при скольжении о стену блоб получает ускорение вдоль неё
+- **Поверхности** — Slow (drag x3), Ice (drag x0.05), Boost (drag x0.3 + speed clamp)
+- **Пикапы** — Nitro (рывок), Teleport (shortcut)
+- **Ghost-система** — replay предыдущей попытки отображается полупрозрачно
+- **Трасса дня** — seed-based, одна для всех игроков
+- **Медали** — Bronze / Silver / Gold / Author по времени финиша
+
+## Что переиспользуется из SlimeArena
+
+Auth (Yandex, Telegram, VK, Dev), WalletService, ShopService, AdsService, Admin Dashboard, Platform Adapters, DB миграции 001-010, InputManager, GameLoopManager, SmoothingSystem.
 
 ## Технологический стек
 
-- **Frontend**: Preact, Signals (реактивное состояние), HTML5 Canvas (рендер игрового мира).
-- **Backend**: Node.js, Colyseus (WebSocket фреймворк для синхронизации состояния).
-- **Shared**: TypeScript (общие типы, константы и формулы).
-- **Инфраструктура**: Docker, GitHub Actions (CI/CD), PostgreSQL, Redis.
-
-## Ключевые концепции
-
-### 1. Детерминированная симуляция
-Сервер работает на фиксированной частоте **30 тиков в секунду**. Все вычисления (физика, столкновения, способности) происходят на сервере. Случайные события используют детерминированный RNG, что гарантирует идентичность симуляции для всех игроков.
-
-### 2. Масса = Здоровье
-В игре нет отдельного показателя HP. Ваша масса — это ваше здоровье и ваш размер.
-- **Минимум:** 50 кг (гибель).
-- **Старт:** 100 кг.
-- **Механика:** Укусы врагов уменьшают вашу массу и увеличивают их.
-
-### 3. U2-стиль сглаживания
-Клиент использует продвинутый алгоритм предиктивного сглаживания (U2-style smoothing). Вместо классической интерполяции между старыми снапшотами, клиент визуализирует состояние «в настоящем», плавно корректируя визуальную позицию при получении обновлений от сервера. Это минимизирует задержку ввода.
-
-### 4. Баланс через конфигурацию
-Все игровые параметры (урон, скорость, кулдауны, веса пузырей) вынесены в единый файл [config/balance.json](config/balance.json). Это позволяет изменять геймплей без пересборки кода.
-
-### 5. Мобильное управление
-Игра поддерживает touch-устройства с адаптивным виртуальным джойстиком и системой Flight Assist:
-
-- **Virtual Joystick**: Адаптивный джойстик, который следует за пальцем и автоматически корректирует позицию.
-- **Flight Assist**: Серверная система стабилизации, которая интерпретирует направление ввода как желаемый курс и плавно поворачивает слайма.
-- **Multitouch**: Поддержка одновременного движения и использования способностей разными пальцами.
-- **A/B план тюнинга**: `docs/soft-launch/Sprint-Next-Mobile-Controls-Plan.md`.
-- **A/B конфиг**: `config/experiments/mobile-controls-ab.json`.
+- **Frontend**: Preact, Signals, HTML5 Canvas, Vite
+- **Backend**: Node.js, Express (meta-server)
+- **Shared**: TypeScript (типы, физика, RNG)
+- **Инфраструктура**: Docker, GitHub Actions, PostgreSQL, Redis
 
 ## Структура проекта
 
-- [client/](client/) — Веб-клиент (Vite + Preact).
-- [server/](server/) — Игровой сервер (Colyseus).
-- [shared/](shared/) — Общая логика и типы.
-- [config/](config/) — Конфигурационные файлы баланса.
-- [admin-dashboard/](admin-dashboard/) — Админ-панель (Preact).
-- [docs/](docs/) — Техническая документация (Архитектура v4.2.5, ТЗ Soft Launch).
-- [.agents/](.agents/) — Роли и регламенты ИИ-агентов.
-- [.memory_bank/](.memory_bank/) — База знаний проекта для ИИ-ассистентов.
+- [client/](client/) — Веб-клиент (Vite + Preact + Canvas)
+- [server/](server/) — Meta-server (Express REST API)
+- [shared/](shared/) — Общие типы, TrackConfig, RNG, mathUtils
+- [config/](config/) — Конфигурационные файлы
+- [admin-dashboard/](admin-dashboard/) — Админ-панель (Preact)
+- [docs/](docs/) — Документация, GDD, планы
+- [.agents/](.agents/) — Роли ИИ-агентов
+- [.memory_bank/](.memory_bank/) — База знаний для ИИ-ассистентов
 
 ## Быстрый старт
 
@@ -87,162 +62,53 @@ npm install
 
 ### Разработка
 
-Рекомендуется запускать сервер и клиент в разных терминалах:
-1. **Сервер:** `npm run dev:server` (ws://localhost:2567)
-2. **Клиент:** `npm run dev:client` (http://localhost:5173)
+```bash
+# Терминал 1: Meta-server (требует PostgreSQL + Redis)
+cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts
+
+# Терминал 2: Клиент
+npm run dev:client    # http://localhost:5173
+```
 
 ### Сборка
 
-Порядок сборки важен для разрешения зависимостей:
-
 ```bash
-npm run build
+npm run build    # shared -> server -> client -> admin
 ```
 
-*(Сначала собирается shared, затем server и client)*
+### База данных
 
-### Конфигурация (опционально)
+BonkRace использует PostgreSQL и Redis. Для локальной разработки можно использовать Docker-контейнеры SlimeArena или поднять свои:
 
-#### MetaServer
+```bash
+# Вариант: использовать существующий slime-pg контейнер
+docker exec -i slime-pg psql -U bonk -d postgres -c "CREATE DATABASE bonk_race OWNER bonk;"
+```
 
-По умолчанию игра работает без MetaServer в offline режиме. Для подключения к MetaServer:
-
-1. Скопируйте шаблон конфигурации:
-
-   ```bash
-   cp .env.local.example .env.local
-   ```
-
-2. Раскомментируйте и настройте `VITE_META_SERVER_URL` в `.env.local`:
-
-   ```bash
-   VITE_META_SERVER_URL=http://localhost:3000
-   ```
-
-3. Запустите MetaServer (см. документацию).
-
-4. Перезапустите dev-сервер клиента.
-
-**Без MetaServer:**
-
-- Игра полностью играбельна
-- Подключение напрямую к Colyseus серверу (ws://localhost:2567)
-- Монетизация (платежи, реклама) недоступна
-- Авторизация недоступна (имя задаётся локально)
-
-**С MetaServer:**
-
-- Авторизация через платформы (YaGames, Telegram, VK)
-- RuntimeConfig с удалённым управлением фичами
-- Matchmaking через очередь
-- Реклама с наградой
+Миграции 001-013 применяются автоматически при старте meta-server.
 
 ### Тестирование
 
 ```bash
-npm run test
+# Smoke test tracks API
+node server/tests/tracks-smoke.test.js
 ```
 
-Включает тесты детерминизма и генерации арены.
+## API
 
-### Stage D Integration Tests
-
-Полные интеграционные тесты полного игрового цикла (auth → config → matchmaking → match-results).
-**Статус: ✅ 19/19 тестов пройдены.**
-
-```bash
-# 1. Запустить PostgreSQL и Redis
-docker-compose up postgres redis -d
-
-# 2. Запустить MetaServer
-npm run dev --workspace=server
-
-# 3. В другом терминале — Stage D тесты (19 тестов)
-npx tsx server/tests/meta-stage-d.test.ts
-
-# Или все smoke тесты (Stage B + C + D)
-.\tests\smoke\run-stage-d.ps1
-```
-
-### Load Tests (k6)
-
-Нагрузочное тестирование для Soft Launch (CCU=500, p99 < 2000ms, errors < 1%):
-
-```bash
-# Установить k6: https://k6.io/docs/getting-started/installation/
-
-# Smoke test (быстрая проверка)
-k6 run --vus 10 --duration 30s tests/load/soft-launch.js
-
-# Full load test (~11 минут)
-k6 run tests/load/soft-launch.js
-```
-
-Подробная документация: [tests/load/README.md](tests/load/README.md)
-
-### Backup & Restore
-
-Резервное копирование и восстановление PostgreSQL:
-
-```bash
-# Windows
-.\scripts\backup.ps1
-.\scripts\restore.ps1 -BackupFile "backups\slime_arena_YYYYMMDD_HHMMSS.dump"
-
-# Linux/macOS
-./scripts/backup.sh
-./scripts/restore.sh backups/slime_arena_YYYYMMDD_HHMMSS.dump
-```
-
-Подробная документация: [docs/operations/backup-restore.md](docs/operations/backup-restore.md)
-
-## Доступ с мобильных устройств (локальная сеть)
-
-Для тестирования на мобильных устройствах в локальной сети:
-
-1. **Узнайте IP-адрес компьютера** (например, `192.168.1.100`).
-2. **Настройте HMR** через переменные окружения в `.env.local`:
-
-```bash
-# client/.env.local
-VITE_HMR_HOST=192.168.1.100
-VITE_HMR_PROTOCOL=ws
-```
-
-3. **Запустите клиент** — HMR будет работать через указанный хост.
-4. **Откройте игру на мобильном устройстве:** `http://192.168.1.100:5173`
-
-| Переменная | Описание | По умолчанию |
-|------------|----------|---------------|
-| `VITE_HMR_HOST` | IP-адрес для WebSocket HMR | (не задан — HMR на localhost) |
-| `VITE_HMR_PROTOCOL` | Протокол HMR (`ws` или `wss`) | `ws` |
-
-**Примечание:** Если переменные не заданы, HMR работает в стандартном режиме (localhost).
+| Endpoint | Метод | Описание |
+|----------|-------|---------|
+| `/api/v1/tracks/today` | GET | Трасса дня |
+| `/api/v1/tracks/list` | GET | Список всех трасс |
+| `/api/v1/tracks/:id` | GET | Конкретная трасса по ID |
 
 ## Docker
 
-Раздельная архитектура (2 контейнера).
-
 | Контейнер | Содержание | Порты |
-| --------- | ---------- | ----- |
-| `slime-arena-app` | MetaServer + MatchServer + Client + Admin | 3000, 2567, 5173, 5175 |
-| `slime-arena-db` | PostgreSQL 16 + Redis 7 | 5432, 6379 |
-
-Образы: `ghcr.io/komleff/slime-arena-app`, `ghcr.io/komleff/slime-arena-db` (поддержка архитектур amd64 и arm64).
-
-Подробности: [docs/operations/SERVER_SETUP.md](docs/operations/SERVER_SETUP.md)
-
-## Production
-
-**URL:** <https://slime-arena.overmobile.space>
-
-Nginx проксирует HTTP, WebSocket и админ-панель через один домен.
-
-Документация: [SERVER_SETUP.md](docs/operations/SERVER_SETUP.md) | [SERVER_UPDATE.md](docs/operations/SERVER_UPDATE.md)
-
-## Журнал изменений
-
-Полная история изменений доступна в файле [CHANGELOG.md](CHANGELOG.md).
+|-----------|-----------|-------|
+| `bonk-race-app` | Meta-server + Client + Admin | 3000, 5173, 5175 |
+| `bonk-race-db` | PostgreSQL 16 + Redis 7 | 5432, 6379 |
 
 ---
-Подробная документация доступна в папке [docs/](docs/).
+
+Подробная документация в [docs/](docs/).

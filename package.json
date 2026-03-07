@@ -1,6 +1,6 @@
 {
   "name": "bonk-race",
-  "version": "0.8.6",
+  "version": "0.1.0",
   "private": true,
   "workspaces": [
     "client",
