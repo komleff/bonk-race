@@ -23,7 +23,7 @@ import { GhostPlayer } from "./game/GhostPlayer";
 import { drawBlob } from "./rendering/blob";
 import {
     drawSurfaces, drawWalls, drawObstacles,
-    drawCheckpoints, drawPickups,
+    drawCheckpoints, drawPickups, drawFinishLine,
 } from "./rendering/track";
 import { metaServerClient } from "./api/metaServerClient";
 
@@ -67,7 +67,7 @@ function createPlayer(startX: number, startY: number): PlayerState {
         y: startY,
         vx: 0,
         vy: 0,
-        angle: 0,
+        angle: -Math.PI / 2, // вверх (GDD: игрок едет снизу вверх)
         angVel: 0,
         mass: 50,
         radius: 12,
@@ -203,10 +203,18 @@ function flightAssistSystem(
         const inertia = player.mass * player.radius * player.radius * 0.5;
         player.angVel += (torque / inertia) * dt;
 
-        // Forward thrust
+        // Тяга: смесь направления блоба (70%) и направления ввода (30%)
+        // GDD §3.1: «блоб ускоряется в направлении курсора»
+        const INPUT_THRUST_BLEND = 0.3;
         const thrustMag = mag;
-        const fx = Math.cos(player.angle) * phys.thrustForwardN * thrustMag;
-        const fy = Math.sin(player.angle) * phys.thrustForwardN * thrustMag;
+        const facingX = Math.cos(player.angle);
+        const facingY = Math.sin(player.angle);
+        const inputDirX = Math.cos(targetAngle);
+        const inputDirY = Math.sin(targetAngle);
+        const blendX = facingX * (1 - INPUT_THRUST_BLEND) + inputDirX * INPUT_THRUST_BLEND;
+        const blendY = facingY * (1 - INPUT_THRUST_BLEND) + inputDirY * INPUT_THRUST_BLEND;
+        const fx = blendX * phys.thrustForwardN * thrustMag;
+        const fy = blendY * phys.thrustForwardN * thrustMag;
 
         // Lateral compensation (reduce sideways drift)
         const cosA = Math.cos(player.angle);
@@ -646,6 +654,12 @@ export class RaceGame {
         drawObstacles(ctx, config.obstacles);
         drawCheckpoints(ctx, config.checkpoints, player.checkpoint);
         drawPickups(ctx, config.pickups);
+
+        // Финишная черта у последнего чекпоинта
+        const finishCp = config.checkpoints[config.checkpoints.length - 1];
+        if (finishCp) {
+            drawFinishLine(ctx, finishCp.x, finishCp.y, config.width * 0.6);
+        }
 
         // Draw ghosts
         for (const ghost of this.ghosts) {
