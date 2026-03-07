@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 async function runMigrations() {
-  const databaseUrl = process.env.DATABASE_URL || 'postgresql://slime:slime_dev_password@localhost:5432/slime_arena';
+  const databaseUrl = process.env.DATABASE_URL || 'postgresql://bonk:bonk_dev_password@localhost:5432/bonk_race';
   
   const pool = new Pool({
     connectionString: databaseUrl,
