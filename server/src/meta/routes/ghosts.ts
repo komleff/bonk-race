@@ -7,7 +7,7 @@
 import express, { Request, Response } from 'express';
 import { Pool } from 'pg';
 import { getPostgresPool } from '../../db/pool';
-import { verifyAccessToken } from '../utils/jwtUtils';
+import { verifyAccessToken, verifyGuestToken } from '../utils/jwtUtils';
 
 const router = express.Router();
 
@@ -32,12 +32,18 @@ router.get('/', async (req: Request, res: Response) => {
 
     const ghosts: any[] = [];
 
-    // Extract user from optional auth header
+    // Extract user from optional auth header (access token or guest token)
     const authHeader = req.get('authorization');
     let userId: string | null = null;
     if (authHeader?.startsWith('Bearer ')) {
-        const payload = verifyAccessToken(authHeader.substring(7));
-        if (payload) userId = payload.sub;
+        const token = authHeader.substring(7);
+        const accessPayload = verifyAccessToken(token);
+        if (accessPayload) {
+            userId = accessPayload.sub;
+        } else {
+            const guestPayload = verifyGuestToken(token);
+            if (guestPayload) userId = guestPayload.sub;
+        }
     }
 
     try {

@@ -100,13 +100,22 @@ function getTelegramProvider(): TelegramAuthProvider {
 
 /**
  * POST /api/v1/auth/guest
- * Generate guest token for Standalone platform
- * Does NOT create any database records
+ * Generate guest token for Standalone/BonkRace platform.
+ * Creates a guest user record in DB so race_leaderboard/ghost_replays FK constraints work.
  */
 router.post('/guest', async (req: Request, res: Response) => {
   try {
     // Generate unique guest identifier
     const guestSubjectId = uuidv4();
+
+    // Создаём гостевого пользователя в БД (для FK в race_leaderboard/ghost_replays)
+    const pool = getPostgresPool();
+    await pool.query(
+      `INSERT INTO users (id, platform_type, platform_id, nickname, created_at, updated_at)
+       VALUES ($1, 'guest', $2, $3, NOW(), NOW())
+       ON CONFLICT (platform_type, platform_id) DO NOTHING`,
+      [guestSubjectId, guestSubjectId, `Guest_${guestSubjectId.slice(0, 6)}`],
+    );
 
     // Generate JWT guest token (7 days)
     const guestToken = generateGuestToken(guestSubjectId);
@@ -114,7 +123,7 @@ router.post('/guest', async (req: Request, res: Response) => {
     // Calculate expiration date
     const expiresAt = calculateExpiresAt(TOKEN_EXPIRATION.GUEST_TOKEN);
 
-    console.log(`[Auth] Guest token created for subject ${guestSubjectId.slice(0, 8)}...`);
+    console.log(`[Auth] Guest user + token created for ${guestSubjectId.slice(0, 8)}...`);
 
     res.json({
       guestToken,

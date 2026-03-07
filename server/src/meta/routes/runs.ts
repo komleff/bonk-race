@@ -70,6 +70,14 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
     try {
         await db.query('BEGIN');
 
+        // Проверяем текущий рекорд до обновления (для начисления монет только при улучшении)
+        const prevResult = await db.query(
+            `SELECT best_finish_ms FROM race_leaderboard WHERE user_id = $1 AND track_id = $2`,
+            [userId, trackId],
+        );
+        const prevBestMs = prevResult.rows[0]?.best_finish_ms ?? Infinity;
+        const isNewRecord = Math.round(finishMs) < prevBestMs;
+
         // Save/update best time in race_leaderboard
         await db.query(
             `INSERT INTO race_leaderboard (user_id, track_id, best_finish_ms, updated_at)
@@ -91,8 +99,8 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
             [userId, trackId, Math.round(finishMs), JSON.stringify(replayData)],
         );
 
-        // Credit coins to wallet (capped)
-        if (safeCoinCount > 0) {
+        // Монеты только при новом рекорде (защита от фарма повторными submit)
+        if (safeCoinCount > 0 && isNewRecord) {
             await db.query(
                 `UPDATE wallets SET soft_currency = soft_currency + $1 WHERE user_id = $2`,
                 [safeCoinCount, userId],
