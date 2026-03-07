@@ -526,6 +526,11 @@ export class RaceGame {
             physicsSystem(this.player, this.config, dt);
             collisionSystem(this.player, this.config);
 
+            // Смерть прерывает тик — нельзя засчитывать прогресс после гибели
+            if (this.player.isDead) {
+                return;
+            }
+
             // Checkpoint detection
             const finished = checkpointDetection(this.player, this.config.checkpoints);
             if (finished && this.phase === RACE_PHASE_RACING) {
