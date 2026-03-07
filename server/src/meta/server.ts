@@ -24,6 +24,9 @@ import analyticsRoutes from './routes/analytics';
 import matchResultsRoutes from './routes/matchResults';
 import leaderboardRoutes from './routes/leaderboard';
 import adminRoutes from './routes/admin';
+import tracksRoutes from './routes/tracks';
+import ghostsRoutes from './routes/ghosts';
+import runsRoutes from './routes/runs';
 
 const app = express();
 const port = Number(process.env.META_PORT || 3000);
@@ -114,6 +117,9 @@ app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/match-results', matchResultsRoutes);
 app.use('/api/v1/leaderboard', leaderboardRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/tracks', tracksRoutes);
+app.use('/api/v1/ghosts', ghostsRoutes);
+app.use('/api/v1/runs', runsRoutes);
 
 // 404 handler
 app.use((req, res) => {
