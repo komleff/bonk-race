@@ -1,8 +1,8 @@
 /**
  * Hand-crafted track presets (GDD §4.1)
  *
- * First manual track for BonkRace MVP: an oval circuit with
- * surface variety, walls, obstacles, and pickup placements.
+ * Vertical corridor tracks for BonkRace MVP.
+ * Player drives from bottom (high Y) to top (low Y).
  *
  * Coordinate system: (0,0) is center; +X right, +Y down.
  */
@@ -23,121 +23,136 @@ import {
     PICKUP_TELEPORT,
 } from '@bonk-race/shared';
 
-// ─── Track 1: "Starter Circuit" ─────────────────────────────────────────────
+// ─── Track 1: "First Run" ──────────────────────────────────────────────────
 //
-//  Oval loop, clockwise. Roughly 1200×800 world units.
-//  Checkpoints placed around the oval in order (0..7), with #0 as start/finish.
+//  Вертикальный коридор ~600×2400. Игрок едет снизу вверх.
+//  Коридорная трасса A→B (GDD §4.1): основной путь очевиден,
+//  оптимальный — требует скилла.
 //
-//   Layout (rough ASCII):
+//  Layout (rough ASCII, top-down, Y increases downward):
 //
-//       CP1 ---- BOOST ---- CP2
-//      /                        \
-//    CP0(start)              CP3
-//      \                        /
-//       CP7 ---- ICE ------- CP4
-//              \           /
-//               CP6 -- CP5
+//    y=-1100  ┌─ CP9 (FINISH) ─┐
+//             │    BOOST pad    │
+//    y=-900   │── CP8 ─────────│
+//             │   ICE patch    │
+//    y=-700   │── CP7 ─────────│   ← chicane (dangerous wall)
+//             │                │
+//    y=-500   │── CP6 ─────────│   ← obstacle cluster
+//             │  SLOW zone     │
+//    y=-300   │── CP5 ─────────│
+//             │                │
+//    y=-100   │── CP4 ─────────│   ← S-curve walls
+//             │   BOOST pad    │
+//    y=100    │── CP3 ─────────│
+//             │  obstacles     │
+//    y=300    │── CP2 ─────────│
+//             │                │
+//    y=500    │── CP1 ─────────│
+//             │                │
+//    y=700    │── CP0 (START) ─│
+//    y=900    └────────────────┘
 //
 //  Features:
-//  - Boost zone on top straight
-//  - Ice zone on bottom straight (low friction, tricky)
-//  - Slow zone in hairpin at bottom
-//  - Obstacle clusters near turns
-//  - Nitro pickup mid-circuit, Teleport on hidden shortcut
-//  - Walls along outer edges + one dangerous inner wall
+//  - Wide start area → narrows toward top
+//  - Boost pads for speed, ICE for drift challenge
+//  - Dangerous walls in chicane section
+//  - Obstacles force weaving
+//  - Wall-thrust corridors reward bonking
 
-const TRACK_WIDTH = 1200;
-const TRACK_HEIGHT = 800;
+const TRACK_WIDTH = 600;
+const TRACK_HEIGHT = 2400;
 
+// Чекпоинты снизу вверх (от старта к финишу)
 const checkpoints: TrackCheckpoint[] = [
-    { x: -400, y: -100, radius: 40, index: 0 },   // Start/finish (left side)
-    { x: -200, y: -280, radius: 35, index: 1 },   // Top-left turn
-    { x:  150, y: -280, radius: 35, index: 2 },   // Top-right
-    { x:  400, y: -100, radius: 35, index: 3 },   // Right side
-    { x:  400, y:  100, radius: 35, index: 4 },   // Right-bottom
-    { x:  200, y:  280, radius: 35, index: 5 },   // Bottom-right
-    { x: -100, y:  280, radius: 35, index: 6 },   // Bottom-left
-    { x: -400, y:  100, radius: 35, index: 7 },   // Left-bottom (back to start)
+    { x:   0, y:  700, radius: 50, index: 0 },   // START
+    { x:   0, y:  500, radius: 40, index: 1 },
+    { x:   0, y:  300, radius: 40, index: 2 },
+    { x:   0, y:  100, radius: 40, index: 3 },
+    { x:   0, y: -100, radius: 40, index: 4 },
+    { x:   0, y: -300, radius: 40, index: 5 },
+    { x:   0, y: -500, radius: 40, index: 6 },
+    { x:   0, y: -700, radius: 40, index: 7 },
+    { x:   0, y: -900, radius: 40, index: 8 },
+    { x:   0, y: -1100, radius: 50, index: 9 },  // FINISH
 ];
 
 const surfaces: TrackSurface[] = [
-    // Boost strip on top straight (between CP1 and CP2)
-    { x: -25, y: -280, radius: 120, type: SURFACE_BOOST },
+    // Буст перед финишем (быстрый спринт)
+    { x: 0, y: -1000, radius: 80, type: SURFACE_BOOST },
 
-    // Ice patch on bottom (between CP6 and CP5)
-    { x:  50, y:  280, radius: 100, type: SURFACE_ICE },
+    // Буст в середине (награда за чистый путь)
+    { x: 0, y: 0, radius: 60, type: SURFACE_BOOST },
 
-    // Slow zone in bottom-left hairpin
-    { x: -300, y:  200, radius: 60, type: SURFACE_SLOW },
+    // Ледяной участок (дрифт-зона, GDD §4.2)
+    { x: 0, y: -800, radius: 100, type: SURFACE_ICE },
 
-    // Small boost pad near right turn
-    { x:  420, y:  0, radius: 40, type: SURFACE_BOOST },
+    // Замедляющая зона (заставляет искать обходной путь)
+    { x: 0, y: -400, radius: 70, type: SURFACE_SLOW },
 ];
 
 const obstacles: TrackObstacle[] = [
-    // Top-left turn cluster (safe bouncy)
-    { x: -300, y: -200, radius: 15, isDangerous: false },
-    { x: -270, y: -250, radius: 12, isDangerous: false },
+    // Нижняя секция — разогрев (безопасные бамперы)
+    { x: -80, y: 600, radius: 15, isDangerous: false },
+    { x:  80, y: 550, radius: 15, isDangerous: false },
 
-    // Top-right obstacles
-    { x:  300, y: -230, radius: 18, isDangerous: false },
+    // Средняя секция — плотнее
+    { x: -100, y: 200, radius: 18, isDangerous: false },
+    { x:  100, y: 250, radius: 18, isDangerous: false },
+    { x:    0, y: 150, radius: 12, isDangerous: false },
 
-    // Center hazard (dangerous — forces players to steer around)
-    { x:  0, y:  0, radius: 25, isDangerous: true },
+    // Верхняя секция — опасные препятствия
+    { x: -60, y: -500, radius: 20, isDangerous: true },
+    { x:  60, y: -550, radius: 20, isDangerous: true },
 
-    // Right turn pillars
-    { x:  450, y: -50, radius: 14, isDangerous: false },
-    { x:  450, y:  50, radius: 14, isDangerous: false },
-
-    // Bottom cluster (inside hairpin)
-    { x: -150, y:  230, radius: 16, isDangerous: false },
-    { x:  100, y:  230, radius: 20, isDangerous: true },
-
-    // Left side pillars
-    { x: -450, y: -30, radius: 12, isDangerous: false },
-    { x: -450, y:  30, radius: 12, isDangerous: false },
+    // Финишный коридор — бамперы по бокам
+    { x: -120, y: -950, radius: 14, isDangerous: false },
+    { x:  120, y: -950, radius: 14, isDangerous: false },
 ];
 
 const pickups: TrackPickup[] = [
-    // Nitro on back-straight (between CP7 and CP0)
-    { x: -420, y: 0, type: PICKUP_NITRO },
+    // Нитро в начале трассы (ускоряет старт)
+    { x: 0, y: 400, type: PICKUP_NITRO },
 
-    // Teleport off the main line (shortcut near bottom)
-    { x: 0, y: 320, type: PICKUP_TELEPORT },
+    // Телепорт — shortcut мимо замедляющей зоны
+    { x: 200, y: -350, type: PICKUP_TELEPORT },
 ];
 
 const walls: TrackWall[] = [
-    // Outer boundary walls (safe — wall-thrust works on these)
-    // Top wall
-    { x1: -500, y1: -350, x2: 500, y2: -350, isDangerous: false },
-    // Bottom wall
-    { x1: -500, y1: 350, x2: 500, y2: 350, isDangerous: false },
-    // Left wall
-    { x1: -530, y1: -350, x2: -530, y2: 350, isDangerous: false },
-    // Right wall
-    { x1: 530, y1: -350, x2: 530, y2: 350, isDangerous: false },
+    // ─── Наружные стены коридора (безопасные — wall-thrust работает) ───
+    // Левая стена
+    { x1: -250, y1: -1200, x2: -250, y2: 900, isDangerous: false },
+    // Правая стена
+    { x1:  250, y1: -1200, x2:  250, y2: 900, isDangerous: false },
 
-    // Inner dangerous wall (center divider, forces choice of racing line)
-    { x1: -50, y1: -50, x2: 50, y2: -50, isDangerous: true },
+    // Верхняя стена (за финишем)
+    { x1: -250, y1: -1200, x2: 250, y2: -1200, isDangerous: false },
+    // Нижняя стена (за стартом)
+    { x1: -250, y1: 900, x2: 250, y2: 900, isDangerous: false },
 
-    // Chicane walls on top straight
-    { x1: -80, y1: -250, x2: -80, y2: -310, isDangerous: false },
-    { x1: 80, y1: -250, x2: 80, y2: -310, isDangerous: false },
+    // ─── S-образный изгиб (создаёт нетривиальную оптимальную линию) ───
+    // Выступ слева
+    { x1: -250, y1: -50, x2: -100, y2: -50, isDangerous: false },
+    // Выступ справа (чуть ниже)
+    { x1:  250, y1: -150, x2:  100, y2: -150, isDangerous: false },
+
+    // ─── Chicane: опасная стена (GDD §4.2 — красные стены) ───
+    { x1: -80, y1: -680, x2:  80, y2: -720, isDangerous: true },
 ];
 
 const TICK_RATE = 60;
 
-export const TRACK_STARTER_CIRCUIT: TrackConfig = {
-    id: 'starter-circuit',
-    name: 'Starter Circuit',
+export const TRACK_FIRST_RUN: TrackConfig = {
+    id: 'first-run',
+    name: 'First Run',
     seed: 42,
 
+    // Тренировочная физика (GDD §3.3 — средний двигатель)
     physics: {
-        thrustForwardN: 9000,
-        thrustLateralN: 8500,
-        turnTorqueNm: 175,
-        linearDragK: 0.10,
-        comfortableBrakingTimeS: 3.5,
+        thrustForwardN: 6000,
+        thrustLateralN: 5500,
+        turnTorqueNm: 130,
+        linearDragK: 0.15,
+        comfortableBrakingTimeS: 2.5,
         wallThrustCoeff: 0.3,
         tickRate: TICK_RATE,
     },
@@ -152,20 +167,20 @@ export const TRACK_STARTER_CIRCUIT: TrackConfig = {
     walls,
 
     medalTimesMs: {
-        bronze: 60000,   // 60s — just finish
-        silver: 35000,   // 35s — decent run
-        gold: 25000,     // 25s — clean run with boost usage
-        author: 20000,   // 20s — optimal line + wall-thrust
+        bronze: 45000,   // 45s — просто финишировал
+        silver: 30000,   // 30s — хороший заезд
+        gold: 22000,     // 22s — чистый проезд с бустами
+        author: 18000,   // 18s — оптимальная линия + wall-thrust
     },
 
     maxSessionSec: 300,
-    inactivityThresholdTicks: TICK_RATE * 30, // 30s
+    inactivityThresholdTicks: TICK_RATE * 30,
 };
 
 // ─── Preset registry ─────────────────────────────────────────────────────────
 
 export const TRACK_PRESETS: Record<string, TrackConfig> = {
-    'starter-circuit': TRACK_STARTER_CIRCUIT,
+    'first-run': TRACK_FIRST_RUN,
 };
 
 /**

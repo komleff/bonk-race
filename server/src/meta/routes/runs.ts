@@ -81,12 +81,22 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
             );
         }
 
+        // Позиция в лидерборде по трассе
+        const posResult = await db.query(
+            `SELECT COUNT(*) + 1 AS position
+             FROM race_leaderboard
+             WHERE track_id = $1 AND best_finish_ms < $2`,
+            [trackId, Math.round(finishMs)],
+        );
+        const position = parseInt(posResult.rows[0]?.position ?? '1', 10);
+
         await db.query('COMMIT');
 
         res.json({
             success: true,
             finishMs: Math.round(finishMs),
             coinsCollected: coinsCollected ?? 0,
+            position,
         });
     } catch (err) {
         await db.query('ROLLBACK').catch(() => {});

@@ -2,8 +2,8 @@
  * BonkRace Integration Smoke Test — Tracks API
  *
  * Validates that:
- * 1. GET /api/v1/tracks/today returns a valid TrackConfig (Starter Circuit preset)
- * 2. GET /api/v1/tracks/starter-circuit returns the same preset by ID
+ * 1. GET /api/v1/tracks/today returns a valid TrackConfig (First Run preset)
+ * 2. GET /api/v1/tracks/first-run returns the same preset by ID
  * 3. GET /api/v1/tracks/list returns available track IDs
  * 4. TrackConfig contains required fields: checkpoints, obstacles, surfaces, walls, physics
  *
@@ -90,15 +90,15 @@ async function main() {
     assert(typeof track.maxSessionSec === "number", "track has maxSessionSec");
     console.log();
 
-    // Test 2: GET /api/v1/tracks/starter-circuit
-    console.log("Test 2: GET /api/v1/tracks/starter-circuit");
-    const presetRes = await fetchJSON(app, "/api/v1/tracks/starter-circuit");
-    assert(presetRes.status === 200, "tracks/starter-circuit returns 200");
+    // Test 2: GET /api/v1/tracks/first-run
+    console.log("Test 2: GET /api/v1/tracks/first-run");
+    const presetRes = await fetchJSON(app, "/api/v1/tracks/first-run");
+    assert(presetRes.status === 200, "tracks/first-run returns 200");
     const preset = presetRes.body;
-    assert(preset.id === "starter-circuit", "preset id is 'starter-circuit'");
-    assert(preset.name === "Starter Circuit", "preset name is 'Starter Circuit'");
-    assert(preset.checkpoints.length === 8, "preset has 8 checkpoints");
-    assert(preset.obstacles.length === 10, "preset has 10 obstacles");
+    assert(preset.id === "first-run", "preset id is 'first-run'");
+    assert(preset.name === "First Run", "preset name is 'First Run'");
+    assert(preset.checkpoints.length === 10, "preset has 10 checkpoints");
+    assert(preset.obstacles.length === 9, "preset has 9 obstacles");
     assert(preset.surfaces.length === 4, "preset has 4 surfaces");
     assert(preset.walls.length === 7, "preset has 7 walls");
     assert(preset.pickups.length === 2, "preset has 2 pickups");
@@ -121,7 +121,7 @@ async function main() {
     const listRes = await fetchJSON(app, "/api/v1/tracks/list");
     assert(listRes.status === 200, "tracks/list returns 200");
     assert(Array.isArray(listRes.body.tracks), "list has tracks array");
-    assert(listRes.body.tracks.includes("starter-circuit"), "list includes starter-circuit");
+    assert(listRes.body.tracks.includes("first-run"), "list includes first-run");
     console.log();
 
     // Test 4: Medal thresholds ordering
