@@ -1,21 +1,3 @@
-export class Rng {
-    private state: number;
-
-    constructor(seed: number) {
-        this.state = seed >>> 0;
-    }
-
-    next(): number {
-        // LCG parameters from Numerical Recipes
-        this.state = (this.state * 1664525 + 1013904223) >>> 0;
-        return this.state / 0x100000000;
-    }
-
-    range(min: number, max: number): number {
-        return min + (max - min) * this.next();
-    }
-
-    int(min: number, max: number): number {
-        return Math.floor(this.range(min, max));
-    }
-}
+// Re-export from shared package (canonical source)
+// Server imports still use "../utils/rng" — this re-export avoids breaking them.
+export { Rng } from "@bonk-race/shared";
