@@ -104,8 +104,8 @@ function resolveTrack(id: string): TrackConfig {
 /**
  * GET /api/v1/tracks/today
  * Returns the track-of-the-day config.
- * For MVP: always returns 'starter-circuit' preset.
- * Post-MVP: rotate daily from preset pool using date seed.
+ * Rotates daily from the preset pool using a date seed.
+ * Falls back to procedural generation if no presets exist.
  */
 router.get('/today', (_req: Request, res: Response) => {
     // MVP: single track

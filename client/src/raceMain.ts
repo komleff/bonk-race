@@ -139,7 +139,8 @@ function getSurfaceDragMultiplier(player: PlayerState, config: TrackConfig): num
 }
 
 /**
- * Apply one-shot boost when entering a BOOST surface.
+ * Apply continuous speed clamp while on a BOOST surface.
+ * Called every tick; clamps speed up to boostSpeed while overlapping the pad.
  */
 function applySurfaceBoost(player: PlayerState, config: TrackConfig): void {
     for (const surface of config.surfaces) {
@@ -234,7 +235,7 @@ function physicsSystem(
     player.angle += player.angVel * dt;
     player.angle = wrapAngle(player.angle);
 
-    // Apply surface boost (one-shot speed bump on boost pads)
+    // Apply surface boost (continuous speed clamp on boost pads)
     applySurfaceBoost(player, config);
 }
 
@@ -266,19 +267,19 @@ function collisionSystem(
 
     if (player.x - r < -hw) {
         player.x = -hw + r;
-        applyWallBounce(player, 1, 0, config, false);
+        applyWallBounce(player, 1, 0, config);
     }
     if (player.x + r > hw) {
         player.x = hw - r;
-        applyWallBounce(player, -1, 0, config, false);
+        applyWallBounce(player, -1, 0, config);
     }
     if (player.y - r < -hh) {
         player.y = -hh + r;
-        applyWallBounce(player, 0, 1, config, false);
+        applyWallBounce(player, 0, 1, config);
     }
     if (player.y + r > hh) {
         player.y = hh - r;
-        applyWallBounce(player, 0, -1, config, false);
+        applyWallBounce(player, 0, -1, config);
     }
 
     // Line-segment wall collisions
@@ -327,16 +328,38 @@ function collideWithWall(
     const dy = player.y - cp.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist < player.radius && dist > 0.001) {
-        // Normal from wall toward player
-        const nx = dx / dist;
-        const ny = dy / dist;
+    if (dist < player.radius) {
+        let nx: number, ny: number;
+        if (dist > 0.001) {
+            // Normal from wall toward player
+            nx = dx / dist;
+            ny = dy / dist;
+        } else {
+            // Center is exactly on the wall — use perpendicular to wall direction
+            const wallDx = wall.x2 - wall.x1;
+            const wallDy = wall.y2 - wall.y1;
+            const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy);
+            // Perpendicular to wall segment
+            nx = -wallDy / wallLen;
+            ny = wallDx / wallLen;
+            // Orient normal so it opposes player velocity
+            const dotV = player.vx * nx + player.vy * ny;
+            if (dotV > 0) {
+                nx = -nx;
+                ny = -ny;
+            }
+        }
+
+        // Dangerous wall kills on any contact, regardless of velocity direction
+        if (wall.isDangerous) {
+            player.isDead = true;
+        }
 
         // Push out
         player.x = cp.x + nx * player.radius;
         player.y = cp.y + ny * player.radius;
 
-        applyWallBounce(player, nx, ny, config, wall.isDangerous);
+        applyWallBounce(player, nx, ny, config);
     }
 }
 
@@ -345,18 +368,12 @@ function applyWallBounce(
     normalX: number,
     normalY: number,
     config: TrackConfig,
-    isDangerous: boolean,
 ): void {
     const dotN = player.vx * normalX + player.vy * normalY;
     if (dotN < 0) {
         // Elastic bounce (restitution ~0.6)
         player.vx -= 1.6 * dotN * normalX;
         player.vy -= 1.6 * dotN * normalY;
-
-        if (isDangerous) {
-            player.isDead = true;
-            return;
-        }
 
         // Wall-thrust (GDD §3.4): tangential boost when sliding along safe wall
         const wallThrustCoeff = config.physics.wallThrustCoeff;

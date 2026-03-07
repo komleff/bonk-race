@@ -82,11 +82,11 @@ async function main() {
     assert(Array.isArray(track.surfaces), "track has surfaces array");
     assert(Array.isArray(track.walls), "track has walls array");
     assert(Array.isArray(track.pickups), "track has pickups array");
-    assert(typeof track.physics === "object", "track has physics config");
+    assert(track.physics !== null && typeof track.physics === "object", "track has physics config");
     assert(typeof track.physics.thrustForwardN === "number", "physics has thrustForwardN");
     assert(typeof track.physics.wallThrustCoeff === "number", "physics has wallThrustCoeff");
     assert(typeof track.physics.tickRate === "number", "physics has tickRate");
-    assert(typeof track.medalTimesMs === "object", "track has medalTimesMs");
+    assert(track.medalTimesMs !== null && typeof track.medalTimesMs === "object", "track has medalTimesMs");
     assert(typeof track.maxSessionSec === "number", "track has maxSessionSec");
     console.log();
 
