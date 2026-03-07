@@ -2,7 +2,7 @@ import {
     FLAG_DASHING,
     FLAG_ABILITY_SHIELD,
     FLAG_MAGNETIZING,
-} from "@slime-arena/shared";
+} from "@bonk-race/shared";
 import { SlowZone, Projectile, Mine } from "../schema/GameState";
 
 /**

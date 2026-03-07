@@ -17,7 +17,7 @@ import {
 } from '../../services/leaderboardService';
 import { RegistrationPromptModal } from './RegistrationPromptModal';
 import { matchmakingStatus } from '../signals/gameState';
-import { isValidSprite } from '@slime-arena/shared';
+import { isValidSprite } from '@bonk-race/shared';
 
 /**
  * LB-017: Резервный никнейм.

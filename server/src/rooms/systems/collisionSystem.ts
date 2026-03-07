@@ -1,4 +1,4 @@
-import { OBSTACLE_TYPE_SPIKES, getOrbRadius } from "@slime-arena/shared";
+import { OBSTACLE_TYPE_SPIKES, getOrbRadius } from "@bonk-race/shared";
 
 export function collisionSystem(room: any) {
     const players = Array.from(room.state.players.values()) as any[];

@@ -1,4 +1,4 @@
-import { FLAG_MAGNETIZING, getOrbRadius } from "@slime-arena/shared";
+import { FLAG_MAGNETIZING, getOrbRadius } from "@bonk-race/shared";
 
 export function updateOrbs(room: any) {
     const dt = 1 / room.balance.server.tickRate;

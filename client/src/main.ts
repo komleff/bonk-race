@@ -24,7 +24,7 @@ import {
     clamp,
     generateRandomName,
     pickSpriteByName,
-} from "@slime-arena/shared";
+} from "@bonk-race/shared";
 import {
     type JoystickState,
     type JoystickConfig,

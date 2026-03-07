@@ -6,7 +6,7 @@
  */
 
 import { Player, TalentCard } from "../../schema/GameState";
-import { TalentConfig, ClassTalentConfig } from "@slime-arena/shared";
+import { TalentConfig, ClassTalentConfig } from "@bonk-race/shared";
 import { Rng } from "../../../utils/rng";
 import { TalentBalanceConfig } from "./TalentModifierCalculator";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@slime-arena/shared",
+  "name": "@bonk-race/shared",
   "version": "0.8.7",
   "private": true,
   "main": "dist/index.js",

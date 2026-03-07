@@ -5,7 +5,7 @@
  * Делегирует джойстик в joystick.ts модуль.
  */
 
-import { clamp } from "@slime-arena/shared";
+import { clamp } from "@bonk-race/shared";
 import {
     type JoystickState,
     type JoystickConfig,

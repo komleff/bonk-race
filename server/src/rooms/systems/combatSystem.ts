@@ -1,4 +1,4 @@
-import { FLAG_ABILITY_SHIELD } from "@slime-arena/shared";
+import { FLAG_ABILITY_SHIELD } from "@bonk-race/shared";
 
 /**
  * CombatSystem — боевая система слаймов.

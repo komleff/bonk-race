@@ -27,7 +27,7 @@ import { getPostgresPool } from '../../db/pool';
 import { getRedisClient } from '../../db/redis';
 import { authRateLimiter, oauthRateLimiter } from '../middleware/rateLimiter';
 import { validateAndNormalize, normalizeNickname, NICKNAME_MAX_LENGTH } from '../../utils/generators/nicknameValidator';
-import { GUEST_DEFAULT_NICKNAME, pickSpriteByName, isValidSprite } from '@slime-arena/shared';
+import { GUEST_DEFAULT_NICKNAME, pickSpriteByName, isValidSprite } from '@bonk-race/shared';
 
 const router = express.Router();
 

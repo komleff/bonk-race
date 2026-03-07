@@ -21,7 +21,7 @@ import {
   type Profile,
 } from '../ui/signals/gameState';
 import balanceConfig from '../../../config/balance.json';
-import { GUEST_DEFAULT_NICKNAME, SPRITE_NAMES } from '@slime-arena/shared';
+import { GUEST_DEFAULT_NICKNAME, SPRITE_NAMES } from '@bonk-race/shared';
 
 /**
  * Ответ сервера на /auth/guest

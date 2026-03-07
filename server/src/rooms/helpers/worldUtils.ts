@@ -2,7 +2,7 @@
  * Утилиты для работы с геометрией мира
  */
 
-import type { ResolvedBalanceConfig } from "@slime-arena/shared";
+import type { ResolvedBalanceConfig } from "@bonk-race/shared";
 import { clamp } from "./mathUtils";
 
 export interface WorldBounds {

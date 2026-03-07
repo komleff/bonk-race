@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { Pool } from 'pg';
 import { getPostgresPool } from '../../db/pool';
 import { requireServerToken } from '../middleware/auth';
-import { MatchSummary, PlayerResult } from '@slime-arena/shared/src/types';
+import { MatchSummary, PlayerResult } from '@bonk-race/shared/src/types';
 import {
   verifyAccessToken,
   verifyGuestToken,
@@ -13,7 +13,7 @@ import {
 import { loadBalanceConfig } from '../../config/loadBalanceConfig';
 import { ratingService } from '../services/RatingService';
 import { authRateLimiter } from '../middleware/rateLimiter';
-import { pickSpriteByName, isValidSprite } from '@slime-arena/shared';
+import { pickSpriteByName, isValidSprite } from '@bonk-race/shared';
 
 const router = express.Router();
 

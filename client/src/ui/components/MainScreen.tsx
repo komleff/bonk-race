@@ -9,7 +9,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { useComputed } from '@preact/signals';
 import { injectStyles } from '../utils/injectStyles';
 import { currentUser, currentProfile, openLeaderboard } from '../signals/gameState';
-import { GUEST_DEFAULT_NICKNAME } from '@slime-arena/shared';
+import { GUEST_DEFAULT_NICKNAME } from '@bonk-race/shared';
 import { RegistrationPromptModal } from './RegistrationPromptModal';
 
 const STYLES_ID = 'main-screen-styles';

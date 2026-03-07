@@ -5,7 +5,7 @@
 // JSX runtime imported automatically via jsxImportSource
 import type { JSX } from 'preact';
 import { useState, useCallback, useEffect, useRef } from 'preact/hooks';
-import { generateRandomName, GUEST_DEFAULT_NICKNAME } from '@slime-arena/shared';
+import { generateRandomName, GUEST_DEFAULT_NICKNAME } from '@bonk-race/shared';
 import { authService } from '../../services/authService';
 import { injectStyles } from '../utils/injectStyles';
 import { CLASSES_DATA } from '../data/classes';
