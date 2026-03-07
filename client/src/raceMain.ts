@@ -734,9 +734,27 @@ export async function bootstrapRace(
     // Load track config from API
     const config = await loadTrackOfDay(apiBaseUrl);
 
+    // Hide inline boot screen if present
+    const bootScreen = document.getElementById("inline-boot");
+    if (bootScreen) bootScreen.style.display = "none";
+
     // Create and start game
     const game = new RaceGame(canvas, config);
     game.start();
 
     return game;
 }
+
+// ─── Auto-bootstrap when loaded as entry point ──────────────────────────────
+
+bootstrapRace().catch((err) => {
+    console.error("[BonkRace] Failed to start:", err);
+    const el = document.getElementById("inline-boot");
+    if (el) {
+        el.innerHTML = `<div style="color:#ff4444;text-align:center;padding:2em;font-family:monospace;">
+            <h2>Failed to load track</h2>
+            <p>${err.message}</p>
+            <p style="color:#888;">Make sure meta-server is running on :3000</p>
+        </div>`;
+    }
+});
