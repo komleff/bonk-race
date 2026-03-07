@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { timingSafeEqual } from 'crypto';
 import { AuthService, User } from '../services/AuthService';
-import { verifyAccessToken } from '../utils/jwtUtils';
+import { verifyAccessToken, verifyGuestToken } from '../utils/jwtUtils';
 
 // Extend Express Request type to include user
 declare global {
@@ -48,6 +48,21 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         error: 'unauthorized',
         message: 'User not found',
       });
+    }
+
+    // Try guest token (BonkRace guest flow)
+    const guestPayload = verifyGuestToken(token);
+    if (guestPayload) {
+      // Guest-токен валиден — sub содержит guestSubjectId
+      // Для BonkRace гость может сохранять результаты по своему sub ID
+      req.userId = guestPayload.sub;
+      req.user = {
+        id: guestPayload.sub,
+        platformId: guestPayload.sub,
+        platformType: 'guest',
+        nickname: 'Guest',
+      } as User;
+      return next();
     }
 
     // Fallback: try session-based token (legacy flow)

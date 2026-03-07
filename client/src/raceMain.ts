@@ -510,10 +510,10 @@ export class RaceGame {
         };
     }
 
-    /** Отправить результат на сервер (fire-and-forget, не блокирует UI) */
+    /** Отправить результат на сервер (идемпотентный POST, не блокирует UI) */
     private submitResult(): void {
         const result = this.getResult();
-        metaServerClient.post<{ position?: number }>("/api/v1/runs/submit", result)
+        metaServerClient.postIdempotent<{ position?: number }>("/api/v1/runs/submit", result)
             .then((resp) => {
                 console.log("[BonkRace] Run submitted:", resp);
                 if (resp.position) this.leaderboardPosition = resp.position;
@@ -588,7 +588,9 @@ export class RaceGame {
             // Checkpoint detection
             const finished = checkpointDetection(this.player, this.config.checkpoints);
             if (finished && this.phase === RACE_PHASE_RACING) {
-                this.finishTimeMs = performance.now() - this.startTimeMs;
+                // Tick-based время для детерминизма (GDD §3.5)
+                const fixedDt = 1 / this.config.physics.tickRate;
+                this.finishTimeMs = this.tick * fixedDt * 1000;
                 this.phase = RACE_PHASE_RESULTS;
                 this.recorder.stop();
                 this.submitResult();
@@ -871,10 +873,19 @@ bootstrapRace().catch((err) => {
     console.error("[BonkRace] Failed to start:", err);
     const el = document.getElementById("inline-boot");
     if (el) {
-        el.innerHTML = `<div style="color:#ff4444;text-align:center;padding:2em;font-family:monospace;">
-            <h2>Failed to load track</h2>
-            <p>${err.message}</p>
-            <p style="color:#888;">Make sure meta-server is running on :3000</p>
-        </div>`;
+        el.textContent = "";
+        const wrapper = document.createElement("div");
+        wrapper.style.cssText = "color:#ff4444;text-align:center;padding:2em;font-family:monospace;";
+        const title = document.createElement("h2");
+        title.textContent = "Failed to load track";
+        wrapper.appendChild(title);
+        const msg = document.createElement("p");
+        msg.textContent = err instanceof Error ? err.message : String(err);
+        wrapper.appendChild(msg);
+        const hint = document.createElement("p");
+        hint.style.color = "#888";
+        hint.textContent = "Make sure meta-server is running on :3000";
+        wrapper.appendChild(hint);
+        el.appendChild(wrapper);
     }
 });
