@@ -16,13 +16,13 @@ const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const router = express.Router();
 
 /**
- * Generate a seed from a date string (YYYY-MM-DD).
- * Same date = same seed = same track for all players.
+ * Generate a numeric hash from any string.
+ * Used for date-based daily rotation and procedural track seeds.
  */
-function dateSeed(dateStr: string): number {
+function stringHash(str: string): number {
     let hash = 0;
-    for (let i = 0; i < dateStr.length; i++) {
-        const ch = dateStr.charCodeAt(i);
+    for (let i = 0; i < str.length; i++) {
+        const ch = str.charCodeAt(i);
         hash = ((hash << 5) - hash + ch) | 0;
     }
     return hash >>> 0;
@@ -93,7 +93,7 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
  * Resolve a track by ID: first check presets, then generate procedurally.
  */
 function resolveTrack(id: string): TrackConfig {
-    return getTrackPreset(id) ?? generateTrackFromSeed(dateSeed(id), id);
+    return getTrackPreset(id) ?? generateTrackFromSeed(stringHash(id), id);
 }
 
 /**
@@ -108,13 +108,13 @@ router.get('/today', (_req: Request, res: Response) => {
     if (presetIds.length > 0) {
         // Rotate through presets by day
         const today = new Date().toISOString().slice(0, 10);
-        const dayIndex = dateSeed(today) % presetIds.length;
+        const dayIndex = stringHash(today) % presetIds.length;
         const track = getTrackPreset(presetIds[dayIndex])!;
         return res.json(track);
     }
     // Fallback: procedural
     const today = new Date().toISOString().slice(0, 10);
-    const seed = dateSeed(today);
+    const seed = stringHash(today);
     res.json(generateTrackFromSeed(seed, `daily-${today}`));
 });
 

@@ -139,7 +139,7 @@ function initInput(canvas: HTMLCanvasElement): void {
 
 /**
  * Returns the drag multiplier based on which surface(s) the player overlaps.
- * Default 1.0; SLOW → 3.0; ICE → 0.05; BOOST → 0.3 (+ instant speed boost handled elsewhere).
+ * Default 1.0; SLOW → 3.0; ICE → 0.05; BOOST → 0.3 (with additional continuous speed clamp in applySurfaceBoost()).
  */
 function getSurfaceDragMultiplier(player: PlayerState, config: TrackConfig): number {
     for (const surface of config.surfaces) {
@@ -388,7 +388,7 @@ function applyWallBounce(
 ): void {
     const dotN = player.vx * normalX + player.vy * normalY;
     if (dotN < 0) {
-        // Elastic bounce (restitution ~0.6)
+        // Отскок с коэффициентом WALL_RESTITUTION (сейчас ≈1.6)
         player.vx -= WALL_RESTITUTION * dotN * normalX;
         player.vy -= WALL_RESTITUTION * dotN * normalY;
 

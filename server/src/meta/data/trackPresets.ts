@@ -125,6 +125,8 @@ const walls: TrackWall[] = [
     { x1: 80, y1: -250, x2: 80, y2: -310, isDangerous: false },
 ];
 
+const TICK_RATE = 60;
+
 export const TRACK_STARTER_CIRCUIT: TrackConfig = {
     id: 'starter-circuit',
     name: 'Starter Circuit',
@@ -137,7 +139,7 @@ export const TRACK_STARTER_CIRCUIT: TrackConfig = {
         linearDragK: 0.10,
         comfortableBrakingTimeS: 3.5,
         wallThrustCoeff: 0.3,
-        tickRate: 60,
+        tickRate: TICK_RATE,
     },
 
     width: TRACK_WIDTH,
@@ -157,7 +159,7 @@ export const TRACK_STARTER_CIRCUIT: TrackConfig = {
     },
 
     maxSessionSec: 300,
-    inactivityThresholdTicks: 60 * 30, // 30s at 60Hz
+    inactivityThresholdTicks: TICK_RATE * 30, // 30s
 };
 
 // ─── Preset registry ─────────────────────────────────────────────────────────
