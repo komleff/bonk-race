@@ -6,7 +6,7 @@
  */
 
 import { Player } from "../../schema/GameState";
-import { TalentConfig, ClassTalentConfig } from "@slime-arena/shared";
+import { TalentConfig, ClassTalentConfig } from "@bonk-race/shared";
 
 export interface TalentBalanceConfig {
     common: Record<string, TalentConfig>;

@@ -9,7 +9,7 @@ import { Pool } from 'pg';
 import { getPostgresPool } from '../../db/pool';
 import { verifyAccessToken, AccessTokenPayload } from '../utils/jwtUtils';
 import { LeaderboardEntry } from '../models/Leaderboard';
-import { isValidSprite } from '@slime-arena/shared';
+import { isValidSprite } from '@bonk-race/shared';
 
 const router = express.Router();
 

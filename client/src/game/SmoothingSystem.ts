@@ -3,7 +3,7 @@
  * Визуальное состояние плавно догоняет серверное с предсказанием.
  */
 
-import { clamp, lerp, wrapAngle } from "@slime-arena/shared";
+import { clamp, lerp, wrapAngle } from "@bonk-race/shared";
 
 // ─── Типы ────────────────────────────────────────────────────────────────────
 

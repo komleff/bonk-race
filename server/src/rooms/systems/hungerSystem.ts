@@ -1,4 +1,4 @@
-import { MatchPhaseId } from "@slime-arena/shared";
+import { MatchPhaseId } from "@bonk-race/shared";
 
 export function hungerSystem(room: any) {
     const phase = room.state.phase as MatchPhaseId;

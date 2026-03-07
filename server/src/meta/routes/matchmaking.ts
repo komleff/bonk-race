@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authMiddleware } from '../middleware/auth';
 import { MatchmakingService } from '../services/MatchmakingService';
 import { verifyAccessToken, verifyGuestToken } from '../utils/jwtUtils';
-import { pickSpriteByName, isValidSprite } from '@slime-arena/shared';
+import { pickSpriteByName, isValidSprite } from '@bonk-race/shared';
 import { getPostgresPool } from '../../db/pool';
 
 const router = Router();

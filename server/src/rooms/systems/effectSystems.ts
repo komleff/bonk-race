@@ -1,4 +1,4 @@
-import { FLAG_ABILITY_SHIELD, FLAG_SLOWED, ZONE_TYPE_LAVA, ZONE_TYPE_NECTAR } from "@slime-arena/shared";
+import { FLAG_ABILITY_SHIELD, FLAG_SLOWED, ZONE_TYPE_LAVA, ZONE_TYPE_NECTAR } from "@bonk-race/shared";
 
 export function slowZoneSystem(room: any) {
     // Удаляем истекшие зоны

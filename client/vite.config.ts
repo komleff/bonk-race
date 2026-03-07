@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         'react': 'preact/compat',
         'react-dom': 'preact/compat',
-        '@slime-arena/shared': path.resolve(__dirname, '../shared/src/index')
+        '@bonk-race/shared': path.resolve(__dirname, '../shared/src/index')
       }
     }
   }

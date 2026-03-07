@@ -10,7 +10,7 @@ const {
     generateSafeZoneSeeds,
     generateZoneSeeds,
 } = require(path.resolve(__dirname, "../dist/server/src/rooms/helpers/arenaGeneration.js"));
-const { ZONE_TYPE_LAVA } = require("@slime-arena/shared");
+const { ZONE_TYPE_LAVA } = require("@bonk-race/shared");
 
 function assert(condition, message) {
     if (!condition) {

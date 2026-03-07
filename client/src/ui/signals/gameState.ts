@@ -4,7 +4,7 @@
  */
 
 import { signal, computed, batch } from '@preact/signals';
-import { FLAG_IS_DEAD, DEFAULT_BALANCE_CONFIG } from '@slime-arena/shared';
+import { FLAG_IS_DEAD, DEFAULT_BALANCE_CONFIG } from '@bonk-race/shared';
 import type { OAuthConflictResponse, OAuthPrepareResponse } from '../../oauth/types';
 
 // ========== Типы ==========

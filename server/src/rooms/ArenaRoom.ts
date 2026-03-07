@@ -48,7 +48,7 @@ import {
     TalentConfig,
     ClassTalentConfig,
     BoostType,
-} from "@slime-arena/shared";
+} from "@bonk-race/shared";
 import { loadBalanceConfig } from "../config/loadBalanceConfig";
 import { Rng } from "../utils/rng";
 import { TelemetryService } from "../telemetry/TelemetryService";
@@ -116,7 +116,7 @@ import {
     updatePlayerLevel as updatePlayerLevelModule,
 } from "./systems/playerStateManager";
 import { getMatchResultService } from "../services/MatchResultService";
-import { MatchSummary, PlayerResult } from "@slime-arena/shared/src/types";
+import { MatchSummary, PlayerResult } from "@bonk-race/shared/src/types";
 import { joinTokenService, JoinTokenPayload } from "../meta/services/JoinTokenService";
 
 type ContactZone = "mouth" | "tail" | "side";

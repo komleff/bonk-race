@@ -18,7 +18,7 @@
     "jsxImportSource": "preact",
     "baseUrl": ".",
     "paths": {
-      "@slime-arena/shared": ["../shared/src/index"]
+      "@bonk-race/shared": ["../shared/src/index"]
     }
   },
   "include": ["src"]

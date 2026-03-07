@@ -11,7 +11,7 @@ import {
     type SafeZoneConfig,
     type WorldPhysicsConfig,
     type ZonesConfig,
-} from "@slime-arena/shared";
+} from "@bonk-race/shared";
 
 type RngLike = {
     range: (min: number, max: number) => number;

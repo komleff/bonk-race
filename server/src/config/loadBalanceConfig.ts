@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { resolveBalanceConfig, ResolvedBalanceConfig } from "@slime-arena/shared";
+import { resolveBalanceConfig, ResolvedBalanceConfig } from "@bonk-race/shared";
 
 // Candidates for balance.json location (works for both src and dist)
 const CANDIDATES = [

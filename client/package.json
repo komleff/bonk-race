@@ -1,5 +1,5 @@
 {
-  "name": "@slime-arena/client",
+  "name": "@bonk-race/client",
   "version": "0.8.7",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@preact/signals": "^2.5.1",
-    "@slime-arena/shared": "*",
+    "@bonk-race/shared": "*",
     "colyseus.js": "^0.15.0",
     "howler": "^2.2.3",
     "preact": "^10.28.1"

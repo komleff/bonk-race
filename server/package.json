@@ -1,5 +1,5 @@
 {
-  "name": "@slime-arena/server",
+  "name": "@bonk-race/server",
   "version": "0.8.7",
   "private": true,
   "main": "src/index.ts",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@colyseus/monitor": "^0.15.0",
-    "@slime-arena/shared": "*",
+    "@bonk-race/shared": "*",
     "bcrypt": "^5.1.1",
     "colyseus": "^0.15.0",
     "cookie-parser": "^1.4.6",

@@ -1,4 +1,4 @@
-import { FLAG_DASHING, scaleSlimeValue } from "@slime-arena/shared";
+import { FLAG_DASHING, scaleSlimeValue } from "@bonk-race/shared";
 
 export function flightAssistSystem(room: any) {
     const dt = 1 / room.balance.server.tickRate;
