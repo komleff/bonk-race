@@ -3,17 +3,18 @@
  *
  * Architecture (GDD §10.1):
  * - Physics runs locally in the browser (no Colyseus real-time).
- * - Track config loaded from REST API (GET /api/track-of-day).
- * - After finish: POST /api/submit-run with replay + result.
- * - Ghosts loaded from GET /api/ghosts and rendered as visual overlays.
+ * - Track config loaded from REST API (GET /api/v1/tracks/today).
+ * - After finish: POST /api/v1/runs/submit with replay + result.
+ * - Ghosts loaded from GET /api/v1/ghosts and rendered as visual overlays.
  *
  * Systems order per physics tick (GDD §3.2):
- * FlightAssist → Physics → Collision → CheckpointDetection
+ * FlightAssist → Physics (with surface effects) → Collision (walls + obstacles) → CheckpointDetection
  */
 
-import type { TrackConfig, TrackCheckpoint } from "@bonk-race/shared";
+import type { TrackConfig, TrackCheckpoint, TrackWall } from "@bonk-race/shared";
 import {
     clamp, wrapAngle, distance,
+    SURFACE_SLOW, SURFACE_BOOST, SURFACE_ICE,
     RACE_PHASE_LOBBY, RACE_PHASE_COUNTDOWN, RACE_PHASE_RACING, RACE_PHASE_RESULTS,
     type RacePhase,
 } from "@bonk-race/shared";
@@ -117,6 +118,52 @@ function initInput(canvas: HTMLCanvasElement): void {
     }, 16);
 }
 
+// ─── Surface effects (GDD §4.2) ─────────────────────────────────────────────
+
+/**
+ * Returns the drag multiplier based on which surface(s) the player overlaps.
+ * Default 1.0; SLOW → 3.0; ICE → 0.05; BOOST → 0.3 (+ instant speed boost handled elsewhere).
+ */
+function getSurfaceDragMultiplier(player: PlayerState, config: TrackConfig): number {
+    for (const surface of config.surfaces) {
+        const dist = distance(player.x, player.y, surface.x, surface.y);
+        if (dist < surface.radius + player.radius) {
+            switch (surface.type) {
+                case SURFACE_SLOW: return 3.0;
+                case SURFACE_ICE: return 0.05;
+                case SURFACE_BOOST: return 0.3;
+            }
+        }
+    }
+    return 1.0;
+}
+
+/**
+ * Apply one-shot boost when entering a BOOST surface.
+ */
+function applySurfaceBoost(player: PlayerState, config: TrackConfig): void {
+    for (const surface of config.surfaces) {
+        if (surface.type !== SURFACE_BOOST) continue;
+        const dist = distance(player.x, player.y, surface.x, surface.y);
+        if (dist < surface.radius + player.radius) {
+            const speed = Math.sqrt(player.vx ** 2 + player.vy ** 2);
+            const boostSpeed = 200;
+            if (speed < boostSpeed) {
+                const factor = speed > 0.1 ? boostSpeed / speed : boostSpeed;
+                const cosA = Math.cos(player.angle);
+                const sinA = Math.sin(player.angle);
+                if (speed > 0.1) {
+                    player.vx *= factor;
+                    player.vy *= factor;
+                } else {
+                    player.vx += cosA * boostSpeed * 0.5;
+                    player.vy += sinA * boostSpeed * 0.5;
+                }
+            }
+        }
+    }
+}
+
 // ─── Physics systems (client-side, from shared principles) ───────────────────
 
 function flightAssistSystem(
@@ -170,7 +217,9 @@ function physicsSystem(
     config: TrackConfig,
     dt: number,
 ): void {
-    const drag = config.physics.linearDragK;
+    const baseDrag = config.physics.linearDragK;
+    const surfaceMul = getSurfaceDragMultiplier(player, config);
+    const drag = baseDrag * surfaceMul;
 
     // Linear drag
     player.vx -= player.vx * drag * dt;
@@ -184,6 +233,26 @@ function physicsSystem(
     player.y += player.vy * dt;
     player.angle += player.angVel * dt;
     player.angle = wrapAngle(player.angle);
+
+    // Apply surface boost (one-shot speed bump on boost pads)
+    applySurfaceBoost(player, config);
+}
+
+// ─── Line-segment wall collision (GDD §3.4) ─────────────────────────────────
+
+/**
+ * Closest point on line segment (x1,y1)→(x2,y2) to point (px,py).
+ */
+function closestPointOnSegment(
+    px: number, py: number,
+    x1: number, y1: number, x2: number, y2: number,
+): { x: number; y: number } {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return { x: x1, y: y1 };
+    const t = clamp(((px - x1) * dx + (py - y1) * dy) / lenSq, 0, 1);
+    return { x: x1 + t * dx, y: y1 + t * dy };
 }
 
 function collisionSystem(
@@ -197,19 +266,24 @@ function collisionSystem(
 
     if (player.x - r < -hw) {
         player.x = -hw + r;
-        applyWallBounce(player, 1, 0, config);
+        applyWallBounce(player, 1, 0, config, false);
     }
     if (player.x + r > hw) {
         player.x = hw - r;
-        applyWallBounce(player, -1, 0, config);
+        applyWallBounce(player, -1, 0, config, false);
     }
     if (player.y - r < -hh) {
         player.y = -hh + r;
-        applyWallBounce(player, 0, 1, config);
+        applyWallBounce(player, 0, 1, config, false);
     }
     if (player.y + r > hh) {
         player.y = hh - r;
-        applyWallBounce(player, 0, -1, config);
+        applyWallBounce(player, 0, -1, config, false);
+    }
+
+    // Line-segment wall collisions
+    for (const wall of config.walls) {
+        collideWithWall(player, wall, config);
     }
 
     // Obstacle collisions
@@ -240,17 +314,49 @@ function collisionSystem(
     }
 }
 
+function collideWithWall(
+    player: PlayerState,
+    wall: TrackWall,
+    config: TrackConfig,
+): void {
+    const cp = closestPointOnSegment(
+        player.x, player.y,
+        wall.x1, wall.y1, wall.x2, wall.y2,
+    );
+    const dx = player.x - cp.x;
+    const dy = player.y - cp.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < player.radius && dist > 0.001) {
+        // Normal from wall toward player
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        // Push out
+        player.x = cp.x + nx * player.radius;
+        player.y = cp.y + ny * player.radius;
+
+        applyWallBounce(player, nx, ny, config, wall.isDangerous);
+    }
+}
+
 function applyWallBounce(
     player: PlayerState,
     normalX: number,
     normalY: number,
     config: TrackConfig,
+    isDangerous: boolean,
 ): void {
     const dotN = player.vx * normalX + player.vy * normalY;
     if (dotN < 0) {
         // Elastic bounce (restitution ~0.6)
         player.vx -= 1.6 * dotN * normalX;
         player.vy -= 1.6 * dotN * normalY;
+
+        if (isDangerous) {
+            player.isDead = true;
+            return;
+        }
 
         // Wall-thrust (GDD §3.4): tangential boost when sliding along safe wall
         const wallThrustCoeff = config.physics.wallThrustCoeff;
@@ -427,13 +533,22 @@ export class RaceGame {
         camera.x += (player.x - camera.x) * 0.1;
         camera.y += (player.y - camera.y) * 0.1;
 
-        ctx.clearRect(0, 0, W, H);
+        // Background
+        ctx.fillStyle = "#1a1a2e";
+        ctx.fillRect(0, 0, W, H);
+
         ctx.save();
 
         // Camera transform
         ctx.translate(W / 2, H / 2);
         ctx.scale(camera.zoom, camera.zoom);
         ctx.translate(-camera.x, -camera.y);
+
+        // Draw track arena background
+        const hw = config.width / 2;
+        const hh = config.height / 2;
+        ctx.fillStyle = "#2a2a3e";
+        ctx.fillRect(-hw, -hh, config.width, config.height);
 
         // Draw track elements
         drawSurfaces(ctx, config.surfaces);
@@ -493,14 +608,86 @@ export class RaceGame {
             ctx.fillText(`Time: ${(elapsed / 1000).toFixed(2)}s`, margin, margin);
             ctx.fillText(`CP: ${player.checkpoint}/${config.checkpoints.length}`, margin, margin + fontSize + 4);
             ctx.fillText(`Coins: ${player.coinsCollected}`, margin, margin + (fontSize + 4) * 2);
+            // Track name
+            ctx.textAlign = "right";
+            ctx.fillText(config.name, W - margin, margin);
         } else if (phase === RACE_PHASE_RESULTS) {
             ctx.font = `bold ${fontSize * 2}px sans-serif`;
             ctx.textAlign = "center";
             ctx.fillText("FINISH!", W / 2, H / 3);
             ctx.font = `${fontSize * 1.5}px monospace`;
             ctx.fillText(`${(this.finishTimeMs / 1000).toFixed(3)}s`, W / 2, H / 3 + fontSize * 3);
+
+            // Medal indicator
+            const medals = config.medalTimesMs;
+            let medal = "";
+            if (this.finishTimeMs <= medals.author) medal = "AUTHOR";
+            else if (this.finishTimeMs <= medals.gold) medal = "GOLD";
+            else if (this.finishTimeMs <= medals.silver) medal = "SILVER";
+            else if (this.finishTimeMs <= medals.bronze) medal = "BRONZE";
+            if (medal) {
+                ctx.font = `bold ${fontSize * 1.2}px sans-serif`;
+                ctx.fillStyle = medal === "AUTHOR" ? "#ff44ff" :
+                    medal === "GOLD" ? "#ffd700" :
+                    medal === "SILVER" ? "#c0c0c0" : "#cd7f32";
+                ctx.fillText(`${medal} MEDAL`, W / 2, H / 3 + fontSize * 5);
+            }
         }
 
         ctx.restore();
     }
+}
+
+// ─── Bootstrap: load track and start game ────────────────────────────────────
+
+/**
+ * Load track config from the meta-server API.
+ */
+export async function loadTrackOfDay(baseUrl: string): Promise<TrackConfig> {
+    const res = await fetch(`${baseUrl}/api/v1/tracks/today`);
+    if (!res.ok) throw new Error(`Failed to load track: ${res.status}`);
+    return res.json();
+}
+
+/**
+ * Load track config by ID from the meta-server API.
+ */
+export async function loadTrack(baseUrl: string, trackId: string): Promise<TrackConfig> {
+    const res = await fetch(`${baseUrl}/api/v1/tracks/${encodeURIComponent(trackId)}`);
+    if (!res.ok) throw new Error(`Failed to load track: ${res.status}`);
+    return res.json();
+}
+
+/**
+ * Bootstrap the BonkRace game.
+ * Creates a full-screen canvas, loads track from API, and starts the game.
+ */
+export async function bootstrapRace(
+    containerId = "game-container",
+    apiBaseUrl = "",
+): Promise<RaceGame> {
+    // Create or find canvas
+    let container = document.getElementById(containerId);
+    if (!container) {
+        container = document.createElement("div");
+        container.id = containerId;
+        container.style.cssText = "position:fixed;inset:0;background:#1a1a2e;";
+        document.body.appendChild(container);
+    }
+
+    let canvas = container.querySelector("canvas");
+    if (!canvas) {
+        canvas = document.createElement("canvas");
+        canvas.style.cssText = "width:100%;height:100%;display:block;";
+        container.appendChild(canvas);
+    }
+
+    // Load track config from API
+    const config = await loadTrackOfDay(apiBaseUrl);
+
+    // Create and start game
+    const game = new RaceGame(canvas, config);
+    game.start();
+
+    return game;
 }

@@ -2,12 +2,14 @@
  * Tracks API routes (GDD §4.1)
  *
  * GET /api/v1/tracks/today    — Track of the day config
+ * GET /api/v1/tracks/list     — Available track IDs
  * GET /api/v1/tracks/:id      — Specific track config
  */
 
 import express, { Request, Response } from 'express';
 import { Rng } from '@bonk-race/shared';
 import type { TrackConfig, TrackPhysicsConfig, TrackCheckpoint, TrackObstacle } from '@bonk-race/shared';
+import { getTrackPreset, getTrackPresetIds } from '../data/trackPresets';
 
 const router = express.Router();
 
@@ -25,8 +27,8 @@ function dateSeed(dateStr: string): number {
 }
 
 /**
- * Generate a minimal track config from a seed.
- * TODO: Replace with real track presets/level design.
+ * Procedural track generation from seed.
+ * Fallback when no hand-crafted preset exists.
  */
 function generateTrackFromSeed(seed: number, id: string): TrackConfig {
     const rng = new Rng(seed);
@@ -36,7 +38,6 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
     const hw = width / 2;
     const hh = height / 2;
 
-    // Generate checkpoints in a roughly linear corridor
     const cpCount = 8;
     const checkpoints: TrackCheckpoint[] = [];
     for (let i = 0; i < cpCount; i++) {
@@ -49,7 +50,6 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
         });
     }
 
-    // Generate obstacles
     const obsCount = rng.int(8, 16);
     const obstacles: TrackObstacle[] = [];
     for (let i = 0; i < obsCount; i++) {
@@ -90,31 +90,54 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
             author: 35000,
         },
         maxSessionSec: 300,
-        inactivityThresholdTicks: 60 * 30, // 30 seconds at 60Hz
+        inactivityThresholdTicks: 60 * 30,
     };
+}
+
+/**
+ * Resolve a track by ID: first check presets, then generate procedurally.
+ */
+function resolveTrack(id: string): TrackConfig {
+    return getTrackPreset(id) ?? generateTrackFromSeed(dateSeed(id), id);
 }
 
 /**
  * GET /api/v1/tracks/today
  * Returns the track-of-the-day config.
+ * For MVP: always returns 'starter-circuit' preset.
+ * Post-MVP: rotate daily from preset pool using date seed.
  */
-router.get('/today', (req: Request, res: Response) => {
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+router.get('/today', (_req: Request, res: Response) => {
+    // MVP: single track
+    const presetIds = getTrackPresetIds();
+    if (presetIds.length > 0) {
+        // Rotate through presets by day
+        const today = new Date().toISOString().slice(0, 10);
+        const dayIndex = dateSeed(today) % presetIds.length;
+        const track = getTrackPreset(presetIds[dayIndex])!;
+        return res.json(track);
+    }
+    // Fallback: procedural
+    const today = new Date().toISOString().slice(0, 10);
     const seed = dateSeed(today);
-    const track = generateTrackFromSeed(seed, `daily-${today}`);
-    res.json(track);
+    res.json(generateTrackFromSeed(seed, `daily-${today}`));
+});
+
+/**
+ * GET /api/v1/tracks/list
+ * Returns available track preset IDs.
+ */
+router.get('/list', (_req: Request, res: Response) => {
+    res.json({ tracks: getTrackPresetIds() });
 });
 
 /**
  * GET /api/v1/tracks/:id
- * Returns a specific track config (for training tracks).
+ * Returns a specific track config (preset or procedural).
  */
 router.get('/:id', (req: Request, res: Response) => {
     const { id } = req.params;
-    // For now, generate from ID hash. Replace with DB lookup later.
-    const seed = dateSeed(id);
-    const track = generateTrackFromSeed(seed, id);
-    res.json(track);
+    res.json(resolveTrack(id));
 });
 
 export default router;
