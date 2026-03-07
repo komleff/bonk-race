@@ -37,19 +37,20 @@
 **Architect:**
 ```
 Ты Architect. Прочитай AGENT_ROLES.md секция "1️⃣ Architect".
-Задача: декомпозировать slime-arena-vk4m (спрайтовый flow) на подзадачи.
+Задача: декомпозировать bonk-race-xxx (спрайтовый flow) на подзадачи.
 ```
 
 **Developer:**
 ```
 Ты Developer. Прочитай AGENT_ROLES.md секция "2️⃣ Developer".
-План утвержден. Задача: реализуй slime-arena-vk4m (спрайтовый flow).
+План утвержден. Задача: реализуй bonk-race-xxx (спрайтовый flow).
 ```
 
 **Reviewer:**
 ```
 Ты Reviewer. Прочитай AGENT_ROLES.md секция "3️⃣ Reviewer".
 Задача: проверь PR #150 на соответствие требованиям.
+Результат: выполни `gh pr comment 150 --body "..."` — НЕ выводи отчёт в чат.
 ```
 
 ---
