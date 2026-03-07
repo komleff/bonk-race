@@ -8,15 +8,12 @@ export * from './UIBridge';
 // Signals (состояние)
 export * from './signals/gameState';
 
-// Data
-export * from './data/classes';
-export * from './data/abilities';
-export * from './data/rarity';
+// Data (classes/abilities/rarity removed — slime-specific)
 
 // Screen Manager
-export { 
-  ScreenManager, 
-  registerScreen, 
+export {
+  ScreenManager,
+  registerScreen,
   registerModal,
   navigateTo,
   goBack,
@@ -28,7 +25,5 @@ export {
 
 // Components
 export { GameHUD } from './components/GameHUD';
-export { TalentModal } from './components/TalentModal';
 export { ResultsScreen } from './components/ResultsScreen';
-export { AbilityButtons } from './components/AbilityButtons';
 export { MainMenu } from './components/MainMenu';

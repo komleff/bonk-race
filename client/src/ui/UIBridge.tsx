@@ -9,7 +9,6 @@ import {
   // State
   gamePhase,
   currentScreen,
-  showTalentModal,
   activeBoost,
   selectedClassId,
   playerName,
@@ -55,9 +54,7 @@ import {
 import { BootScreen } from './components/BootScreen';
 import { MainScreen } from './components/MainScreen';
 import { GameHUD } from './components/GameHUD';
-import { TalentModal } from './components/TalentModal';
 import { ResultsScreen } from './components/ResultsScreen';
-import { AbilityButtons } from './components/AbilityButtons';
 import { MainMenu } from './components/MainMenu';
 import { AccountConflictModal } from './components/AccountConflictModal';
 import { NicknameConfirmModal } from './components/NicknameConfirmModal';
@@ -90,7 +87,6 @@ function UIRoot() {
   const phase = gamePhase.value;
   const screen = currentScreen.value;
   const connecting = isConnecting.value;
-  const showTalent = showTalentModal.value;
   const conflict = oauthConflict.value;
   const nicknameConfirm = oauthNicknameConfirm.value;
   const player = localPlayer.value;
@@ -148,17 +144,7 @@ function UIRoot() {
 
       {/* Game HUD */}
       {(phase === 'playing' || phase === 'waiting') && (
-        <Fragment>
-          <GameHUD />
-          {callbacks && (
-            <AbilityButtons onActivateAbility={callbacks.onActivateAbility} />
-          )}
-        </Fragment>
-      )}
-
-      {/* Talent Modal */}
-      {showTalent && callbacks && (
-        <TalentModal onSelectTalent={callbacks.onSelectTalent} />
+        <GameHUD />
       )}
 
       {/* Results Screen */}
