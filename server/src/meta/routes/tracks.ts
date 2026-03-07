@@ -90,7 +90,7 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
             author: 35000,
         },
         maxSessionSec: 300,
-        inactivityThresholdTicks: 60 * 30,
+        inactivityThresholdTicks: physics.tickRate * 30,
     };
 }
 
@@ -137,6 +137,9 @@ router.get('/list', (_req: Request, res: Response) => {
  */
 router.get('/:id', (req: Request, res: Response) => {
     const { id } = req.params;
+    if (!/^[a-z0-9\-_.]+$/i.test(id) || id.length > 128) {
+        return res.status(400).json({ error: 'invalid_track_id' });
+    }
     res.json(resolveTrack(id));
 });
 

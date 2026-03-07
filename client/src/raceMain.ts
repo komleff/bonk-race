@@ -26,6 +26,18 @@ import {
     drawCheckpoints, drawPickups,
 } from "./rendering/track";
 
+// ─── Physics constants ──────────────────────────────────────────────────────
+const BOOST_SPEED_CAP = 200;
+const WALL_RESTITUTION = 1.6;
+const OBSTACLE_RESTITUTION = 1.8;
+const DRAG_MULT_SLOW = 3.0;
+const DRAG_MULT_ICE = 0.05;
+const DRAG_MULT_BOOST = 0.3;
+const ANGULAR_DAMPING_COEFF = 3;
+const LATERAL_COMPENSATION_FACTOR = 0.3;
+const POINTER_DRAG_THRESHOLD_PX = 100;
+const STATIC_BOOST_FACTOR = 0.5;
+
 // ─── Player state ────────────────────────────────────────────────────────────
 
 interface PlayerState {
@@ -95,9 +107,8 @@ function initInput(canvas: HTMLCanvasElement): void {
         if (!pointerDown) return;
         const dx = e.clientX - pointerStartX;
         const dy = e.clientY - pointerStartY;
-        const maxDrag = 100;
-        input.moveX = clamp(dx / maxDrag, -1, 1);
-        input.moveY = clamp(dy / maxDrag, -1, 1);
+        input.moveX = clamp(dx / POINTER_DRAG_THRESHOLD_PX, -1, 1);
+        input.moveY = clamp(dy / POINTER_DRAG_THRESHOLD_PX, -1, 1);
     });
     window.addEventListener("pointerup", () => {
         pointerDown = false;
@@ -129,9 +140,9 @@ function getSurfaceDragMultiplier(player: PlayerState, config: TrackConfig): num
         const dist = distance(player.x, player.y, surface.x, surface.y);
         if (dist < surface.radius + player.radius) {
             switch (surface.type) {
-                case SURFACE_SLOW: return 3.0;
-                case SURFACE_ICE: return 0.05;
-                case SURFACE_BOOST: return 0.3;
+                case SURFACE_SLOW: return DRAG_MULT_SLOW;
+                case SURFACE_ICE: return DRAG_MULT_ICE;
+                case SURFACE_BOOST: return DRAG_MULT_BOOST;
             }
         }
     }
@@ -148,17 +159,16 @@ function applySurfaceBoost(player: PlayerState, config: TrackConfig): void {
         const dist = distance(player.x, player.y, surface.x, surface.y);
         if (dist < surface.radius + player.radius) {
             const speed = Math.sqrt(player.vx ** 2 + player.vy ** 2);
-            const boostSpeed = 200;
-            if (speed < boostSpeed) {
-                const factor = speed > 0.1 ? boostSpeed / speed : boostSpeed;
+            if (speed < BOOST_SPEED_CAP) {
+                const factor = speed > 0.1 ? BOOST_SPEED_CAP / speed : BOOST_SPEED_CAP;
                 const cosA = Math.cos(player.angle);
                 const sinA = Math.sin(player.angle);
                 if (speed > 0.1) {
                     player.vx *= factor;
                     player.vy *= factor;
                 } else {
-                    player.vx += cosA * boostSpeed * 0.5;
-                    player.vy += sinA * boostSpeed * 0.5;
+                    player.vx += cosA * BOOST_SPEED_CAP * STATIC_BOOST_FACTOR;
+                    player.vy += sinA * BOOST_SPEED_CAP * STATIC_BOOST_FACTOR;
                 }
             }
         }
@@ -195,7 +205,7 @@ function flightAssistSystem(
         const cosA = Math.cos(player.angle);
         const sinA = Math.sin(player.angle);
         const lateralV = -player.vx * sinA + player.vy * cosA;
-        const latCompF = -lateralV * phys.thrustLateralN * 0.3;
+        const latCompF = -lateralV * phys.thrustLateralN * LATERAL_COMPENSATION_FACTOR;
 
         player.vx += (fx + latCompF * -sinA) / player.mass * dt;
         player.vy += (fy + latCompF * cosA) / player.mass * dt;
@@ -209,7 +219,7 @@ function flightAssistSystem(
             player.vy *= (1 - brakeFactor);
         }
         // Angular damping
-        player.angVel *= (1 - 3 * dt);
+        player.angVel *= (1 - ANGULAR_DAMPING_COEFF * dt);
     }
 }
 
@@ -304,8 +314,8 @@ function collisionSystem(
             // Elastic bounce
             const dotN = player.vx * nx + player.vy * ny;
             if (dotN < 0) {
-                player.vx -= 1.8 * dotN * nx;
-                player.vy -= 1.8 * dotN * ny;
+                player.vx -= OBSTACLE_RESTITUTION * dotN * nx;
+                player.vy -= OBSTACLE_RESTITUTION * dotN * ny;
             }
 
             if (obs.isDangerous) {
@@ -339,6 +349,7 @@ function collideWithWall(
             const wallDx = wall.x2 - wall.x1;
             const wallDy = wall.y2 - wall.y1;
             const wallLen = Math.sqrt(wallDx * wallDx + wallDy * wallDy);
+            if (wallLen < 0.001) return; // дегенеративная стена (точка)
             // Perpendicular to wall segment
             nx = -wallDy / wallLen;
             ny = wallDx / wallLen;
@@ -372,8 +383,8 @@ function applyWallBounce(
     const dotN = player.vx * normalX + player.vy * normalY;
     if (dotN < 0) {
         // Elastic bounce (restitution ~0.6)
-        player.vx -= 1.6 * dotN * normalX;
-        player.vy -= 1.6 * dotN * normalY;
+        player.vx -= WALL_RESTITUTION * dotN * normalX;
+        player.vy -= WALL_RESTITUTION * dotN * normalY;
 
         // Wall-thrust (GDD §3.4): tangential boost when sliding along safe wall
         const wallThrustCoeff = config.physics.wallThrustCoeff;
@@ -425,6 +436,7 @@ export class RaceGame {
     private rafId = 0;
     private lastFrameTime = 0;
     private accumulator = 0;
+    private countdownTicks = 0;
 
     constructor(canvas: HTMLCanvasElement, config: TrackConfig) {
         this.canvas = canvas;
@@ -450,13 +462,7 @@ export class RaceGame {
         this.tick = 0;
         this.accumulator = 0;
         this.lastFrameTime = performance.now();
-
-        // Start countdown → racing after 3 seconds
-        setTimeout(() => {
-            this.phase = RACE_PHASE_RACING;
-            this.startTimeMs = performance.now();
-            this.recorder.start();
-        }, 3000);
+        this.countdownTicks = 3 * this.config.physics.tickRate;
 
         this.loop(performance.now());
     }
@@ -484,7 +490,21 @@ export class RaceGame {
 
         const fixedDt = 1 / this.config.physics.tickRate;
 
-        if (this.phase === RACE_PHASE_RACING) {
+        if (this.phase === RACE_PHASE_COUNTDOWN) {
+            this.accumulator += Math.min(dt, 0.1);
+
+            while (this.accumulator >= fixedDt) {
+                this.countdownTicks--;
+                if (this.countdownTicks <= 0) {
+                    this.phase = RACE_PHASE_RACING;
+                    this.startTimeMs = performance.now();
+                    this.recorder.start();
+                    this.accumulator = 0;
+                    break;
+                }
+                this.accumulator -= fixedDt;
+            }
+        } else if (this.phase === RACE_PHASE_RACING) {
             this.accumulator += Math.min(dt, 0.1); // cap to avoid spiral of death
 
             while (this.accumulator >= fixedDt) {

@@ -38,12 +38,12 @@ function assert(condition, message) {
     }
 }
 
-async function fetchJSON(app, path) {
+async function fetchJSON(app, urlPath) {
     return new Promise((resolve, reject) => {
         const server = app.listen(0, "127.0.0.1", () => {
             const port = server.address().port;
             const http = require("http");
-            http.get(`http://127.0.0.1:${port}${path}`, (res) => {
+            http.get(`http://127.0.0.1:${port}${urlPath}`, (res) => {
                 let data = "";
                 res.on("data", (chunk) => data += chunk);
                 res.on("end", () => {
