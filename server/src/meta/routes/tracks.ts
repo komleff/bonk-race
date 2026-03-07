@@ -2,31 +2,35 @@
  * Tracks API routes (GDD §4.1)
  *
  * GET /api/v1/tracks/today    — Track of the day config
+ * GET /api/v1/tracks/list     — Available track IDs
  * GET /api/v1/tracks/:id      — Specific track config
  */
 
 import express, { Request, Response } from 'express';
 import { Rng } from '@bonk-race/shared';
 import type { TrackConfig, TrackPhysicsConfig, TrackCheckpoint, TrackObstacle } from '@bonk-race/shared';
+import { getTrackPreset, getTrackPresetIds, TRACK_STARTER_CIRCUIT } from '../data/trackPresets';
+
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 const router = express.Router();
 
 /**
- * Generate a seed from a date string (YYYY-MM-DD).
- * Same date = same seed = same track for all players.
+ * Generate a numeric hash from any string.
+ * Used for date-based daily rotation and procedural track seeds.
  */
-function dateSeed(dateStr: string): number {
+function stringHash(str: string): number {
     let hash = 0;
-    for (let i = 0; i < dateStr.length; i++) {
-        const ch = dateStr.charCodeAt(i);
+    for (let i = 0; i < str.length; i++) {
+        const ch = str.charCodeAt(i);
         hash = ((hash << 5) - hash + ch) | 0;
     }
     return hash >>> 0;
 }
 
 /**
- * Generate a minimal track config from a seed.
- * TODO: Replace with real track presets/level design.
+ * Procedural track generation from seed.
+ * Fallback when no hand-crafted preset exists.
  */
 function generateTrackFromSeed(seed: number, id: string): TrackConfig {
     const rng = new Rng(seed);
@@ -36,7 +40,6 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
     const hw = width / 2;
     const hh = height / 2;
 
-    // Generate checkpoints in a roughly linear corridor
     const cpCount = 8;
     const checkpoints: TrackCheckpoint[] = [];
     for (let i = 0; i < cpCount; i++) {
@@ -49,7 +52,6 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
         });
     }
 
-    // Generate obstacles
     const obsCount = rng.int(8, 16);
     const obstacles: TrackObstacle[] = [];
     for (let i = 0; i < obsCount; i++) {
@@ -61,15 +63,8 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
         });
     }
 
-    const physics: TrackPhysicsConfig = {
-        thrustForwardN: 9000,
-        thrustLateralN: 8500,
-        turnTorqueNm: 175,
-        linearDragK: 0.10,
-        comfortableBrakingTimeS: 3.5,
-        wallThrustCoeff: 0.3,
-        tickRate: 60,
-    };
+    // Reuse physics from starter-circuit as default for procedural tracks
+    const physics: TrackPhysicsConfig = { ...TRACK_STARTER_CIRCUIT.physics };
 
     return {
         id,
@@ -90,31 +85,57 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
             author: 35000,
         },
         maxSessionSec: 300,
-        inactivityThresholdTicks: 60 * 30, // 30 seconds at 60Hz
+        inactivityThresholdTicks: physics.tickRate * 30,
     };
+}
+
+/**
+ * Resolve a track by ID: first check presets, then generate procedurally.
+ */
+function resolveTrack(id: string): TrackConfig {
+    return getTrackPreset(id) ?? generateTrackFromSeed(stringHash(id), id);
 }
 
 /**
  * GET /api/v1/tracks/today
  * Returns the track-of-the-day config.
+ * Rotates daily from the preset pool using a date seed.
+ * Falls back to procedural generation if no presets exist.
  */
-router.get('/today', (req: Request, res: Response) => {
-    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const seed = dateSeed(today);
-    const track = generateTrackFromSeed(seed, `daily-${today}`);
-    res.json(track);
+router.get('/today', (_req: Request, res: Response) => {
+    // MVP: single track
+    const presetIds = getTrackPresetIds();
+    if (presetIds.length > 0) {
+        // Rotate through presets by day
+        const today = new Date().toISOString().slice(0, 10);
+        const dayIndex = stringHash(today) % presetIds.length;
+        const track = getTrackPreset(presetIds[dayIndex])!;
+        return res.json(track);
+    }
+    // Fallback: procedural
+    const today = new Date().toISOString().slice(0, 10);
+    const seed = stringHash(today);
+    res.json(generateTrackFromSeed(seed, `daily-${today}`));
+});
+
+/**
+ * GET /api/v1/tracks/list
+ * Returns available track preset IDs.
+ */
+router.get('/list', (_req: Request, res: Response) => {
+    res.json({ tracks: getTrackPresetIds() });
 });
 
 /**
  * GET /api/v1/tracks/:id
- * Returns a specific track config (for training tracks).
+ * Returns a specific track config (preset or procedural).
  */
 router.get('/:id', (req: Request, res: Response) => {
     const { id } = req.params;
-    // For now, generate from ID hash. Replace with DB lookup later.
-    const seed = dateSeed(id);
-    const track = generateTrackFromSeed(seed, id);
-    res.json(track);
+    if (DANGEROUS_KEYS.has(id) || !/^[a-z0-9\-_.]+$/i.test(id) || id.length > 128) {
+        return res.status(400).json({ error: 'invalid_track_id' });
+    }
+    res.json(resolveTrack(id));
 });
 
 export default router;

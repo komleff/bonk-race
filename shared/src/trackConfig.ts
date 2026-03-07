@@ -10,7 +10,7 @@
 
 export const SURFACE_NORMAL = 0;
 export const SURFACE_SLOW = 1;    // слайм/грязь — linearDragK × 3
-export const SURFACE_BOOST = 2;   // гладкая — linearDragK × 0.3 + instant boost
+export const SURFACE_BOOST = 2;   // гладкая — linearDragK × 0.3 + continuous speed clamp
 export const SURFACE_ICE = 3;     // ледяная — linearDragK × 0.05, no boost
 
 export type SurfaceType =
