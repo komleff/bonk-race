@@ -7,6 +7,7 @@ import versionJson from '../version.json'
  * Dev-only tool — not included in production builds.
  */
 export default defineConfig({
+  base: '/bonk-race/',
   publicDir: false, // no public assets needed for lab
   define: {
     __APP_VERSION__: JSON.stringify(versionJson.version)
