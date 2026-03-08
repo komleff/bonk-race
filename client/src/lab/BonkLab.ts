@@ -623,7 +623,10 @@ export class BonkLab {
                     radius: obs.radius,
                     type: obs.type === "passage" ? "pillar" : (obs.type as "pillar" | "spike" | "wall"),
                 };
-                const collided = resolveCircleStaticCollision(body, staticObs, this.worldPhysics.restitution, collisionConfig);
+                const rest = obs.type === "passage"
+                    ? (this.params["worldPhysics.passageRestitution"] as number ?? this.worldPhysics.restitution * 0.5)
+                    : this.worldPhysics.restitution;
+                const collided = resolveCircleStaticCollision(body, staticObs, rest, collisionConfig);
                 if (collided && obs.type === "spike") {
                     hitSpike = true;
                 }
@@ -751,6 +754,7 @@ export class BonkLab {
             "worldPhysics.linearDragK": wp.linearDragK,
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
+            "worldPhysics.passageRestitution": wp.restitution * 0.5,
 
             // Zone defaults (from arenaGenerator)
             "zones.ice.frictionMultiplier": 0.3,
