@@ -78,7 +78,7 @@ export interface SandboxState {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const FIXED_DT = 1 / 30; // 33.3ms — 30 Hz, matching server tick rate
+const FIXED_DT = 1 / 60; // 16.7ms — 60 Hz, smooth rendering (server runs 30 Hz)
 
 /**
  * Determines the FA state label based on input and velocity error.
