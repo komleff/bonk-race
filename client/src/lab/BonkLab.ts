@@ -192,6 +192,10 @@ export class BonkLab {
     // Zone
     private currentZone: string | null = null;
 
+    // Arena generation state (remembered for re-generation on size change)
+    private lastSeed = 42;
+    private lastDensity = 1.0;
+
     // Death state (spike hit — GDD §4.2: instant defeat → restart)
     private deathTimer = 0;
     private deathX = 0;
@@ -289,6 +293,10 @@ export class BonkLab {
         if (key.startsWith("worldPhysics.")) {
             const wpKey = key.replace("worldPhysics.", "");
             setNestedValue(this.worldPhysics as unknown as Record<string, unknown>, wpKey, value);
+            // Re-generate arena when map dimensions change
+            if (wpKey === "widthM" || wpKey === "heightM") {
+                this.regenerateArena(this.lastSeed, this.lastDensity);
+            }
             return;
         }
 
@@ -356,6 +364,8 @@ export class BonkLab {
     }
 
     regenerateArena(seed: number, density: number): void {
+        this.lastSeed = seed;
+        this.lastDensity = density;
         const rng = new Rng(seed);
         this.arena = generateArena(
             {
@@ -740,6 +750,8 @@ export class BonkLab {
             "massScaling.angularSpeedLimitRadps.exp": sc.massScaling.angularSpeedLimitRadps.exp ?? 0,
 
             // World physics
+            "worldPhysics.widthM": wp.widthM ?? 1000,
+            "worldPhysics.heightM": wp.heightM ?? 1000,
             "worldPhysics.linearDragK": wp.linearDragK,
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,

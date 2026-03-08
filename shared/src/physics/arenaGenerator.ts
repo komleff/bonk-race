@@ -39,6 +39,7 @@ export interface Arena {
     obstacles: ArenaObject[];
     zones: ArenaZone[];
     spawnPoint: { x: number; y: number };
+    finishPoint: { x: number; y: number };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -220,8 +221,10 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
         }
     }
 
-    // 6. Spawn point — center of arena, guaranteed safe
-    const spawnPoint = { x: 0, y: 0 };
+    // 6. Spawn at bottom, finish at top
+    const spawnMargin = 50;
+    const spawnPoint = { x: 0, y: halfH - spawnMargin };
+    const finishPoint = { x: 0, y: -(halfH - spawnMargin) };
 
     return {
         width: widthM,
@@ -230,5 +233,6 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
         obstacles,
         zones,
         spawnPoint,
+        finishPoint,
     };
 }

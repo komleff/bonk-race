@@ -121,6 +121,7 @@ export class LabRenderer {
         // ── Draw layers back-to-front ──
         this.drawGrid(ctx, state);
         this.drawZones(ctx, state);
+        this.drawSpawnAndFinish(ctx, state);
         this.drawWalls(ctx, state);
         this.drawObstacles(ctx, state);
         if (state.deathTimer > 0) {
@@ -188,6 +189,41 @@ export class LabRenderer {
             ctx.textBaseline = "middle";
             ctx.fillText(zone.type.toUpperCase(), zone.x, zone.y);
         }
+    }
+
+    // ── Layer: Spawn & Finish ────────────────────────────────────────────────
+
+    private drawSpawnAndFinish(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const markerRadius = 20;
+        const fontSize = Math.max(12, 14 / this.scale);
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const lw = 2 / this.scale;
+
+        // Spawn — green circle at bottom
+        const sp = state.arena.spawnPoint;
+        ctx.strokeStyle = "#22cc44";
+        ctx.lineWidth = lw;
+        ctx.setLineDash([6 / this.scale, 4 / this.scale]);
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, markerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#22cc44";
+        ctx.fillText("START", sp.x, sp.y - markerRadius - fontSize * 0.8);
+
+        // Finish — checkered flag at top
+        const fp = state.arena.finishPoint;
+        ctx.strokeStyle = "#ffcc00";
+        ctx.lineWidth = lw;
+        ctx.setLineDash([6 / this.scale, 4 / this.scale]);
+        ctx.beginPath();
+        ctx.arc(fp.x, fp.y, markerRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#ffcc00";
+        ctx.fillText("FINISH", fp.x, fp.y - markerRadius - fontSize * 0.8);
     }
 
     // ── Layer: Walls ─────────────────────────────────────────────────────────
@@ -494,6 +530,18 @@ export class LabRenderer {
             ctx.fill();
             ctx.globalAlpha = 1;
         }
+
+        // Spawn marker (green)
+        ctx.beginPath();
+        ctx.arc(toMX(state.arena.spawnPoint.x), toMY(state.arena.spawnPoint.y), 3, 0, Math.PI * 2);
+        ctx.fillStyle = "#22cc44";
+        ctx.fill();
+
+        // Finish marker (yellow)
+        ctx.beginPath();
+        ctx.arc(toMX(state.arena.finishPoint.x), toMY(state.arena.finishPoint.y), 3, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffcc00";
+        ctx.fill();
 
         // Character dot
         ctx.beginPath();

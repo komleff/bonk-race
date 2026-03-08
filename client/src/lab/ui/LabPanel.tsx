@@ -358,6 +358,24 @@ const PARAM_GROUPS: GroupDef[] = [
         title: "Окружение",
         params: [
             {
+                label: "Ширина карты",
+                key: "worldPhysics.widthM",
+                min: 200,
+                max: 5000,
+                unit: "м",
+                tooltip:
+                    "Ширина игрового поля. Перегенерирует трассу при изменении.",
+            },
+            {
+                label: "Высота карты",
+                key: "worldPhysics.heightM",
+                min: 200,
+                max: 5000,
+                unit: "м",
+                tooltip:
+                    "Высота игрового поля. Увеличьте для длинной трассы (старт внизу, финиш наверху).",
+            },
+            {
                 label: "Линейное сопротивление",
                 key: "worldPhysics.linearDragK",
                 min: 0,
