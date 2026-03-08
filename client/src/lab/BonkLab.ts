@@ -82,7 +82,7 @@ export interface SandboxState {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const FIXED_DT = 1 / 60; // 16.7ms — 60 Hz, smooth rendering (server runs 30 Hz)
-const DEATH_FREEZE_S = 0.8; // seconds to freeze after spike death (GDD §4.2)
+export const DEATH_FREEZE_S = 0.8; // seconds to freeze after spike death (GDD §4.2)
 
 /**
  * Determines the FA state label based on input and velocity error.

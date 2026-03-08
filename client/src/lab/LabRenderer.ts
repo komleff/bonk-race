@@ -5,7 +5,7 @@
  * Camera follows the character with world-to-screen viewport transform.
  */
 
-import type { SandboxState } from "./BonkLab";
+import { DEATH_FREEZE_S, type SandboxState } from "./BonkLab";
 import type { LabInputState } from "./LabInput";
 import type { ArenaZone } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
@@ -298,7 +298,7 @@ export class LabRenderer {
     private drawDeathEffect(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const { deathX, deathY, deathTimer, radius } = state;
         // Expanding red ring that fades out
-        const progress = 1 - deathTimer / 0.8; // 0→1
+        const progress = 1 - deathTimer / DEATH_FREEZE_S; // 0→1
         const ringRadius = radius * (1 + progress * 4);
         const alpha = 1 - progress;
 
