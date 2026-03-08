@@ -39,7 +39,7 @@ const PARAM_GROUPS: GroupDef[] = [
         params: [
             {
                 label: "Масса",
-                key: "geometry.baseMassKg",
+                key: "mass",
                 min: 10,
                 max: 500,
                 unit: "кг",
@@ -399,7 +399,7 @@ const PARAM_GROUPS: GroupDef[] = [
                 label: "Слизь: трение",
                 key: "zones.slime.frictionMultiplier",
                 min: 0.5,
-                max: 5.0,
+                max: 10.0,
                 tooltip: "Множитель трения на слизи.",
             },
             {
@@ -413,7 +413,7 @@ const PARAM_GROUPS: GroupDef[] = [
                 label: "Турбо: скорость",
                 key: "zones.turbo.speedMultiplier",
                 min: 1.0,
-                max: 3.0,
+                max: 10.0,
                 tooltip: "Множитель скорости на турбо-зоне.",
             },
         ],

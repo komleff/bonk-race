@@ -283,16 +283,11 @@ export class BonkLab {
         // Zone params → update arena zones live
         if (key.startsWith("zones.")) {
             this.syncZoneParams(key, value as number);
+            return;
         }
 
         // All other keys map to slimeConfig
         setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
-
-        // Sync simulation mass when baseMassKg changes
-        if (key === "geometry.baseMassKg") {
-            this.mass = value as number;
-            this.params["mass"] = value;
-        }
     }
 
     /** Sync zone slider values into arena zone objects */
@@ -360,6 +355,13 @@ export class BonkLab {
         this.y = this.arena.spawnPoint.y;
         this.vx = 0;
         this.vy = 0;
+        // Reapply zone overrides from current params to new arena zones
+        for (const key of Object.keys(this.params)) {
+            if (key.startsWith("zones.")) {
+                this.syncZoneParams(key, this.params[key] as number);
+            }
+        }
+
         console.log("[BonkLab] arena regenerated", { seed, density, obstacles: this.arena.obstacles.length });
     }
 
@@ -684,6 +686,12 @@ export class BonkLab {
             "worldPhysics.linearDragK": wp.linearDragK,
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
+
+            // Zone defaults (from arenaGenerator)
+            "zones.ice.frictionMultiplier": 0.3,
+            "zones.slime.frictionMultiplier": 2.0,
+            "zones.slime.speedMultiplier": 0.5,
+            "zones.turbo.speedMultiplier": 1.4,
         };
     }
 }

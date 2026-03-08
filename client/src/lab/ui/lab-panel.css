@@ -258,6 +258,10 @@
 
 .lab-param.locked {
   opacity: 0.45;
+}
+.lab-param.locked .lab-param-slider,
+.lab-param.locked .lab-param-number,
+.lab-param.locked .lab-toggle-switch {
   pointer-events: none;
 }
 .lab-param.locked .lab-param-label {
