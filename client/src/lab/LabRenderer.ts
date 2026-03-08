@@ -117,7 +117,10 @@ export class LabRenderer {
         const cy = h / 2;
         const s = this.scale;
 
-        ctx.setTransform(s, 0, 0, s, cx - state.x * s, cy - state.y * s);
+        // Round translation to whole pixels to prevent sub-pixel jitter on static objects
+        const tx = Math.round(cx - state.x * s);
+        const ty = Math.round(cy - state.y * s);
+        ctx.setTransform(s, 0, 0, s, tx, ty);
 
         // ── Draw layers back-to-front ──
         this.drawGrid(ctx, state);
