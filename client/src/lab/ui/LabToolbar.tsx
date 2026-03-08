@@ -277,6 +277,9 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
         for (const [key, val] of Object.entries(defaults)) {
             lab.updateParams(key, val);
         }
+        // Sync toolbar density from restored defaults
+        const restoredDensity = (defaults["arena.objectDensity"] as number) ?? 1.0;
+        setDensity(restoredDensity);
         lab.reset();
         onParamsChanged?.();
     }, [lab, defaults, onParamsChanged]);
@@ -294,6 +297,10 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
                 if (key in lab.params && (typeof val === "number" || typeof val === "boolean")) {
                     lab.updateParams(key, val);
                 }
+            }
+            // Sync toolbar density from imported values
+            if (typeof data["arena.objectDensity"] === "number") {
+                setDensity(data["arena.objectDensity"]);
             }
             onParamsChanged?.();
         },
@@ -318,6 +325,8 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
                 lab.updateParams(key, val);
             }
 
+            // Sync toolbar density from restored/overridden value
+            setDensity((lab.params["arena.objectDensity"] as number) ?? 1.0);
             onParamsChanged?.();
             // Reset select to placeholder
             (e.target as HTMLSelectElement).value = "-1";

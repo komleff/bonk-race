@@ -4,6 +4,7 @@ import { render, h } from "preact";
 import { BonkLab } from "./BonkLab";
 import { LabInput } from "./LabInput";
 import { LabRenderer } from "./LabRenderer";
+import { TelemetryHUD } from "./TelemetryHUD";
 import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
 
@@ -35,6 +36,7 @@ root.appendChild(uiContainer);
 const lab = new BonkLab(canvas);
 const input = new LabInput(canvas);
 const renderer = new LabRenderer(canvas);
+const hud = new TelemetryHUD();
 
 // Handle window resize
 function onResize(): void {
@@ -85,6 +87,13 @@ function frame(): void {
     // Get simulation state and render
     const state = lab.getState();
     renderer.render(state, inputState);
+
+    // Draw telemetry HUD overlay (screen-space, on top of everything)
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        hud.render(ctx, state, lab.params);
+    }
 
     rafId = requestAnimationFrame(frame);
 }

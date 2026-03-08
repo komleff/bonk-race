@@ -289,6 +289,12 @@ export class BonkLab {
             return;
         }
 
+        if (key === "arena.objectDensity") {
+            this.lastDensity = value as number;
+            this.regenerateArena(this.lastSeed, this.lastDensity);
+            return;
+        }
+
         // Map worldPhysics params
         if (key.startsWith("worldPhysics.")) {
             const wpKey = key.replace("worldPhysics.", "");
@@ -747,6 +753,9 @@ export class BonkLab {
             "massScaling.speedLimitReverseMps.exp": sc.massScaling.speedLimitReverseMps.exp ?? 0,
             "massScaling.speedLimitLateralMps.exp": sc.massScaling.speedLimitLateralMps.exp ?? 0,
             "massScaling.angularSpeedLimitRadps.exp": sc.massScaling.angularSpeedLimitRadps.exp ?? 0,
+
+            // Arena generation
+            "arena.objectDensity": this.lastDensity,
 
             // World physics
             "worldPhysics.widthM": wp.widthM ?? 1000,
