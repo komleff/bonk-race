@@ -366,7 +366,7 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
                     <input
                         type="range"
                         min="0.1"
-                        max="3.0"
+                        max="10.0"
                         step="0.1"
                         value={density}
                         onInput={handleDensityChange}

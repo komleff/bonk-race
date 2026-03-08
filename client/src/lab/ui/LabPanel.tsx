@@ -370,7 +370,7 @@ const PARAM_GROUPS: GroupDef[] = [
                 label: "Высота карты",
                 key: "worldPhysics.heightM",
                 min: 200,
-                max: 5000,
+                max: 10000,
                 unit: "м",
                 tooltip:
                     "Высота игрового поля. Увеличьте для длинной трассы (старт внизу, финиш наверху).",

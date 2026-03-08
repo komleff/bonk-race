@@ -73,7 +73,7 @@ const ZONE_PARAMS: Record<ArenaZone["type"], Record<string, number>> = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function clampDensity(d: number): number {
-    return Math.max(0.1, Math.min(3.0, d));
+    return Math.max(0.1, Math.min(10.0, d));
 }
 
 function scaledCount(base: number, density: number): number {
