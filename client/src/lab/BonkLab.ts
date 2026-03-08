@@ -416,6 +416,13 @@ export class BonkLab {
                 this.vy = 0;
                 this.angle = 0;
                 this.angVel = 0;
+                // Clear FA state to prevent stale oscillation damping after respawn
+                this.yawSignHistory.length = 0;
+                this.lastFaOutput = { assistFx: 0, assistFy: 0, assistTorque: 0 };
+                this.lastFaState = "idle";
+                this.correctionFx = 0;
+                this.correctionFy = 0;
+                this.currentZone = null;
             }
             return;
         }
