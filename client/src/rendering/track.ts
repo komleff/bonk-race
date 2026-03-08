@@ -107,25 +107,60 @@ export function drawPickups(
 
 // ─── Finish line ─────────────────────────────────────────────────────────────
 
+/**
+ * Клетчатая финишная черта в стиле гонок (GDD §4).
+ * Два ряда чёрно-белых клеток + флаги по краям.
+ */
 export function drawFinishLine(
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     width: number,
-    angle: number,
 ): void {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
+    const CELL = 12;
+    const ROWS = 2;
+    const cols = Math.ceil(width / CELL);
+    const totalW = cols * CELL;
+    const startX = x - totalW / 2;
 
-    const segments = 8;
-    const segW = width / segments;
-    const segH = 6;
-
-    for (let i = 0; i < segments; i++) {
-        ctx.fillStyle = i % 2 === 0 ? "#ffffff" : "#222222";
-        ctx.fillRect(-width / 2 + i * segW, -segH / 2, segW, segH);
+    // Клетчатый паттерн (2 ряда)
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < cols; col++) {
+            const isWhite = (row + col) % 2 === 0;
+            ctx.fillStyle = isWhite ? "#ffffff" : "#111111";
+            ctx.fillRect(startX + col * CELL, y - ROWS * CELL / 2 + row * CELL, CELL, CELL);
+        }
     }
 
-    ctx.restore();
+    // Контур
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(startX, y - ROWS * CELL / 2, totalW, ROWS * CELL);
+
+    // Флаги по краям
+    const flagH = 30;
+    const flagW = 18;
+    for (const side of [-1, 1]) {
+        const fx = x + side * (totalW / 2 + 8);
+        const fy = y - flagH;
+        // Шест
+        ctx.strokeStyle = "#888888";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(fx, y);
+        ctx.lineTo(fx, fy);
+        ctx.stroke();
+        // Полотно флага (клетчатое)
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                ctx.fillStyle = (r + c) % 2 === 0 ? "#ffffff" : "#111111";
+                ctx.fillRect(
+                    fx + (side > 0 ? 2 : -flagW - 2) + c * (flagW / 3),
+                    fy + r * (flagH / 3),
+                    flagW / 3,
+                    flagH / 3,
+                );
+            }
+        }
+    }
 }

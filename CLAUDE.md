@@ -1,7 +1,7 @@
-# CLAUDE.md — Slime Arena: корневой индекс
+# CLAUDE.md — Bonk Race: корневой индекс
 
-**Проект:** Slime Arena
-**Обновлён:** 2026-03-02
+**Проект:** Bonk Race
+**Обновлён:** 2026-03-07
 
 **Работай по задачам Beads.** Перед началом работы выполни `bd ready` и выбери задачу. Следуй правилам из `.agents/AGENT_ROLES.md`.
 
@@ -88,6 +88,6 @@ bd close <id> --reason="..."
 
 - **Архитектура:** `docs/soft-launch/SlimeArena-Architecture-v4.2.5-Part1.md` (и Part2-4)
 - **Технический план:** `docs/soft-launch/TZ-SoftLaunch-v1.4.7.md`
-- **GDD:** `docs/gdd/` (версия 3.3.2)
+- **GDD:** `docs/gdd/` (BonkRace-GDD-v3_0.md)
 - **Memory Bank:** `.memory_bank/`
 - **Роли агентов:** `.agents/AGENT_ROLES.md`

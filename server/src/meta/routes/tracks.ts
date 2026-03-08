@@ -9,7 +9,7 @@
 import express, { Request, Response } from 'express';
 import { Rng } from '@bonk-race/shared';
 import type { TrackConfig, TrackPhysicsConfig, TrackCheckpoint, TrackObstacle } from '@bonk-race/shared';
-import { getTrackPreset, getTrackPresetIds, TRACK_STARTER_CIRCUIT } from '../data/trackPresets';
+import { getTrackPreset, getTrackPresetIds, TRACK_FIRST_RUN } from '../data/trackPresets';
 
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
@@ -63,8 +63,8 @@ function generateTrackFromSeed(seed: number, id: string): TrackConfig {
         });
     }
 
-    // Reuse physics from starter-circuit as default for procedural tracks
-    const physics: TrackPhysicsConfig = { ...TRACK_STARTER_CIRCUIT.physics };
+    // Reuse physics from first-run as default for procedural tracks
+    const physics: TrackPhysicsConfig = { ...TRACK_FIRST_RUN.physics };
 
     return {
         id,

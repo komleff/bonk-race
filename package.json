@@ -18,7 +18,8 @@
     "build": "npm run build --workspace=shared && npm run build --workspace=server && npm run build --workspace=client && npm run build --workspace=admin-dashboard",
     "test": "npm --workspaces --if-present test",
     "sync-version": "node scripts/sync-version.js",
-    "check-version": "node scripts/check-version.js"
+    "check-version": "node scripts/check-version.js",
+    "postinstall": "node scripts/install-hooks.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

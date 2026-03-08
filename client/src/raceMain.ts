@@ -23,8 +23,9 @@ import { GhostPlayer } from "./game/GhostPlayer";
 import { drawBlob } from "./rendering/blob";
 import {
     drawSurfaces, drawWalls, drawObstacles,
-    drawCheckpoints, drawPickups,
+    drawCheckpoints, drawPickups, drawFinishLine,
 } from "./rendering/track";
+import { metaServerClient } from "./api/metaServerClient";
 
 // ─── Physics constants ──────────────────────────────────────────────────────
 const BOOST_SPEED_CAP = 200;
@@ -66,7 +67,7 @@ function createPlayer(startX: number, startY: number): PlayerState {
         y: startY,
         vx: 0,
         vy: 0,
-        angle: 0,
+        angle: -Math.PI / 2, // вверх (GDD: игрок едет снизу вверх)
         angVel: 0,
         mass: 50,
         radius: 12,
@@ -202,10 +203,18 @@ function flightAssistSystem(
         const inertia = player.mass * player.radius * player.radius * 0.5;
         player.angVel += (torque / inertia) * dt;
 
-        // Forward thrust
+        // Тяга: смесь направления блоба (70%) и направления ввода (30%)
+        // GDD §3.1: «блоб ускоряется в направлении курсора»
+        const INPUT_THRUST_BLEND = 0.3;
         const thrustMag = mag;
-        const fx = Math.cos(player.angle) * phys.thrustForwardN * thrustMag;
-        const fy = Math.sin(player.angle) * phys.thrustForwardN * thrustMag;
+        const facingX = Math.cos(player.angle);
+        const facingY = Math.sin(player.angle);
+        const inputDirX = Math.cos(targetAngle);
+        const inputDirY = Math.sin(targetAngle);
+        const blendX = facingX * (1 - INPUT_THRUST_BLEND) + inputDirX * INPUT_THRUST_BLEND;
+        const blendY = facingY * (1 - INPUT_THRUST_BLEND) + inputDirY * INPUT_THRUST_BLEND;
+        const fx = blendX * phys.thrustForwardN * thrustMag;
+        const fy = blendY * phys.thrustForwardN * thrustMag;
 
         // Lateral compensation (reduce sideways drift)
         const cosA = Math.cos(player.angle);
@@ -443,6 +452,7 @@ export class RaceGame {
     private lastFrameTime = 0;
     private accumulator = 0;
     private countdownTicks = 0;
+    private leaderboardPosition = 0;
 
     constructor(canvas: HTMLCanvasElement, config: TrackConfig) {
         this.canvas = canvas;
@@ -457,6 +467,18 @@ export class RaceGame {
         this.recorder = new GhostRecorder();
 
         initInput(canvas);
+
+        // Рестарт по R или tap на экране результатов
+        window.addEventListener("keydown", (e) => {
+            if (e.key.toLowerCase() === "r" && this.phase === RACE_PHASE_RESULTS) {
+                this.restart();
+            }
+        });
+        canvas.addEventListener("pointerdown", () => {
+            if (this.phase === RACE_PHASE_RESULTS) {
+                this.restart();
+            }
+        });
     }
 
     addGhost(ghost: GhostPlayer): void {
@@ -486,6 +508,32 @@ export class RaceGame {
             replayData: this.recorder.getPackedReplay(),
             inputHash: "", // TODO: determinism hash
         };
+    }
+
+    /** Отправить результат на сервер (идемпотентный POST, не блокирует UI) */
+    private submitResult(): void {
+        const result = this.getResult();
+        metaServerClient.postIdempotent<{ position?: number }>("/api/v1/runs/submit", result)
+            .then((resp) => {
+                console.log("[BonkRace] Run submitted:", resp);
+                if (resp.position) this.leaderboardPosition = resp.position;
+            })
+            .catch((err: unknown) => {
+                console.warn("[BonkRace] Failed to submit run:", err);
+            });
+    }
+
+    /** Мгновенный рестарт (GDD §2: <0.5 сек) */
+    restart(): void {
+        this.stop();
+        const start = this.config.checkpoints[0] ?? { x: 0, y: 0 };
+        this.player = createPlayer(start.x, start.y);
+        this.camera.x = start.x;
+        this.camera.y = start.y;
+        this.recorder = new GhostRecorder();
+        this.leaderboardPosition = 0;
+        for (const g of this.ghosts) g.reset();
+        this.start();
     }
 
     // ─── Main loop ───────────────────────────────────────────────────────
@@ -540,9 +588,12 @@ export class RaceGame {
             // Checkpoint detection
             const finished = checkpointDetection(this.player, this.config.checkpoints);
             if (finished && this.phase === RACE_PHASE_RACING) {
-                this.finishTimeMs = performance.now() - this.startTimeMs;
+                // Tick-based время для детерминизма (GDD §3.5)
+                const fixedDt = 1 / this.config.physics.tickRate;
+                this.finishTimeMs = this.tick * fixedDt * 1000;
                 this.phase = RACE_PHASE_RESULTS;
                 this.recorder.stop();
+                this.submitResult();
             }
 
             // Record ghost frame
@@ -577,9 +628,10 @@ export class RaceGame {
         const W = canvas.width = canvas.clientWidth * devicePixelRatio;
         const H = canvas.height = canvas.clientHeight * devicePixelRatio;
 
-        // Smooth camera follow
+        // Smooth camera follow с опережением вверх (GDD §1.5)
+        const CAMERA_LOOKAHEAD_Y = -120; // камера смещена выше блоба
         camera.x += (player.x - camera.x) * CAMERA_FOLLOW_LERP;
-        camera.y += (player.y - camera.y) * CAMERA_FOLLOW_LERP;
+        camera.y += ((player.y + CAMERA_LOOKAHEAD_Y) - camera.y) * CAMERA_FOLLOW_LERP;
 
         // Background
         ctx.fillStyle = COLOR_BG_DARK;
@@ -604,6 +656,12 @@ export class RaceGame {
         drawObstacles(ctx, config.obstacles);
         drawCheckpoints(ctx, config.checkpoints, player.checkpoint);
         drawPickups(ctx, config.pickups);
+
+        // Финишная черта у последнего чекпоинта
+        const finishCp = config.checkpoints[config.checkpoints.length - 1];
+        if (finishCp) {
+            drawFinishLine(ctx, finishCp.x, finishCp.y, config.width * 0.6);
+        }
 
         // Draw ghosts
         for (const ghost of this.ghosts) {
@@ -681,10 +739,44 @@ export class RaceGame {
                     medal === "SILVER" ? "#c0c0c0" : "#cd7f32";
                 ctx.fillText(`${medal} MEDAL`, W / 2, H / 3 + fontSize * 5);
             }
+
+            // Позиция в лидерборде
+            if (this.leaderboardPosition > 0) {
+                ctx.font = `${fontSize}px monospace`;
+                ctx.fillStyle = "#aaaaaa";
+                ctx.fillText(`#${this.leaderboardPosition} on leaderboard`, W / 2, H / 3 + fontSize * 7);
+            }
+
+            // Подсказка рестарта
+            ctx.font = `${fontSize * 0.9}px monospace`;
+            ctx.fillStyle = "#888888";
+            ctx.fillText("Press R or tap to restart", W / 2, H - fontSize * 3);
         }
 
         ctx.restore();
     }
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+interface GuestAuthResponse {
+    guestToken: string;
+    guestSubjectId: string;
+    expiresAt: string;
+}
+
+/**
+ * Авторизация: получить guest-токен если нет сохранённого.
+ * В dev-режиме можно также использовать DevAuth через /api/v1/auth/verify.
+ */
+async function ensureAuth(): Promise<void> {
+    // Уже есть токен — ничего не делаем
+    if (metaServerClient.getToken()) return;
+
+    // Получаем guest-токен (работает без предварительной авторизации)
+    const resp = await metaServerClient.post<GuestAuthResponse>("/api/v1/auth/guest", {});
+    metaServerClient.setToken(resp.guestToken);
+    console.log("[BonkRace] Guest auth OK, expires:", resp.expiresAt);
 }
 
 // ─── Bootstrap: load track and start game ────────────────────────────────────
@@ -692,19 +784,43 @@ export class RaceGame {
 /**
  * Load track config from the meta-server API.
  */
-export async function loadTrackOfDay(baseUrl: string): Promise<TrackConfig> {
-    const res = await fetch(`${baseUrl}/api/v1/tracks/today`);
-    if (!res.ok) throw new Error(`Failed to load track: ${res.status}`);
-    return res.json();
+export async function loadTrackOfDay(): Promise<TrackConfig> {
+    return metaServerClient.get<TrackConfig>("/api/v1/tracks/today");
 }
 
 /**
  * Load track config by ID from the meta-server API.
  */
-export async function loadTrack(baseUrl: string, trackId: string): Promise<TrackConfig> {
-    const res = await fetch(`${baseUrl}/api/v1/tracks/${encodeURIComponent(trackId)}`);
-    if (!res.ok) throw new Error(`Failed to load track: ${res.status}`);
-    return res.json();
+export async function loadTrack(trackId: string): Promise<TrackConfig> {
+    return metaServerClient.get<TrackConfig>(`/api/v1/tracks/${encodeURIComponent(trackId)}`);
+}
+
+/**
+ * Загрузить ghost-соперников для трассы (GDD §5).
+ * Возвращает массив GhostPlayer (personal best + opponent).
+ */
+interface GhostApiEntry {
+    type: string;
+    nickname: string;
+    spriteId: string;
+    finishMs: number;
+    replayData: number[];
+}
+
+async function loadGhosts(trackId: string): Promise<GhostPlayer[]> {
+    try {
+        const resp = await metaServerClient.get<{ ghosts: GhostApiEntry[] }>(
+            `/api/v1/ghosts?trackId=${encodeURIComponent(trackId)}`,
+        );
+        return resp.ghosts.map((g) => {
+            const replay = GhostRecorder.unpack(g.replayData);
+            const opacity = g.type === "personal_best" ? 0.3 : 0.4;
+            return new GhostPlayer(replay, g.nickname, g.spriteId, opacity);
+        });
+    } catch (err) {
+        console.warn("[BonkRace] Failed to load ghosts:", err);
+        return [];
+    }
 }
 
 /**
@@ -713,9 +829,11 @@ export async function loadTrack(baseUrl: string, trackId: string): Promise<Track
  */
 export async function bootstrapRace(
     containerId = "game-container",
-    apiBaseUrl = "",
 ): Promise<RaceGame> {
-    // Create or find canvas
+    // 1. Авторизация (guest-токен)
+    await ensureAuth();
+
+    // 2. Создать или найти canvas
     let container = document.getElementById(containerId);
     if (!container) {
         container = document.createElement("div");
@@ -731,12 +849,43 @@ export async function bootstrapRace(
         container.appendChild(canvas);
     }
 
-    // Load track config from API
-    const config = await loadTrackOfDay(apiBaseUrl);
+    // 3. Загрузить трассу дня
+    const config = await loadTrackOfDay();
 
-    // Create and start game
+    // 4. Загрузить ghost-соперников (GDD §5)
+    const ghosts = await loadGhosts(config.id);
+
+    // Hide inline boot screen if present
+    const bootScreen = document.getElementById("inline-boot");
+    if (bootScreen) bootScreen.style.display = "none";
+
+    // 5. Создать и запустить игру
     const game = new RaceGame(canvas, config);
+    for (const g of ghosts) game.addGhost(g);
     game.start();
 
     return game;
 }
+
+// ─── Auto-bootstrap when loaded as entry point ──────────────────────────────
+
+bootstrapRace().catch((err) => {
+    console.error("[BonkRace] Failed to start:", err);
+    const el = document.getElementById("inline-boot");
+    if (el) {
+        el.textContent = "";
+        const wrapper = document.createElement("div");
+        wrapper.style.cssText = "color:#ff4444;text-align:center;padding:2em;font-family:monospace;";
+        const title = document.createElement("h2");
+        title.textContent = "Failed to load track";
+        wrapper.appendChild(title);
+        const msg = document.createElement("p");
+        msg.textContent = err instanceof Error ? err.message : String(err);
+        wrapper.appendChild(msg);
+        const hint = document.createElement("p");
+        hint.style.color = "#888";
+        hint.textContent = "Make sure meta-server is running on :3000";
+        wrapper.appendChild(hint);
+        el.appendChild(wrapper);
+    }
+});

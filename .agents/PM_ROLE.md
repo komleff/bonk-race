@@ -1,8 +1,8 @@
 # Project Manager — роль и обязанности
 
-**Версия:** 1.0
-**Дата:** 2026-01-26
-**Проект:** Slime Arena
+**Версия:** 1.1
+**Дата:** 2026-03-07
+**Проект:** Bonk Race
 **Статус:** Утверждено
 
 ---
@@ -15,7 +15,7 @@ Project Manager (PM) — координирующая роль для автом
 
 1. **Универсальность** — PM работает с любыми задачами и ТЗ
 2. **Автоматизация** — Review-fix-review цикл полностью автоматизирован
-3. **Эскалация** — Opus → Codex → Человек-оператор
+3. **Эскалация** — Opus → GPT-5.3-Codex → Человек-оператор
 4. **Прозрачность** — Все действия документируются с указанием модели
 
 ---
@@ -47,10 +47,10 @@ PM обрабатывает:
 
 ```bash
 # 1. Создать worktree для нового спринта (изоляция)
-git worktree add d:/slime-arena-meta sprint-13/meta-gameplay
+git worktree add d:/GitHub/bonk-race-worktree sprint-13/meta-gameplay
 
 # 2. Переключиться в worktree
-cd d:/slime-arena-meta
+cd d:/GitHub/bonk-race-worktree
 
 # 3. Создать ветку для задачи
 git checkout -b sprint-13/phase1-implementation
@@ -115,9 +115,9 @@ PM делегирует задачи разработчикам с эскала�
 **Модель эскалации:**
 
 ```
-Попытка 1-3: Claude Opus 4.5
+Попытка 1-3: Claude Opus
      ↓ (если не удалось)
-Попытка 4-5: ChatGPT 5.2 Codex
+Попытка 4-5: GPT-5.3-Codex
      ↓ (если не удалось)
 Попытка 6+: Человек-оператор
 ```
@@ -139,7 +139,7 @@ bd create --title="Fix: Review issues (opus, attempt 1)" \
   --priority=1 \
   --description="### Code Review Issues (PR #105)
 
-**Разработчик:** Claude Opus 4.5
+**Разработчик:** Claude Opus
 **Попытка:** 1/5
 
 **[P1]** ArenaRoom.ts:456
@@ -148,7 +148,7 @@ bd create --title="Fix: Review issues (opus, attempt 1)" \
 
 **ВАЖНО:** Подпиши fix-комментарий в PR как:
 \`\`\`
-Fixed by Claude Opus 4.5 (Attempt 1/5)
+Fixed by Claude Opus (Attempt 1/5)
 \`\`\`"
 ```
 
@@ -193,14 +193,14 @@ PM автоматизирует параллельный review через сп�
    - Паттерны state management
 ```
 
-#### Альтернатива: pm-orchestrator.py
+#### Альтернатива: pm_orchestrator.py
 
 Для полной автоматизации можно использовать Python-оркестратор:
 
-1. PM запускает 3 ревьювера параллельно:
-   - Claude Opus 4.5 (Anthropic API)
-   - ChatGPT 5.2 Codex (OpenAI API)
-   - Gemini 3 Pro (Google AI API)
+1. PM запускает ревьюверов параллельно:
+   - Claude Opus (Anthropic API)
+   - GPT-5.4 (OpenAI API)
+   - Gemini 3.1 Pro (Google AI API, опционально)
 
 2. Ожидает GitHub Copilot (встроенный review GitHub)
 
@@ -212,7 +212,7 @@ PM автоматизирует параллельный review через сп�
 
 ```bash
 # Запустить review cycle для PR
-python tools/pm-orchestrator.py --pr=105 --cycle --max-iterations=5
+python tools/pm_orchestrator.py --pr=105 --cycle --max-iterations=5
 ```
 
 **Формат отчёта ревьювера:**
@@ -220,7 +220,7 @@ python tools/pm-orchestrator.py --pr=105 --cycle --max-iterations=5
 ```markdown
 <!-- {"reviewer": "opus", "iteration": 1, "type": "review", "timestamp": "2026-01-26T10:00:00"} -->
 
-## Code Review by Claude Opus 4.5
+## Code Review by Claude Opus
 
 ### Чеклист
 - [x] Сборка проходит
@@ -288,7 +288,7 @@ PM объединяет feedback от всех ревьюверов:
 ### 🚨 Escalation to Human Operator
 
 **PR:** #105
-**Задача:** slime-arena-abc123
+**Задача:** bonk-race-abc123
 **Попытки:** 5/5 (3 Opus + 2 Codex)
 
 **История:**
@@ -311,7 +311,7 @@ PM объединяет feedback от всех ревьюверов:
 
 ## 3. Инструменты
 
-### 3.1 pm-orchestrator.py
+### 3.1 pm_orchestrator.py
 
 Автоматизирует review-fix-review цикл.
 
@@ -321,29 +321,29 @@ PM объединяет feedback от всех ревьюверов:
 - Ожидание GitHub Copilot review (до 10 минут)
 - Парсинг отчётов из PR комментариев
 - Автоматическое создание задач для Developer
-- Эскалация Opus → Codex → Человек
+- Эскалация Opus → GPT-5.3-Codex → Человек
 - Публикация отчётов в PR с метаданными
 
 **Использование:**
 
 ```bash
 # Базовый review (одна итерация)
-python tools/pm-orchestrator.py --pr=105
+python tools/pm_orchestrator.py --pr=105
 
 # Полный цикл (до 5 итераций)
-python tools/pm-orchestrator.py --pr=105 --cycle --max-iterations=5
+python tools/pm_orchestrator.py --pr=105 --cycle --max-iterations=5
 
 # Только парсинг существующих review
-python tools/pm-orchestrator.py --pr=105 --parse-only
+python tools/pm_orchestrator.py --pr=105 --parse-only
 
 # Dry-run (без публикации в PR)
-python tools/pm-orchestrator.py --pr=105 --dry-run
+python tools/pm_orchestrator.py --pr=105 --dry-run
 ```
 
 **Архитектура:**
 
 ```
-pm-orchestrator.py
+pm_orchestrator.py
 ├── review_state.py      # State machine для циклов
 ├── consensus.py         # Логика консенсуса (3+ APPROVED)
 ├── pr_parser.py         # Парсинг JSON из PR комментариев
@@ -392,7 +392,7 @@ gh pr checks 105         # Статус CI/CD
 
 # Комментарии
 gh pr comment 105 --body="Review report..."
-gh api repos/komleff/slime-arena/issues/105/comments  # Все комментарии
+gh api repos/komleff/bonk-race/issues/105/comments  # Все комментарии
 
 # Review
 gh pr review 105 --approve
@@ -410,16 +410,16 @@ gh pr merge 105 --squash
 
 ```bash
 # Создать worktree
-git worktree add ../slime-arena-sprint13 sprint-13/meta-gameplay
+git worktree add d:/GitHub/bonk-race-sprint13 sprint-13/meta-gameplay
 
 # Список worktree
 git worktree list
 
 # Удалить worktree
-git worktree remove ../slime-arena-sprint13
+git worktree remove d:/GitHub/bonk-race-sprint13
 
 # Синхронизация
-cd ../slime-arena-sprint13
+cd d:/GitHub/bonk-race-sprint13
 git pull --rebase
 git push
 ```
@@ -461,7 +461,7 @@ Fixed by {model_name} (Attempt {attempt}/5)
 ```markdown
 ### Code Review Issues (PR #105)
 
-**Разработчик:** Claude Opus 4.5
+**Разработчик:** Claude Opus
 **Попытка:** 1/5
 
 ---
@@ -479,7 +479,7 @@ Fixed by {model_name} (Attempt {attempt}/5)
 **ВАЖНО:** Подпиши fix-комментарий в PR как:
 
 \`\`\`
-Fixed by Claude Opus 4.5 (Attempt 1/5)
+Fixed by Claude Opus (Attempt 1/5)
 \`\`\`
 ```
 
@@ -522,7 +522,7 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
 ```markdown
 <!-- {"reviewer": "opus", "iteration": 1, "type": "review", "timestamp": "2026-01-26T10:30:00Z", "status": "CHANGES_REQUESTED"} -->
 
-## Code Review by Claude Opus 4.5
+## Code Review by Claude Opus
 
 ### Чеклист
 - [x] Сборка проходит
@@ -555,8 +555,8 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
 
 1. **Создать worktree:**
    ```bash
-   git worktree add d:/slime-arena-meta sprint-13/meta-gameplay
-   cd d:/slime-arena-meta
+   git worktree add d:/GitHub/bonk-race-worktree sprint-13/meta-gameplay
+   cd d:/GitHub/bonk-race-worktree
    git checkout -b sprint-13/phase1-implementation
    ```
 
@@ -567,7 +567,7 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
    bd create --title="Phase 1: Leaderboard System" --type=feature --priority=1
 
    # Установить зависимости (Leaderboard зависит от Profile и History)
-   bd dep add slime-arena-xxx slime-arena-yyy
+   bd dep add bonk-race-xxx bonk-race-yyy
    ```
 
 3. **Делегировать Developer:**
@@ -586,7 +586,7 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
 5. **Запускать review после PR:**
    ```bash
    # Developer создал PR #110
-   python tools/pm-orchestrator.py --pr=110 --cycle --max-iterations=5
+   python tools/pm_orchestrator.py --pr=110 --cycle --max-iterations=5
    ```
 
 ### 5.2 Исправление багов после ревью
@@ -597,7 +597,7 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
 
 1. **Парсить отчёты ревьюверов:**
    ```bash
-   python tools/pm-orchestrator.py --pr=105 --parse-only
+   python tools/pm_orchestrator.py --pr=105 --parse-only
    ```
 
 2. **Синтезировать feedback:**
@@ -613,13 +613,13 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
    ```
 
 4. **Назначить разработчика:**
-   - Attempt 1-3: Claude Opus 4.5
-   - Attempt 4-5: ChatGPT 5.2 Codex
+   - Attempt 1-3: Claude Opus
+   - Attempt 4-5: GPT-5.3-Codex
 
 5. **Дождаться исправления и запустить повторное ревью:**
    ```bash
    # Developer запушил fix
-   python tools/pm-orchestrator.py --pr=105 --cycle --max-iterations=5
+   python tools/pm_orchestrator.py --pr=105 --cycle --max-iterations=5
    ```
 
 6. **Проверить консенсус:**
@@ -634,7 +634,7 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
 
 1. **Собрать историю попыток:**
    ```bash
-   gh api repos/komleff/slime-arena/issues/105/comments > pr105-history.json
+   gh api repos/komleff/bonk-race/issues/105/comments > pr105-history.json
    ```
 
 2. **Создать отчёт эскалации:**
@@ -644,8 +644,8 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
 
 3. **Обновить задачу в Beads:**
    ```bash
-   bd update slime-arena-abc123 --status=escalated
-   bd update slime-arena-abc123 --notes="Escalated after 5 failed attempts. See PR #105."
+   bd update bonk-race-abc123 --status=escalated
+   bd update bonk-race-abc123 --notes="Escalated after 5 failed attempts. See PR #105."
    ```
 
 4. **Уведомить оператора:**
@@ -654,7 +654,7 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
 
    После 5 попыток автоматического исправления требуется ручное вмешательство.
 
-   См. полный отчёт в задаче: slime-arena-abc123"
+   См. полный отчёт в задаче: bonk-race-abc123"
    ```
 
 5. **Дождаться ручного исправления:**
@@ -681,9 +681,9 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
       ▼
 ┌────────────────────────────────────┐
 │ Параллельно запустить 3 ревьювера: │
-│ - Claude Opus 4.5                  │
-│ - ChatGPT 5.2 Codex                │
-│ - Gemini 3 Pro                     │
+│ - Claude Opus                      │
+│ - GPT-5.4                          │
+│ - Gemini 3.1 Pro (опционально)     │
 └────┬───────────────────────────────┘
      │
      ▼
@@ -758,8 +758,7 @@ Fixed by Claude Opus 4.5 (Attempt 1/5)
      │                 │
      ▼                 ▼
 ┌──────────────┐  ┌──────────────────┐
-│ Claude Opus  │  │ ChatGPT Codex    │
-│ 4.5          │  │ 5.2              │
+│ Claude Opus  │  │ GPT-5.3-Codex    │
 └──────┬───────┘  └──────┬───────────┘
        │                 │
        └────────┬────────┘
@@ -960,7 +959,7 @@ bd stats
 | Термин | Определение |
 |--------|-------------|
 | **Консенсус** | 3 или более APPROVED от ревьюверов (из 4 возможных) |
-| **Эскалация** | Передача задачи на следующий уровень: Opus → Codex → Человек |
+| **Эскалация** | Передача задачи на следующий уровень: Opus → GPT-5.3-Codex → Человек |
 | **Итерация** | Полный цикл review → fix → re-review |
 | **pm-orchestrator** | Python-скрипт для автоматизации review цикла |
 | **Синтез feedback** | Объединение замечаний от всех ревьюверов с удалением дубликатов |
@@ -973,7 +972,7 @@ bd stats
 **Документы проекта:**
 
 - [AGENT_ROLES.md](./AGENT_ROLES.md) — роли всех агентов
-- [tools/pm-orchestrator.py](../tools/pm-orchestrator.py) — скрипт оркестрации
+- [tools/pm_orchestrator.py](../tools/pm_orchestrator.py) — скрипт оркестрации
 
 **Внешние ресурсы:**
 - [Beads Documentation](https://github.com/steveyegge/beads)

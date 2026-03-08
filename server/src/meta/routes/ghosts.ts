@@ -7,7 +7,7 @@
 import express, { Request, Response } from 'express';
 import { Pool } from 'pg';
 import { getPostgresPool } from '../../db/pool';
-import { verifyAccessToken } from '../utils/jwtUtils';
+import { verifyAccessToken, verifyGuestToken } from '../utils/jwtUtils';
 
 const router = express.Router();
 
@@ -32,12 +32,18 @@ router.get('/', async (req: Request, res: Response) => {
 
     const ghosts: any[] = [];
 
-    // Extract user from optional auth header
+    // Extract user from optional auth header (access token or guest token)
     const authHeader = req.get('authorization');
     let userId: string | null = null;
     if (authHeader?.startsWith('Bearer ')) {
-        const payload = verifyAccessToken(authHeader.substring(7));
-        if (payload) userId = payload.sub;
+        const token = authHeader.substring(7);
+        const accessPayload = verifyAccessToken(token);
+        if (accessPayload) {
+            userId = accessPayload.sub;
+        } else {
+            const guestPayload = verifyGuestToken(token);
+            if (guestPayload) userId = guestPayload.sub;
+        }
     }
 
     try {
@@ -67,9 +73,9 @@ router.get('/', async (req: Request, res: Response) => {
 
         // Opponent ghost: find a player just above user in leaderboard
         const opponentResult = await db.query(
-            `SELECT gr.user_id, gr.finish_ms, gr.replay_data, p.nickname
+            `SELECT gr.user_id, gr.finish_ms, gr.replay_data, u.nickname
              FROM ghost_replays gr
-             JOIN profiles p ON p.user_id = gr.user_id
+             JOIN users u ON u.id = gr.user_id
              WHERE gr.track_id = $1
                AND ($2::text IS NULL OR gr.user_id != $2)
              ORDER BY gr.finish_ms ASC
