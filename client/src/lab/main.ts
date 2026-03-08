@@ -43,12 +43,12 @@ function onResize(): void {
 window.addEventListener("resize", onResize);
 onResize(); // initial sizing
 
-// Track re-render key so toolbar can force panel to re-read params
-let panelRenderKey = 0;
+// Sync trigger — incremented when toolbar changes params externally
+let syncTrigger = 0;
 
 function renderUI(): void {
-    panelRenderKey++;
-    render(h(LabPanel, { lab, key: panelRenderKey }), uiContainer);
+    syncTrigger++;
+    render(h(LabPanel, { lab, syncTrigger }), uiContainer);
 }
 
 // Render toolbar

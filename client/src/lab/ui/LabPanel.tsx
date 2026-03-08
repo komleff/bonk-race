@@ -611,6 +611,7 @@ function ParamSlider({
                     step={step}
                     value={numValue}
                     onInput={handleSlider}
+                    disabled={def.locked}
                 />
                 <input
                     type="number"
@@ -620,6 +621,7 @@ function ParamSlider({
                     step={step}
                     value={formatValue(numValue, step)}
                     onInput={handleNumber}
+                    disabled={def.locked}
                 />
                 {def.unit && <span class="lab-param-unit">{def.unit}</span>}
             </div>
@@ -674,9 +676,11 @@ function PanelGroup({
 
 export interface LabPanelProps {
     lab: BonkLab;
+    /** Incremented externally (reset/import/preset) to trigger values sync */
+    syncTrigger?: number;
 }
 
-export function LabPanel({ lab }: LabPanelProps) {
+export function LabPanel({ lab, syncTrigger }: LabPanelProps) {
     // Inject styles once
     useEffect(() => {
         injectStyles("lab-panel-styles", panelCss);
@@ -698,6 +702,13 @@ export function LabPanel({ lab }: LabPanelProps) {
     const [values, setValues] = useState<Record<string, number | boolean>>(
         () => ({ ...lab.params }),
     );
+
+    // Re-sync values when toolbar changes params externally (reset/import/preset)
+    useEffect(() => {
+        if (syncTrigger !== undefined && syncTrigger > 0) {
+            setValues({ ...lab.params });
+        }
+    }, [syncTrigger, lab]);
 
     const toggleGroup = useCallback((index: number) => {
         setExpandedGroups((prev) => ({
