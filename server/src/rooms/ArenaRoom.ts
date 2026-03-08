@@ -48,9 +48,9 @@ import {
     TalentConfig,
     ClassTalentConfig,
     BoostType,
+    Rng,
 } from "@bonk-race/shared";
 import { loadBalanceConfig } from "../config/loadBalanceConfig";
-import { Rng } from "../utils/rng";
 import { TelemetryService } from "../telemetry/TelemetryService";
 import {
     abilityCardSystem,

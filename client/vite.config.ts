@@ -1,6 +1,24 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import path from 'path'
 import versionJson from '../version.json'
+
+/**
+ * Vite plugin: rewrite /lab → /lab.html in dev mode
+ * so that navigating to http://localhost:5173/lab serves the lab entry point.
+ */
+function labRewritePlugin(): Plugin {
+  return {
+    name: 'lab-rewrite',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url === '/lab' || req.url === '/lab/') {
+          req.url = '/lab.html'
+        }
+        next()
+      })
+    }
+  }
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
@@ -8,6 +26,7 @@ export default defineConfig(({ mode }) => {
   const hmrProtocol = env.VITE_HMR_PROTOCOL || 'ws'
 
   return {
+    plugins: [labRewritePlugin()],
     // Оптимизированные ассеты для production (только используемые файлы)
     publicDir: path.resolve(__dirname, '../assets-dist'),
     // Инжекция версии из version.json (единый источник правды)
@@ -39,6 +58,6 @@ export default defineConfig(({ mode }) => {
         'react-dom': 'preact/compat',
         '@bonk-race/shared': path.resolve(__dirname, '../shared/src/index')
       }
-    }
+    },
   }
 })

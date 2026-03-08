@@ -6,8 +6,7 @@
  */
 
 import { Player, TalentCard } from "../../schema/GameState";
-import { TalentConfig, ClassTalentConfig } from "@bonk-race/shared";
-import { Rng } from "../../../utils/rng";
+import { TalentConfig, ClassTalentConfig, Rng } from "@bonk-race/shared";
 import { TalentBalanceConfig } from "./TalentModifierCalculator";
 
 export interface TalentGeneratorConfig {

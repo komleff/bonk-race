@@ -4,10 +4,10 @@
 
 ## Контроль изменений
 
-- **last_checked_commit**: `feat/vite-proxy-client-connect` @ 8 марта 2026 (`02592da`)
-- **Текущая ветка**: `feat/vite-proxy-client-connect` → ожидает merge в `main`
+- **last_checked_commit**: `feat/bonklab-v1` @ 9 марта 2026 (`a97f5dd`)
+- **Активная ветка**: `feat/bonklab-v1` → PR #6, APPROVED, ready to merge
 - **Production:** не задеплоен (pre-v0.1.0)
-- **Версия:** 0.1.0 (после merge PR#5 создать тег `v0.1.0`)
+- **Версия:** 0.1.0 (после merge PR#5 + PR#6 создать тег `v0.1.0`)
 - **GDD версия**: v3.0 (`docs/gdd/BonkRace-GDD-v3_0.md`)
 
 ---
@@ -41,24 +41,51 @@
 
 ---
 
+## Sprint 1b (2026-03-09) — BonkLab physics sandbox — ЗАВЕРШЁН
+
+**Цель:** Dev-only песочница для настройки ~45 параметров движения в реальном времени
+**PR:** #6 (`feat/bonklab-v1`) — APPROVED, ready to merge
+**Ревью:** GPT-5.4 ✅, GPT-5.3-Codex ✅, Claude ✅, Internal Physics ✅, Internal Frontend ✅ (14 итераций)
+
+- [x] 60Hz physics simulation (FA, integrator, collisions)
+- [x] Canvas 2D renderer with camera follow, vectors, minimap
+- [x] TelemetryHUD overlay (speed, angVel, mass, FA state, zone)
+- [x] Parameter panel (~45 params, grouped, sliders)
+- [x] Toolbar (restart, seed, density, reset, export/import, presets)
+- [x] Death/respawn (0.8s freeze, full FA state reset)
+- [x] Arena generator (shared, deterministic, density control)
+- [x] Passage restitution (separate param, default 0.5×)
+- [x] Map size controls (width/height sliders)
+- [x] Checkered finish line (reused from raceMain)
+- [x] Export/Import round-trip verified
+- [x] All P0/P1 closed
+
+---
+
 ## Ожидает Sprint 2
 
-### Техдолг из Sprint 1
+### Техдолг из Sprint 1a+1b
 
 | Приоритет | Файл | Проблема |
 |-----------|------|---------|
 | P2 | `server/src/meta/routes/runs.ts:57` | replayData: нет `Number.isFinite` на элементах |
 | P2 | `server/src/meta/routes/runs.ts:43` | `operationId` приходит с клиента, сервер не использует |
+| P2 | `client/src/lab/BonkLab.ts` | Zone modifier 1-tick lag (architectural) |
+| P2 | `client/src/lab/BonkLab.ts` | correctionPercent in static collisions always 1.0 |
 | P3 | `client/src/raceMain.ts:208` | `INPUT_THRUST_BLEND = 0.3` hardcoded |
 | P3 | `client/src/raceMain.ts:632` | `CAMERA_LOOKAHEAD_Y = -120` hardcoded |
 | P3 | `server/src/meta/routes/runs.ts:17` | `MAX_COINS_PER_RUN` hardcoded |
 | P3 | `server/src/meta/routes/ghosts.ts:78` | Гостевые без `profiles` — нет opponent ghost |
+| P3 | `client/src/lab/LabRenderer.ts` | Sub-pixel anti-aliasing blur on object edges |
+| P3 | `client/src/lab/` | Hardcoded физические константы — вынести в config |
 
 ### Приоритетные фичи Sprint 2
 
-1. DevAuth flow — быстрое переключение профилей для local dev
-2. Монетная/медальная схема — реализовать начисление (сейчас отложено)
-3. CI/CD — настроить GitHub Actions для bonk-race
+1. BonkLab track editor — визуальное редактирование объектов трассы
+2. `reverseZoneAngleDeg` — реализовать в движке, разблокировать в UI
+3. DevAuth flow — быстрое переключение профилей для local dev
+4. Монетная/медальная схема — реализовать начисление
+5. CI/CD — настроить GitHub Actions для bonk-race
 
 ---
 

@@ -1,0 +1,329 @@
+/* ─── BonkLab Parameter Panel ─────────────────────────────────────────────── */
+
+.lab-panel-toggle {
+  position: fixed;
+  top: 60px;
+  right: 12px;
+  z-index: 110;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #44aaff;
+  border-radius: 6px;
+  background: #1e1e2e;
+  color: #44aaff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.lab-panel-toggle:hover {
+  background: #2a2a3e;
+}
+
+.lab-panel {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  width: 320px;
+  height: calc(100vh - 48px);
+  background: #1e1e2e;
+  color: #e0e0e0;
+  border-left: 1px solid #333;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: #44aaff33 transparent;
+}
+.lab-panel::-webkit-scrollbar {
+  width: 5px;
+}
+.lab-panel::-webkit-scrollbar-thumb {
+  background: #44aaff33;
+  border-radius: 3px;
+}
+
+.lab-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+.lab-panel-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #44aaff;
+}
+.lab-panel-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.lab-panel-close:hover {
+  color: #e0e0e0;
+}
+
+.lab-panel-content {
+  flex: 1;
+  padding: 4px 0;
+}
+
+/* ─── Panel Group ─────────────────────────────────────────────────────────── */
+
+.lab-group {
+  border-bottom: 1px solid #2a2a3a;
+}
+
+.lab-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: #22223a;
+  transition: background 0.1s;
+}
+.lab-group-header:hover {
+  background: #2a2a44;
+}
+
+.lab-group-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: #c0c0d0;
+}
+
+.lab-group-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lab-group-count {
+  background: #333;
+  color: #888;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.lab-group-chevron {
+  color: #666;
+  font-size: 10px;
+  transition: transform 0.15s;
+}
+.lab-group-chevron.open {
+  transform: rotate(90deg);
+}
+
+.lab-group-body {
+  padding: 4px 12px 8px;
+}
+
+/* ─── Param Slider ────────────────────────────────────────────────────────── */
+
+.lab-param {
+  margin-bottom: 8px;
+}
+.lab-param:last-child {
+  margin-bottom: 0;
+}
+
+.lab-param-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+
+.lab-param-label {
+  font-size: 11px;
+  color: #a0a0b0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lab-param-info {
+  background: none;
+  border: 1px solid #555;
+  color: #888;
+  font-size: 10px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding: 0;
+  line-height: 1;
+}
+.lab-param-info:hover {
+  color: #44aaff;
+  border-color: #44aaff;
+}
+
+.lab-param-tooltip {
+  background: #2a2a44;
+  border: 1px solid #44aaff44;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 10px;
+  color: #b0b0c0;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.lab-param-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lab-param-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.lab-param-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #44aaff;
+  cursor: pointer;
+  border: none;
+}
+.lab-param-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #44aaff;
+  cursor: pointer;
+  border: none;
+}
+
+.lab-param-number {
+  width: 60px;
+  background: #1a1a2a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+  text-align: right;
+  outline: none;
+}
+.lab-param-number:focus {
+  border-color: #44aaff;
+}
+
+.lab-param-unit {
+  font-size: 10px;
+  color: #666;
+  min-width: 20px;
+}
+
+.lab-param-range {
+  font-size: 9px;
+  color: #555;
+  margin-top: 1px;
+}
+
+/* ─── Locked param ────────────────────────────────────────────────────────── */
+
+.lab-param.locked {
+  opacity: 0.45;
+}
+.lab-param.locked .lab-param-slider,
+.lab-param.locked .lab-param-number,
+.lab-param.locked .lab-toggle-switch {
+  pointer-events: none;
+}
+.lab-param.locked .lab-param-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lab-lock-icon {
+  font-size: 10px;
+  color: #888;
+}
+
+/* ─── Toggle switch (boolean) ─────────────────────────────────────────────── */
+
+.lab-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.lab-toggle-switch {
+  position: relative;
+  width: 32px;
+  height: 16px;
+  background: #333;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
+  padding: 0;
+}
+.lab-toggle-switch.on {
+  background: #44aaff;
+}
+.lab-toggle-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  transition: transform 0.15s;
+}
+.lab-toggle-switch.on::after {
+  transform: translateX(16px);
+}
+
+/* ─── Mobile ──────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .lab-panel {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .lab-panel-toggle {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+  }
+}
