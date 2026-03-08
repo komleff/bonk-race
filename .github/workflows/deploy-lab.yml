@@ -1,0 +1,55 @@
+name: Deploy BonkLab to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/src/lab/**'
+      - 'client/lab.html'
+      - 'client/vite.config.lab.ts'
+      - 'shared/src/**'
+      - 'config/balance.json'
+  workflow_dispatch: # manual trigger
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build --workspace=@bonk-race/shared
+
+      - run: npm run build:lab --workspace=client
+
+      # Rename lab.html → index.html for GitHub Pages
+      - run: mv client/dist-lab/lab.html client/dist-lab/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: client/dist-lab
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
