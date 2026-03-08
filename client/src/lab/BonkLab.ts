@@ -376,12 +376,8 @@ export class BonkLab {
             },
             rng,
         );
-        // Reset position to new spawn
-        this.x = this.arena.spawnPoint.x;
-        this.y = this.arena.spawnPoint.y;
-        this.vx = 0;
-        this.vy = 0;
-        this.deathTimer = 0;
+        // Full state reset (position, velocity, FA state, timers)
+        this.reset();
         // Reapply zone overrides from current params to new arena zones
         for (const key of Object.keys(this.params)) {
             if (key.startsWith("zones.")) {

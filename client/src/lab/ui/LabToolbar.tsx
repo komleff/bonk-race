@@ -249,7 +249,6 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
             if (!isNaN(v)) {
                 setSeed(v);
                 lab.regenerateArena(v, density);
-                lab.reset();
             }
         },
         [lab, density],
@@ -259,7 +258,6 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
         const newSeed = Math.floor(Math.random() * 999999);
         setSeed(newSeed);
         lab.regenerateArena(newSeed, density);
-        lab.reset();
     }, [lab, density]);
 
     // ── Density ──
@@ -269,7 +267,6 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
             if (!isNaN(v)) {
                 setDensity(v);
                 lab.regenerateArena(seed, v);
-                lab.reset();
             }
         },
         [lab, seed],
@@ -360,7 +357,7 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
 
                 {/* Density */}
                 <div class="lab-tb-seed-group">
-                    <span class="lab-tb-seed-label" title="Плотность объектов на карте (0.1 – 3.0)">
+                    <span class="lab-tb-seed-label" title="Плотность объектов на карте (0.1 – 10.0)">
                         Плотность:
                     </span>
                     <input

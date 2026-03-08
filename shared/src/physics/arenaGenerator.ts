@@ -11,7 +11,7 @@ export interface ArenaConfig {
     seed: number;
     widthM: number;
     heightM: number;
-    /** Object count multiplier (0.1 – 3.0) */
+    /** Object count multiplier (0.1 – 10.0) */
     objectDensity: number;
 }
 
@@ -61,6 +61,7 @@ const WALL_THICKNESS = 10;
 
 const PLACEMENT_RETRIES = 30;
 const OBSTACLE_SPACING = 8;
+const SPAWN_EXCLUSION_RADIUS = 60;
 
 const ZONE_TYPES: ArenaZone["type"][] = ["ice", "slime", "turbo"];
 
@@ -93,10 +94,19 @@ function canPlace(
     existing: ArenaObject[],
     halfW: number,
     halfH: number,
+    exclusionPoints?: { x: number; y: number }[],
 ): boolean {
     // Must be inside arena bounds (with margin)
     if (Math.abs(x) + radius > halfW - WALL_THICKNESS) return false;
     if (Math.abs(y) + radius > halfH - WALL_THICKNESS) return false;
+
+    // Keep clear of spawn/finish points
+    if (exclusionPoints) {
+        for (const ep of exclusionPoints) {
+            const minDist = radius + SPAWN_EXCLUSION_RADIUS;
+            if (distSq(x, y, ep.x, ep.y) < minDist * minDist) return false;
+        }
+    }
 
     for (const obj of existing) {
         const minDist = radius + obj.radius + OBSTACLE_SPACING;
@@ -122,6 +132,12 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
     const { widthM, heightM, objectDensity } = config;
     const halfW = widthM / 2;
     const halfH = heightM / 2;
+
+    // Spawn/finish computed early for obstacle exclusion
+    const spawnMargin = 50;
+    const spawnPoint = { x: 0, y: halfH - spawnMargin };
+    const finishPoint = { x: 0, y: -(halfH - spawnMargin) };
+    const exclusionPoints = [spawnPoint, finishPoint];
 
     // 1. Boundary walls (4 sides)
     const walls: ArenaObject[] = [
@@ -151,8 +167,8 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
             const by = center.y + oy;
 
             if (
-                canPlace(ax, ay, PASSAGE_PILLAR_RADIUS, obstacles, halfW, halfH) &&
-                canPlace(bx, by, PASSAGE_PILLAR_RADIUS, obstacles, halfW, halfH)
+                canPlace(ax, ay, PASSAGE_PILLAR_RADIUS, obstacles, halfW, halfH, exclusionPoints) &&
+                canPlace(bx, by, PASSAGE_PILLAR_RADIUS, obstacles, halfW, halfH, exclusionPoints)
             ) {
                 obstacles.push(
                     { type: "passage", x: ax, y: ay, radius: PASSAGE_PILLAR_RADIUS },
@@ -168,7 +184,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
     for (let i = 0; i < pillarCount; i++) {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
             const pt = randomPoint(rng, halfW, halfH, PILLAR_RADIUS + OBSTACLE_SPACING);
-            if (canPlace(pt.x, pt.y, PILLAR_RADIUS, obstacles, halfW, halfH)) {
+            if (canPlace(pt.x, pt.y, PILLAR_RADIUS, obstacles, halfW, halfH, exclusionPoints)) {
                 obstacles.push({ type: "pillar", x: pt.x, y: pt.y, radius: PILLAR_RADIUS });
                 break;
             }
@@ -180,7 +196,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
     for (let i = 0; i < spikeCount; i++) {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
             const pt = randomPoint(rng, halfW, halfH, SPIKE_RADIUS + OBSTACLE_SPACING);
-            if (canPlace(pt.x, pt.y, SPIKE_RADIUS, obstacles, halfW, halfH)) {
+            if (canPlace(pt.x, pt.y, SPIKE_RADIUS, obstacles, halfW, halfH, exclusionPoints)) {
                 obstacles.push({ type: "spike", x: pt.x, y: pt.y, radius: SPIKE_RADIUS });
                 break;
             }
@@ -220,11 +236,6 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
             break;
         }
     }
-
-    // 6. Spawn at bottom, finish at top
-    const spawnMargin = 50;
-    const spawnPoint = { x: 0, y: halfH - spawnMargin };
-    const finishPoint = { x: 0, y: -(halfH - spawnMargin) };
 
     return {
         width: widthM,
