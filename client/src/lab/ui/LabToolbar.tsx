@@ -266,10 +266,10 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
             const v = parseFloat((e.target as HTMLInputElement).value);
             if (!isNaN(v)) {
                 setDensity(v);
-                lab.regenerateArena(seed, v);
+                lab.updateParams("arena.objectDensity", v);
             }
         },
-        [lab, seed],
+        [lab],
     );
 
     // ── Reset params to defaults ──
