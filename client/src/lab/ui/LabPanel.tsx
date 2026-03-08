@@ -416,13 +416,6 @@ const PARAM_GROUPS: GroupDef[] = [
                 max: 3.0,
                 tooltip: "Множитель скорости на турбо-зоне.",
             },
-            {
-                label: "Лава: урон/сек",
-                key: "zones.lava.damagePctPerSec",
-                min: 0,
-                max: 0.1,
-                tooltip: "Процент урона в секунду на лаве.",
-            },
         ],
     },
     // 3.11 Mass scaling

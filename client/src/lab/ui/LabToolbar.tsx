@@ -45,14 +45,13 @@ const PRESETS: Preset[] = [
         },
     },
     {
-        label: "Без FA",
+        label: "Минимальный FA",
         values: {
-            "assist.yawRateGain": 0,
+            "assist.counterAccelEnabled": false,
             "assist.autoBrakeMaxThrustFraction": 0,
             "assist.overspeedDampingRate": 0,
-            "assist.angularBrakeBoostFactor": 0,
-            "assist.yawDampingBoostFactor": 0,
-            "assist.counterAccelEnabled": false,
+            "assist.yawDampingBoostFactor": 1,
+            "assist.angularBrakeBoostFactor": 1,
         },
     },
     {

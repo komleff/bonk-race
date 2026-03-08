@@ -479,8 +479,9 @@ export class BonkLab {
                 this.correctionFy = 0;
             }
         } else {
-            this.correctionFx = faOutput.assistFx;
-            this.correctionFy = faOutput.assistFy;
+            // No input — no meaningful correction to visualize
+            this.correctionFx = 0;
+            this.correctionFy = 0;
         }
 
         // Classify FA state (after correction is computed)

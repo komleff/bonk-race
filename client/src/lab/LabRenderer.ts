@@ -19,7 +19,6 @@ const ZONE_COLORS: Record<ArenaZone["type"], string> = {
     ice: "#4488cc",
     slime: "#44aa44",
     turbo: "#ccaa44",
-    lava: "#cc4444",
 };
 const ZONE_ALPHA = 0.3;
 

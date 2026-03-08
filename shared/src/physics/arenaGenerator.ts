@@ -25,7 +25,7 @@ export interface ArenaObject {
 }
 
 export interface ArenaZone {
-    type: "ice" | "slime" | "turbo" | "lava";
+    type: "ice" | "slime" | "turbo";
     x: number;
     y: number;
     radius: number;
@@ -61,13 +61,12 @@ const WALL_THICKNESS = 10;
 const PLACEMENT_RETRIES = 30;
 const OBSTACLE_SPACING = 8;
 
-const ZONE_TYPES: ArenaZone["type"][] = ["ice", "slime", "turbo", "lava"];
+const ZONE_TYPES: ArenaZone["type"][] = ["ice", "slime", "turbo"];
 
 const ZONE_PARAMS: Record<ArenaZone["type"], Record<string, number>> = {
     ice:   { frictionMultiplier: 0.3 },
     slime: { speedMultiplier: 0.5, frictionMultiplier: 2.0 },
     turbo: { speedMultiplier: 1.4 },
-    lava:  { damagePctPerSec: 0.02 },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -209,12 +208,6 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
             if (tooClose) continue;
 
             const zoneType = ZONE_TYPES[rng.int(0, ZONE_TYPES.length)];
-
-            // Lava zones should not be near center spawn
-            if (zoneType === "lava") {
-                const distFromCenter = Math.sqrt(pt.x * pt.x + pt.y * pt.y);
-                if (distFromCenter < 100 + zoneRadius) continue;
-            }
 
             zones.push({
                 type: zoneType,
