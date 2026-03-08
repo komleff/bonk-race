@@ -1,6 +1,5 @@
 import {
     FLAG_DASHING,
-    scaleSlimeValue,
     computeFlightAssist,
     integratePhysics,
 } from "@bonk-race/shared";

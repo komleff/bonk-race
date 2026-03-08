@@ -88,6 +88,8 @@ function classifyFaState(
     faOutput: IFlightAssistOutput,
     vx: number,
     vy: number,
+    correctionFx: number,
+    correctionFy: number,
 ): SandboxState["faState"] {
     if (!hasInput) {
         const hasBrakingForce = Math.abs(faOutput.assistFx) > 0.01 || Math.abs(faOutput.assistFy) > 0.01;
@@ -98,6 +100,10 @@ function classifyFaState(
     const forceMag = Math.hypot(faOutput.assistFx, faOutput.assistFy);
 
     if (forceMag < 0.01) return "idle";
+
+    // Detect drift correction: correction vector is >40% of total force
+    const corrMag = Math.hypot(correctionFx, correctionFy);
+    if (corrMag > forceMag * 0.4 && speed > 5) return "drift-correction";
 
     // Check if force opposes velocity (braking)
     if (speed > 1) {
@@ -274,8 +280,33 @@ export class BonkLab {
             return;
         }
 
+        // Zone params → update arena zones live
+        if (key.startsWith("zones.")) {
+            this.syncZoneParams(key, value as number);
+        }
+
         // All other keys map to slimeConfig
         setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
+
+        // Sync simulation mass when baseMassKg changes
+        if (key === "geometry.baseMassKg") {
+            this.mass = value as number;
+            this.params["mass"] = value;
+        }
+    }
+
+    /** Sync zone slider values into arena zone objects */
+    private syncZoneParams(key: string, value: number): void {
+        // key format: "zones.ice.frictionMultiplier" → zoneType="ice", paramKey="frictionMultiplier"
+        const parts = key.split(".");
+        if (parts.length < 3) return;
+        const zoneType = parts[1];
+        const paramKey = parts[2];
+        for (const zone of this.arena.zones) {
+            if (zone.type === zoneType) {
+                zone.params[paramKey] = value;
+            }
+        }
     }
 
     getState(): SandboxState {
@@ -428,12 +459,9 @@ export class BonkLab {
 
         this.lastFaOutput = faOutput;
 
-        // Classify FA state
         const hasInput = this.inputMagnitude > slimeConfig.assist.inputMagnitudeThreshold;
-        this.lastFaState = classifyFaState(hasInput, faOutput, this.vx, this.vy);
 
-        // Compute correction vector (difference between FA force and pure thrust direction)
-        // This represents the drift-correction component
+        // Compute correction vector BEFORE classify (it needs correctionF values)
         if (hasInput && Math.hypot(this.vx, this.vy) > 1) {
             const inputAngle = Math.atan2(this.inputY, this.inputX);
             const thrustDirX = Math.cos(inputAngle);
@@ -454,6 +482,12 @@ export class BonkLab {
             this.correctionFx = faOutput.assistFx;
             this.correctionFy = faOutput.assistFy;
         }
+
+        // Classify FA state (after correction is computed)
+        this.lastFaState = classifyFaState(
+            hasInput, faOutput, this.vx, this.vy,
+            this.correctionFx, this.correctionFy,
+        );
 
         // ── 3. Integrate Physics ──
         const dragParams: IWorldDragParams = {
@@ -532,10 +566,7 @@ export class BonkLab {
 
         const iterations = 4;
         for (let iter = 0; iter < iterations; iter++) {
-            // Wall collisions (rectangular arena boundary)
-            resolveWallCollision(body, wallBounds, this.worldPhysics.restitution);
-
-            // Obstacle collisions
+            // Obstacle collisions first (matching server order)
             for (const obs of this.arena.obstacles) {
                 const staticObs: IStaticObstacle = {
                     x: obs.x,
@@ -545,6 +576,9 @@ export class BonkLab {
                 };
                 resolveCircleStaticCollision(body, staticObs, this.worldPhysics.restitution, collisionConfig);
             }
+
+            // Wall collisions last (rectangular arena boundary)
+            resolveWallCollision(body, wallBounds, this.worldPhysics.restitution);
         }
 
         // Write collision results back

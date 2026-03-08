@@ -69,7 +69,6 @@ renderUI();
 (window as unknown as Record<string, unknown>).__labRenderer = renderer;
 
 // ── Unified render + simulation loop ──
-// @ts-expect-error -- rafId kept for future cleanup/stop support
 let rafId: number | null = null;
 
 function frame(): void {
@@ -93,5 +92,17 @@ function frame(): void {
 // Start simulation (internal physics loop) and render loop
 lab.start();
 rafId = requestAnimationFrame(frame);
+
+// HMR cleanup — prevent stale listeners/loops on Vite hot reload
+if (import.meta.hot) {
+    import.meta.hot.dispose(() => {
+        lab.stop();
+        input.destroy();
+        cancelAnimationFrame(rafId!);
+        window.removeEventListener("resize", onResize);
+        render(null, toolbarContainer);
+        render(null, uiContainer);
+    });
+}
 
 console.log("[BonkLab] entry point loaded — use window.__bonkLab to inspect");

@@ -195,6 +195,16 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
 
     // Countdown state
     const [countdown, setCountdown] = useState<string | null>(null);
+    const restartIntervalRef = useRef<number | null>(null);
+
+    // Cleanup restart interval on unmount
+    useEffect(() => {
+        return () => {
+            if (restartIntervalRef.current !== null) {
+                clearInterval(restartIntervalRef.current);
+            }
+        };
+    }, []);
 
     // Modal state
     const [showExport, setShowExport] = useState(false);
@@ -202,6 +212,12 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
 
     // ── Restart with countdown ──
     const handleRestart = useCallback(() => {
+        // Cancel previous countdown if still running
+        if (restartIntervalRef.current !== null) {
+            clearInterval(restartIntervalRef.current);
+            restartIntervalRef.current = null;
+        }
+
         lab.stop();
         lab.reset();
         setElapsed(0);
@@ -211,14 +227,17 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
         let i = 0;
         setCountdown(steps[i]);
 
-        const interval = setInterval(() => {
+        restartIntervalRef.current = window.setInterval(() => {
             i++;
             if (i < steps.length) {
                 setCountdown(steps[i]);
             } else {
                 setCountdown(null);
                 lab.start();
-                clearInterval(interval);
+                if (restartIntervalRef.current !== null) {
+                    clearInterval(restartIntervalRef.current);
+                    restartIntervalRef.current = null;
+                }
             }
         }, 800);
     }, [lab]);
