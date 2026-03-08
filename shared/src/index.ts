@@ -112,6 +112,43 @@ export {
 // ─── RNG (deterministic, seed-based — GDD §4.1) ─────────────────────────────
 export { Rng } from "./rng";
 
+// ─── Physics (shared collision resolution — BonkLab) ─────────────────────────
+export type {
+    ICircleBody,
+    IStaticObstacle,
+    IWallBounds,
+    ICircleBounds,
+    ICollisionConfig,
+} from "./physics/collisions";
+export {
+    resolveCircleCircleCollision,
+    resolveCircleStaticCollision,
+    resolveWallCollision,
+    resolveCircleBoundaryCollision,
+} from "./physics/collisions";
+
+// ─── Physics (shared flight assist + integrator) ────────────────────────────
+export {
+    computeFlightAssist,
+    applyYawOscillationDamping,
+} from "./physics/flightAssist";
+export type {
+    ISlimePhysicsState,
+    ISlimeModifiers,
+    IExternalMultipliers,
+    IFlightAssistOutput,
+    IWorldPhysicsParams,
+} from "./physics/flightAssist";
+export { integratePhysics } from "./physics/integrator";
+export type {
+    IIntegratorState,
+    IIntegratorForces,
+    IWorldDragParams,
+    IIntegratorResult,
+} from "./physics/integrator";
+export { generateArena } from "./physics/arenaGenerator";
+export type { Arena, ArenaConfig, ArenaObject, ArenaZone } from "./physics/arenaGenerator";
+
 // ─── Track config (BonkRace — GDD §3.3, §4) ─────────────────────────────────
 export type {
     TrackConfig,

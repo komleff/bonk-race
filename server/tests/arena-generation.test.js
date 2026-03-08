@@ -4,7 +4,7 @@ const serverRoot = path.resolve(__dirname, "..");
 process.chdir(serverRoot);
 
 const { ArenaRoom } = require(path.resolve(__dirname, "../dist/server/src/rooms/ArenaRoom.js"));
-const { Rng } = require(path.resolve(__dirname, "../dist/server/src/utils/rng.js"));
+const { Rng } = require("@bonk-race/shared");
 const {
     generateObstacleSeeds,
     generateSafeZoneSeeds,
