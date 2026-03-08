@@ -270,18 +270,12 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
         onParamsChanged?.();
     }, [lab, defaults, onParamsChanged]);
 
-    // ── Export ──
+    // ── Export (full config) ──
     const getExportJson = useCallback((): string => {
-        const diff: Record<string, number | boolean> = {};
-        for (const [key, val] of Object.entries(lab.params)) {
-            if (defaults[key] !== val) {
-                diff[key] = val;
-            }
-        }
-        return JSON.stringify(diff, null, 2);
-    }, [lab, defaults]);
+        return JSON.stringify(lab.params, null, 2);
+    }, [lab]);
 
-    // ── Import ──
+    // ── Import (full config — applies all params from JSON) ──
     const handleImport = useCallback(
         (data: Record<string, number | boolean>) => {
             for (const [key, val] of Object.entries(data)) {

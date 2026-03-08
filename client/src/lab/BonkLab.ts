@@ -15,8 +15,6 @@ import {
     resolveBalanceConfig,
     computeFlightAssist,
     integratePhysics,
-    getSlimeRadiusFromConfig,
-    getSlimeInertia,
     resolveWallCollision,
     resolveCircleStaticCollision,
     Rng,
@@ -326,7 +324,7 @@ export class BonkLab {
             angle: this.angle,
             angularVelocity: this.angVel,
             mass: this.mass,
-            radius: getSlimeRadiusFromConfig(this.mass, this.slimeConfig),
+            radius: this.slimeConfig.geometry.baseRadiusM,
 
             inputX: this.inputX,
             inputY: this.inputY,
@@ -422,8 +420,8 @@ export class BonkLab {
 
         const mass = this.mass;
         const slimeConfig = this.slimeConfig;
-        const radius = getSlimeRadiusFromConfig(mass, slimeConfig);
-        const inertia = getSlimeInertia(mass, slimeConfig);
+        const radius = slimeConfig.geometry.baseRadiusM;
+        const inertia = slimeConfig.geometry.inertiaFactor * mass * radius * radius;
 
         // ── 1. Build FA input state ──
         const faState: ISlimePhysicsState = {
