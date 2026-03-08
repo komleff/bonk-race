@@ -4,78 +4,62 @@
 
 ## Контроль изменений
 
-- **last_checked_commit**: main @ 2 марта 2026 (`59fd607` — chore: bump version to v0.8.7)
-- **Текущая ветка**: `main`
-- **Production:** v0.8.6 (развёрнут 1 марта 2026)
-- **Main:** v0.8.7 (тег создан, Docker CI собирает образ)
-- **GDD версия**: v3.3.2
+- **last_checked_commit**: `feat/vite-proxy-client-connect` @ 8 марта 2026 (`02592da`)
+- **Текущая ветка**: `feat/vite-proxy-client-connect` → ожидает merge в `main`
+- **Production:** не задеплоен (pre-v0.1.0)
+- **Версия:** 0.1.0 (после merge PR#5 создать тег `v0.1.0`)
+- **GDD версия**: v3.0 (`docs/gdd/BonkRace-GDD-v3_0.md`)
 
 ---
 
-## Sprint 22 (2026-03-02) — v0.8.7 Hotfix — ЗАВЕРШЕНО
+## Sprint 1 (2026-03-07/08) — MVP playable loop — ЗАВЕРШЁН
 
-**Цель:** Исправление P1 багов после деплоя v0.8.6
-**PR:** #153 — merged
+**Цель:** Играбельный time-trial: трасса, auth, submit, ghost, leaderboard
+**PR:** #5 (`feat/vite-proxy-client-connect`) — OPEN, ревью пройдено, ожидает merge
+**Ревью:** GPT-5.3-Codex APPROVED + ChatGPT-5.4 APPROVED + Gemini 3.1 Pro APPROVED (4 итерации)
 
-- [x] slime-arena-t8pp (P1) — Таймер «Перед боем» зависает (arenaWaitInterval: remaining -= 1 → Date.now())
-- [x] slime-arena-o7v5 (P1) — matchId cycling на ResultsScreen → мигание наград
-- [x] slime-arena-boea (P1) — Гостевой токен истёк → 401 → logout → isAnonymous()=false
-- [x] slime-arena-gikx (P1) — «Сохранить прогресс» не показывается (следствие boea, закрыт вместе с ним)
-
-**Ревью:** Opus ✅ + Gemini ✅ + Codex ✅
-
----
-
-## Post-Sprint 21 Hotfixes (2026-03-01) — ЗАВЕРШЕНО
-
-Прямые коммиты в main после merge PR #150:
-
-- [x] `d87a253` — Leaderboard: fallback на slime-base.webp (цветной круг вместо спрайта)
-- [x] `a29b475` — CI: GITHUB_TOKEN вместо CR_PAT (истёк, publish-containers упал)
-- [x] Деплой v0.8.6 на production (1 марта 2026)
+- [x] Guest auth flow (ensureAuth → guest token)
+- [x] POST /api/v1/runs/submit с leaderboard position
+- [x] GET /api/v1/ghosts — загрузка + воспроизведение ghost replays
+- [x] Экран результатов: время + медаль + позиция в рейтинге
+- [x] Instant restart (R / tap, < 0.5s)
+- [x] Vertical track "First Run" (600×2400, 10 checkpoint, bottom→top)
+- [x] Checkered finish line с флагами
+- [x] Camera lookahead (GDD §1.5)
+- [x] Responsive steering (turnTorqueNm 2400, INPUT_THRUST_BLEND 0.3)
+- [x] Cross-platform git hooks installer
+- [x] 41 smoke tests pass
 
 ---
 
-## Sprint 21 (2026-02-28 — 2026-03-01) — v0.8.6 Bugfix & Tech Debt — ЗАВЕРШЕНО
+## Pre-Sprint (2026-03-07) — Инфраструктура Bonk Race
 
-**Цель:** Стабилизация + редизайн спрайтовой системы
-**PR:** #150 — merged
-
-### Фаза 1: Багфиксы (9/9)
-
-- [x] slime-arena-b7z6 (P1) — Зависание экрана выбора класса
-- [x] slime-arena-hfww (P2) — Таймер Chrome mobile (ResultsScreen)
-- [x] slime-arena-3v3o (P2) — ConnectingScreen
-- [x] slime-arena-vsn5 (P1) — skinId при OAuth upgrade
-- [x] slime-arena-n17m (P2) — normalizeNickname null guard
-- [x] slime-arena-mtw (P2) — Симметричные модификаторы укуса
-- [x] slime-arena-4xh (P2) — Вампир по GDD
-- [x] slime-arena-y2z2 (P2) — Гость: реактивный isAnonymous
-- [x] slime-arena-vpti (P2) — generateRandomBasicSkin в meta/
-
-### Фаза 2: Спрайтовая система
-
-- [x] Замена цветных скинов (4 цвета) на 21 спрайт
-- [x] shared/src/sprites.ts: SPRITE_NAMES, pickSpriteByName, isValidSprite
-- [x] Player.spriteId в Colyseus schema → JoinTokenPayload → ArenaRoom → клиент
-- [x] spriteId в matchmaking flow + leaderboard валидация
-- [x] Удалён config/skins.json (ошибочный артефакт)
-
-### Открытая задача из Sprint 21
-
-- slime-arena-vk4m (P1, open) — Спрайтовый flow: сквозной (клиент не передаёт skinId, clearGuestData удаляет guest_skin_id, нет API смены скина)
+- [x] PR#1 — Fork + Strip: shared package, TrackConfig, rng (Merged)
+- [x] PR#2 — Starter Circuit, wall/surface physics, smoke test (Merged)
+- [x] PR#3 — UUID миграции fix, bonk_race DB defaults (Merged)
+- [x] PR#4 — Ребрендинг slime-arena → bonk-race, README, memory bank (Merged)
 
 ---
 
-## Sprint 20 (2026-02-07) — v0.8.4/v0.8.5 — ЗАВЕРШЕНО
+## Ожидает Sprint 2
 
-Split-архитектура, Admin Dashboard на production, UI фиксы гостя.
-PRs: #139-#146. Развёрнут на production 7 фев 2026.
+### Техдолг из Sprint 1
 
-## Server Maintenance (2026-02-08) — ЗАВЕРШЕНО
+| Приоритет | Файл | Проблема |
+|-----------|------|---------|
+| P2 | `server/src/meta/routes/runs.ts:57` | replayData: нет `Number.isFinite` на элементах |
+| P2 | `server/src/meta/routes/runs.ts:43` | `operationId` приходит с клиента, сервер не использует |
+| P3 | `client/src/raceMain.ts:208` | `INPUT_THRUST_BLEND = 0.3` hardcoded |
+| P3 | `client/src/raceMain.ts:632` | `CAMERA_LOOKAHEAD_Y = -120` hardcoded |
+| P3 | `server/src/meta/routes/runs.ts:17` | `MAX_COINS_PER_RUN` hardcoded |
+| P3 | `server/src/meta/routes/ghosts.ts:78` | Гостевые без `profiles` — нет opponent ghost |
 
-Redis MISCONF → 502 + OAuth 503. PR #148. Новый домен u2game.space.
+### Приоритетные фичи Sprint 2
+
+1. DevAuth flow — быстрое переключение профилей для local dev
+2. Монетная/медальная схема — реализовать начисление (сейчас отложено)
+3. CI/CD — настроить GitHub Actions для bonk-race
 
 ---
 
-*Полная история предыдущих спринтов доступна в Git history*
+*История предыдущих спринтов slime-arena доступна в `.memory_bank/archive/`*
