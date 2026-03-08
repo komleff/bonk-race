@@ -74,6 +74,11 @@ export interface SandboxState {
 
     // Current zone
     currentZone: string | null;
+
+    // Death state (spike hit)
+    deathTimer: number;
+    deathX: number;
+    deathY: number;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -188,6 +193,11 @@ export class BonkLab {
     // Zone
     private currentZone: string | null = null;
 
+    // Death state (spike hit — GDD §4.2: instant defeat → restart)
+    private deathTimer = 0;
+    private deathX = 0;
+    private deathY = 0;
+
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
 
@@ -261,6 +271,9 @@ export class BonkLab {
         this.correctionFx = 0;
         this.correctionFy = 0;
         this.currentZone = null;
+        this.deathTimer = 0;
+        this.deathX = 0;
+        this.deathY = 0;
         console.log("[BonkLab] state reset");
     }
 
@@ -330,6 +343,10 @@ export class BonkLab {
             arena: this.arena,
             elapsedTime: this.elapsedTime,
             currentZone: this.currentZone,
+
+            deathTimer: this.deathTimer,
+            deathX: this.deathX,
+            deathY: this.deathY,
         };
     }
 
@@ -388,6 +405,21 @@ export class BonkLab {
     }
 
     private tick(dt: number): void {
+        // Death freeze — wait before respawn (GDD §4.2)
+        if (this.deathTimer > 0) {
+            this.deathTimer -= dt;
+            if (this.deathTimer <= 0) {
+                this.deathTimer = 0;
+                this.x = this.arena.spawnPoint.x;
+                this.y = this.arena.spawnPoint.y;
+                this.vx = 0;
+                this.vy = 0;
+                this.angle = 0;
+                this.angVel = 0;
+            }
+            return;
+        }
+
         const mass = this.mass;
         const slimeConfig = this.slimeConfig;
         const radius = getSlimeRadiusFromConfig(mass, slimeConfig);
@@ -568,6 +600,7 @@ export class BonkLab {
         };
 
         const iterations = 4;
+        let hitSpike = false;
         for (let iter = 0; iter < iterations; iter++) {
             // Obstacle collisions first (matching server order)
             for (const obs of this.arena.obstacles) {
@@ -577,11 +610,28 @@ export class BonkLab {
                     radius: obs.radius,
                     type: obs.type === "passage" ? "pillar" : (obs.type as "pillar" | "spike" | "wall"),
                 };
+                const prevX = body.x;
+                const prevY = body.y;
                 resolveCircleStaticCollision(body, staticObs, this.worldPhysics.restitution, collisionConfig);
+                // Detect spike contact by checking if position was corrected
+                if (obs.type === "spike" && (body.x !== prevX || body.y !== prevY)) {
+                    hitSpike = true;
+                }
             }
 
             // Wall collisions last (rectangular arena boundary)
             resolveWallCollision(body, wallBounds, this.worldPhysics.restitution);
+        }
+
+        // Spike = instant death → freeze + respawn (GDD §4.2)
+        if (hitSpike) {
+            this.deathTimer = 0.8; // freeze for 0.8s before respawn
+            this.deathX = this.x;
+            this.deathY = this.y;
+            this.vx = 0;
+            this.vy = 0;
+            this.angVel = 0;
+            return;
         }
 
         // Write collision results back

@@ -123,9 +123,13 @@ export class LabRenderer {
         this.drawZones(ctx, state);
         this.drawWalls(ctx, state);
         this.drawObstacles(ctx, state);
-        this.drawCharacter(ctx, state);
-        this.drawBeacon(ctx, state, input);
-        this.drawVectors(ctx, state);
+        if (state.deathTimer > 0) {
+            this.drawDeathEffect(ctx, state);
+        } else {
+            this.drawCharacter(ctx, state);
+            this.drawBeacon(ctx, state, input);
+            this.drawVectors(ctx, state);
+        }
 
         // ── Minimap (screen-space) ──
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -258,6 +262,38 @@ export class LabRenderer {
         ctx.closePath();
         ctx.fillStyle = "#ffffff";
         ctx.fill();
+    }
+
+    // ── Layer: Death Effect ─────────────────────────────────────────────────
+
+    private drawDeathEffect(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const { deathX, deathY, deathTimer, radius } = state;
+        // Expanding red ring that fades out
+        const progress = 1 - deathTimer / 0.8; // 0→1
+        const ringRadius = radius * (1 + progress * 4);
+        const alpha = 1 - progress;
+
+        // Red flash circle
+        ctx.beginPath();
+        ctx.arc(deathX, deathY, ringRadius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 50, 50, ${(alpha * 0.4).toFixed(2)})`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 80, 80, ${alpha.toFixed(2)})`;
+        ctx.lineWidth = 3 / this.scale;
+        ctx.stroke();
+
+        // "X" marker at death point
+        if (alpha > 0.3) {
+            const sz = radius * 0.6;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
+            ctx.lineWidth = 2 / this.scale;
+            ctx.beginPath();
+            ctx.moveTo(deathX - sz, deathY - sz);
+            ctx.lineTo(deathX + sz, deathY + sz);
+            ctx.moveTo(deathX + sz, deathY - sz);
+            ctx.lineTo(deathX - sz, deathY + sz);
+            ctx.stroke();
+        }
     }
 
     // ── Layer: Beacon ────────────────────────────────────────────────────────
