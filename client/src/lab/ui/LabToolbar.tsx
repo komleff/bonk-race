@@ -23,7 +23,7 @@ const PRESETS: Preset[] = [
     {
         label: "Лёгкий и быстрый",
         values: {
-            "geometry.baseMassKg": 40,
+            "mass": 40,
             "propulsion.thrustForwardN": 50000,
             "propulsion.thrustReverseN": 18000,
             "propulsion.thrustLateralN": 22000,
@@ -35,7 +35,7 @@ const PRESETS: Preset[] = [
     {
         label: "Тяжёлый и инертный",
         values: {
-            "geometry.baseMassKg": 350,
+            "mass": 350,
             "propulsion.thrustForwardN": 15000,
             "propulsion.thrustReverseN": 5000,
             "propulsion.thrustLateralN": 6000,
@@ -48,7 +48,7 @@ const PRESETS: Preset[] = [
         label: "Минимальный FA",
         values: {
             "assist.counterAccelEnabled": false,
-            "assist.autoBrakeMaxThrustFraction": 0,
+            "assist.autoBrakeMaxThrustFraction": 0.1,
             "assist.overspeedDampingRate": 0,
             "assist.yawDampingBoostFactor": 1,
             "assist.angularBrakeBoostFactor": 1,
@@ -279,7 +279,8 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
     const handleImport = useCallback(
         (data: Record<string, number | boolean>) => {
             for (const [key, val] of Object.entries(data)) {
-                if (typeof val === "number" || typeof val === "boolean") {
+                // Only apply keys that exist in current params (ignore unknown keys)
+                if (key in lab.params && (typeof val === "number" || typeof val === "boolean")) {
                     lab.updateParams(key, val);
                 }
             }

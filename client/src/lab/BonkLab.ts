@@ -82,6 +82,7 @@ export interface SandboxState {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const FIXED_DT = 1 / 60; // 16.7ms — 60 Hz, smooth rendering (server runs 30 Hz)
+const DEATH_FREEZE_S = 0.8; // seconds to freeze after spike death (GDD §4.2)
 
 /**
  * Determines the FA state label based on input and velocity error.
@@ -370,6 +371,7 @@ export class BonkLab {
         this.y = this.arena.spawnPoint.y;
         this.vx = 0;
         this.vy = 0;
+        this.deathTimer = 0;
         // Reapply zone overrides from current params to new arena zones
         for (const key of Object.keys(this.params)) {
             if (key.startsWith("zones.")) {
@@ -393,7 +395,7 @@ export class BonkLab {
         this.lastTimestamp = timestamp;
         this.accumulator += frameDt;
 
-        // Fixed timestep simulation at 30 Hz
+        // Fixed timestep simulation at 60 Hz
         while (this.accumulator >= FIXED_DT) {
             this.tick(FIXED_DT);
             this.accumulator -= FIXED_DT;
@@ -608,11 +610,8 @@ export class BonkLab {
                     radius: obs.radius,
                     type: obs.type === "passage" ? "pillar" : (obs.type as "pillar" | "spike" | "wall"),
                 };
-                const prevX = body.x;
-                const prevY = body.y;
-                resolveCircleStaticCollision(body, staticObs, this.worldPhysics.restitution, collisionConfig);
-                // Detect spike contact by checking if position was corrected
-                if (obs.type === "spike" && (body.x !== prevX || body.y !== prevY)) {
+                const collided = resolveCircleStaticCollision(body, staticObs, this.worldPhysics.restitution, collisionConfig);
+                if (collided && obs.type === "spike") {
                     hitSpike = true;
                 }
             }
@@ -621,9 +620,15 @@ export class BonkLab {
             resolveWallCollision(body, wallBounds, this.worldPhysics.restitution);
         }
 
+        // Write collision results back (before death check — need corrected position)
+        this.x = body.x;
+        this.y = body.y;
+        this.vx = body.vx;
+        this.vy = body.vy;
+
         // Spike = instant death → freeze + respawn (GDD §4.2)
         if (hitSpike) {
-            this.deathTimer = 0.8; // freeze for 0.8s before respawn
+            this.deathTimer = DEATH_FREEZE_S;
             this.deathX = this.x;
             this.deathY = this.y;
             this.vx = 0;
@@ -631,12 +636,6 @@ export class BonkLab {
             this.angVel = 0;
             return;
         }
-
-        // Write collision results back
-        this.x = body.x;
-        this.y = body.y;
-        this.vx = body.vx;
-        this.vy = body.vy;
 
         // ── 5. Zone detection (point-in-circle) ──
         this.currentZone = null;
@@ -719,6 +718,9 @@ export class BonkLab {
             "assist.counterAccelDirectionThresholdDeg": sc.assist.counterAccelDirectionThresholdDeg,
             "assist.counterAccelTimeS": sc.assist.counterAccelTimeS,
             "assist.counterAccelMinSpeedMps": sc.assist.counterAccelMinSpeedMps,
+
+            // Reverse zone (locked — not yet implemented)
+            "assist.reverseZoneAngleDeg": 0,
 
             // Mass scaling exponents
             "massScaling.thrustForwardN.exp": sc.massScaling.thrustForwardN.exp ?? 0,

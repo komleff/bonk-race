@@ -530,7 +530,7 @@ function ParamSlider({
                     />
                 </div>
                 {tooltipOpen && def.tooltip && (
-                    <div class="lab-param-tooltip">{def.tooltip}</div>
+                    <div class="lab-param-tooltip">{def.lockTooltip || def.tooltip}</div>
                 )}
             </div>
         );
