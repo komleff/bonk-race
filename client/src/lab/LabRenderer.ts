@@ -8,6 +8,7 @@
 import type { SandboxState } from "./BonkLab";
 import type { LabInputState } from "./LabInput";
 import type { ArenaZone } from "@bonk-race/shared";
+import { drawFinishLine } from "../rendering/track";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -213,17 +214,9 @@ export class LabRenderer {
         ctx.fillStyle = "#22cc44";
         ctx.fillText("START", sp.x, sp.y - markerRadius - fontSize * 0.8);
 
-        // Finish — checkered flag at top
+        // Finish — checkered line at top (same style as raceMain)
         const fp = state.arena.finishPoint;
-        ctx.strokeStyle = "#ffcc00";
-        ctx.lineWidth = lw;
-        ctx.setLineDash([6 / this.scale, 4 / this.scale]);
-        ctx.beginPath();
-        ctx.arc(fp.x, fp.y, markerRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.fillStyle = "#ffcc00";
-        ctx.fillText("FINISH", fp.x, fp.y - markerRadius - fontSize * 0.8);
+        drawFinishLine(ctx, fp.x, fp.y, state.arena.width * 0.6);
     }
 
     // ── Layer: Walls ─────────────────────────────────────────────────────────

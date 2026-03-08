@@ -180,8 +180,9 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
     // Store defaults snapshot (taken once on mount)
     const [defaults] = useState<Record<string, number | boolean>>(() => ({ ...lab.params }));
 
-    // Seed state
+    // Seed & density state
     const [seed, setSeed] = useState(42);
+    const [density, setDensity] = useState(1.0);
 
     // Timer — poll elapsed time from lab state
     const [elapsed, setElapsed] = useState(0);
@@ -247,19 +248,32 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
             const v = parseInt((e.target as HTMLInputElement).value, 10);
             if (!isNaN(v)) {
                 setSeed(v);
-                lab.regenerateArena(v, 1.0);
+                lab.regenerateArena(v, density);
                 lab.reset();
             }
         },
-        [lab],
+        [lab, density],
     );
 
     const handleRandomSeed = useCallback(() => {
         const newSeed = Math.floor(Math.random() * 999999);
         setSeed(newSeed);
-        lab.regenerateArena(newSeed, 1.0);
+        lab.regenerateArena(newSeed, density);
         lab.reset();
-    }, [lab]);
+    }, [lab, density]);
+
+    // ── Density ──
+    const handleDensityChange = useCallback(
+        (e: Event) => {
+            const v = parseFloat((e.target as HTMLInputElement).value);
+            if (!isNaN(v)) {
+                setDensity(v);
+                lab.regenerateArena(seed, v);
+                lab.reset();
+            }
+        },
+        [lab, seed],
+    );
 
     // ── Reset params to defaults ──
     const handleResetParams = useCallback(() => {
@@ -342,6 +356,25 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
                     <button class="lab-tb-btn lab-tb-btn--small" onClick={handleRandomSeed}>
                         Rnd
                     </button>
+                </div>
+
+                {/* Density */}
+                <div class="lab-tb-seed-group">
+                    <span class="lab-tb-seed-label" title="Плотность объектов на карте (0.1 – 3.0)">
+                        Плотность:
+                    </span>
+                    <input
+                        type="range"
+                        min="0.1"
+                        max="3.0"
+                        step="0.1"
+                        value={density}
+                        onInput={handleDensityChange}
+                        style={{ width: "80px" }}
+                    />
+                    <span style={{ minWidth: "28px", textAlign: "center", fontSize: "12px" }}>
+                        {density.toFixed(1)}
+                    </span>
                 </div>
 
                 <div class="lab-tb-sep" />
