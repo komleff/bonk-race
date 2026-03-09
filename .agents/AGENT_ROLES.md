@@ -197,7 +197,7 @@ echo '{"version": "0.8.7"}' > version.json && npm run sync-version
 **Критичные файлы для анализа:**
 - `.memory_bank/activeContext.md` — текущее состояние
 - `.memory_bank/systemPatterns.md` — архитектурные паттерны
-- `docs/gdd/` — игровой дизайн (`BonkRace-GDD-v3_0.md`)
+- `docs/gdd/` — игровой дизайн (`GDD-index.md`)
 - `docs/soft-launch/` — требования Soft Launch
 - `TECH_DEBT.md` — известные проблемы
 
@@ -647,7 +647,7 @@ EOF
    - ✅ Схема GameState согласована
 
 4. **GDD соответствие (P2):**
-   - ✅ Механика соответствует `docs/gdd/` (версия 3.0)
+   - ✅ Механика соответствует `docs/gdd/` (версия 4.0)
    - ✅ Формулы из `shared/src/formulas.ts` используются корректно
 
 5. **Соответствие утверждённому стеку (P1):**
@@ -859,7 +859,7 @@ room.send("move", { x: player.x, y: player.y });
 
 - **Beads Documentation:** https://github.com/steveyegge/beads/tree/main/docs
 - **Project Memory Bank:** `.memory_bank/` (локально)
-- **GDD v3.0:** `docs/gdd/` (локально)
+- **GDD v4.0:** `docs/gdd/` (локально)
 - **Architecture:** `docs/soft-launch/` (локально)
 - **Tech Stack:** `README.md`
 
@@ -877,7 +877,7 @@ room.send("move", { x: player.x, y: player.y });
 |--------|-------------|
 | **Beads** | Система управления задачами через CLI (`bd`), интегрированная с Git. |
 | **Детерминизм** | Свойство симуляции давать идентичный результат при одинаковых входных данных. |
-| **GDD** | Game Design Document — документ игрового дизайна (версия 3.0). |
+| **GDD** | Game Design Document — документ игрового дизайна (версия 4.0). |
 | **Handoff** | Передача контекста между сессиями работы. |
 | **Issue-id** | Уникальный идентификатор задачи в Beads (например, `bonk-race-abc`). |
 | **Landing the Plane** | Протокол корректного завершения сессии с обязательным `git push`. |
