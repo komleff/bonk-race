@@ -35,4 +35,4 @@ export type {
 } from "./collisions";
 
 export { generateArena } from "./arenaGenerator";
-export type { Arena, ArenaConfig, ArenaObject, ArenaZone } from "./arenaGenerator";
+export type { Arena, ArenaConfig, ArenaObject, ArenaOrb, ArenaZone } from "./arenaGenerator";
