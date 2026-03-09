@@ -252,7 +252,7 @@ export class BonkLab {
         // BonkLab-override defaults (TZ v1.2 §A1)
         this.slimeConfig.geometry.baseRadiusM = 20;
         this.worldPhysics.widthM = 800;
-        this.worldPhysics.heightM = 5120;
+        this.worldPhysics.heightM = 10120;
 
         // Build flat params from balance.json defaults + overrides
         this.params = this.buildFlatParams();
@@ -333,7 +333,7 @@ export class BonkLab {
             {
                 seed,
                 widthM: this.worldPhysics.widthM ?? 800,
-                heightM: this.worldPhysics.heightM ?? 5120,
+                heightM: this.worldPhysics.heightM ?? 10120,
                 objectDensity: density,
                 pillarRadius: (this.params["arena.pillarRadius"] as number) ?? baseRadius,
                 spikeRadius: (this.params["arena.spikeRadius"] as number) ?? baseRadius,
@@ -1025,7 +1025,7 @@ export class BonkLab {
 
             // World physics
             "worldPhysics.widthM": wp.widthM ?? 800,
-            "worldPhysics.heightM": wp.heightM ?? 5120,
+            "worldPhysics.heightM": wp.heightM ?? 10120,
             "worldPhysics.linearDragK": wp.linearDragK,
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
