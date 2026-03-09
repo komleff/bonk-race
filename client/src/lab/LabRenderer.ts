@@ -146,6 +146,19 @@ export class LabRenderer {
             this.drawDeathMessage(ctx, state, w, h);
         }
 
+        // ── Post-respawn "Go!" overlay (screen-space) ──
+        if (state.respawnCountdown > 0) {
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.font = "bold 64px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            const goAlpha = Math.min(1, state.respawnCountdown / DEATH_FREEZE_S * 2);
+            ctx.fillStyle = `rgba(255, 255, 100, ${goAlpha})`;
+            ctx.fillText("Go!", w / 2, h / 2);
+            ctx.restore();
+        }
+
         // ── Finish overlay (screen-space) ──
         if (state.finished) {
             this.drawFinishOverlay(ctx, state, w, h);
@@ -202,7 +215,8 @@ export class LabRenderer {
             ctx.fillStyle = color;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(zone.type.toUpperCase(), zone.x, zone.y);
+            const ZONE_LABELS: Record<string, string> = { ice: "Лёд", mud: "Грязь", turbo: "Турбо" };
+            ctx.fillText(ZONE_LABELS[zone.type] ?? zone.type, zone.x, zone.y);
         }
     }
 

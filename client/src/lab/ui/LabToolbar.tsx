@@ -191,8 +191,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
         injectStyles("lab-toolbar-styles", toolbarCss);
     }, []);
 
-    // Store defaults snapshot (taken once on mount)
-    const [defaults] = useState<Record<string, number | boolean>>(() => ({ ...lab.params }));
+    // True defaults (balance.json + BonkLab overrides, before startup preset)
+    const [defaults] = useState<Record<string, number | boolean>>(() => lab.getDefaults());
 
     // Active preset tracking (-1 = Custom, index = preset)
     const [activePreset, setActivePreset] = useState(2);
@@ -300,13 +300,15 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
 
     // ── Reset params to defaults ──
     const handleResetParams = useCallback(() => {
+        // Reset orbDensityManual before applying defaults
+        lab.resetOrbDensityManual();
         for (const [key, val] of Object.entries(defaults)) {
             lab.updateParams(key, val);
         }
         // Sync toolbar density from restored defaults
         const restoredDensity = (defaults["arena.objectDensity"] as number) ?? 5.0;
         setDensity(restoredDensity);
-        setActivePreset(-1);
+        setActivePreset(1); // "Slime Arena" = true defaults
         lab.reset();
         onParamsChanged?.();
     }, [lab, defaults, onParamsChanged]);
@@ -319,6 +321,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
     // ── Import (full config — applies all params from JSON) ──
     const handleImport = useCallback(
         (data: Record<string, number | boolean>) => {
+            // Reset orbDensityManual before batch-applying imported params
+            lab.resetOrbDensityManual();
             for (const [key, val] of Object.entries(data)) {
                 // Only apply keys that exist in current params (ignore unknown keys)
                 if (key in lab.params && (typeof val === "number" || typeof val === "boolean")) {
@@ -342,6 +346,9 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
             if (isNaN(idx) || idx < 0) return;
 
             const preset = PRESETS[idx];
+
+            // Reset orbDensityManual before batch-applying params
+            lab.resetOrbDensityManual();
 
             // First reset all params to defaults
             for (const [key, val] of Object.entries(defaults)) {

@@ -98,6 +98,7 @@ export interface SandboxState {
     deathX: number;
     deathY: number;
     deathDistanceM: number;  // distance at moment of death (for death message)
+    respawnCountdown: number; // post-respawn "Go!" freeze timer
 
     // Finish state
     finished: boolean;
@@ -228,6 +229,8 @@ export class BonkLab {
     private deathX = 0;
     private deathY = 0;
     private deathDistanceM = 0;
+    /** Post-respawn "Go!" countdown (0.8s freeze after respawn) */
+    private respawnCountdown = 0;
 
     // Finish state
     private finished = false;
@@ -239,6 +242,9 @@ export class BonkLab {
     private orbs: SandboxOrb[] = [];
     /** Flag: user manually set orb density (disables auto-sync) */
     private orbDensityManual = false;
+
+    /** True defaults (balance.json + BonkLab overrides, before any startup preset) */
+    private readonly trueDefaults: Record<string, number | boolean>;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -256,9 +262,11 @@ export class BonkLab {
 
         // Build flat params from balance.json defaults + overrides
         this.params = this.buildFlatParams();
+        // Snapshot true defaults before any startup preset is applied
+        this.trueDefaults = { ...this.params };
 
-        // Generate initial arena
-        this.arena = this.buildArena(42, 1.0);
+        // Generate initial arena (use lastDensity to match UI default)
+        this.arena = this.buildArena(42, this.lastDensity);
 
         // Initialize orbs from arena
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
@@ -316,10 +324,14 @@ export class BonkLab {
         this.deathTimer = 0;
         this.deathX = 0;
         this.deathY = 0;
+        this.respawnCountdown = 0;
         this.finished = false;
         this.finishTime = 0;
         this.isNewRecord = false;
+        this.deathDistanceM = 0;
         // bestTime persists across resets (record tracking)
+        // Reset orb density auto-sync (user didn't manually set it via reset)
+        this.orbDensityManual = false;
         // Reset orbs to initial state from arena seed
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
         console.log("[BonkLab] state reset");
@@ -428,11 +440,17 @@ export class BonkLab {
         return Math.max(0, Math.min(1, this.computeDistance() / total));
     }
 
-    /** Recalculate orb density from player mass/radius */
+    /** Recalculate orb density from player mass/radius and update existing orb masses */
     private autoSyncOrbDensity(): void {
         const r = this.slimeConfig.geometry.baseRadiusM;
         const density = this.mass / (Math.PI * r * r);
         this.params["orbs.density"] = density;
+        // Update masses of existing live orbs to reflect new density
+        for (const orb of this.orbs) {
+            if (orb.alive) {
+                orb.mass = density * Math.PI * orb.radius * orb.radius;
+            }
+        }
     }
 
     /** Sync zone slider values into arena zone objects */
@@ -484,12 +502,23 @@ export class BonkLab {
             deathX: this.deathX,
             deathY: this.deathY,
             deathDistanceM: this.deathDistanceM,
+            respawnCountdown: this.respawnCountdown,
 
             finished: this.finished,
             finishTime: this.finishTime,
             bestTime: this.bestTime,
             isNewRecord: this.isNewRecord,
         };
+    }
+
+    /** Returns true defaults (balance.json + BonkLab overrides, before startup preset) */
+    getDefaults(): Record<string, number | boolean> {
+        return this.trueDefaults;
+    }
+
+    /** Reset orbDensityManual flag (called before batch reset/preset application) */
+    resetOrbDensityManual(): void {
+        this.orbDensityManual = false;
     }
 
     setInput(x: number, y: number, magnitude: number): void {
@@ -561,6 +590,17 @@ export class BonkLab {
                 this.correctionFx = 0;
                 this.correctionFy = 0;
                 this.currentZone = null;
+                // Start "Go!" countdown (TZ v1.2 §A4: 0.8s freeze after respawn)
+                this.respawnCountdown = DEATH_FREEZE_S;
+            }
+            return;
+        }
+
+        // Post-respawn "Go!" freeze — wait before allowing input
+        if (this.respawnCountdown > 0) {
+            this.respawnCountdown -= dt;
+            if (this.respawnCountdown <= 0) {
+                this.respawnCountdown = 0;
             }
             return;
         }
@@ -811,12 +851,22 @@ export class BonkLab {
         // ── 6. Orb physics ──
         this.tickOrbs(dt, body, wallBounds, collisionConfig);
 
-        // ── 7. Finish line detection (touch checkered strip) ──
-        // Strip is centered at finishPoint.x with width = arena.width * 0.6
+        // ── 7. Update elapsed time (before finish check so finishTime includes this tick) ──
+        this.elapsedTime += dt;
+
+        // ── 8. Finish line detection (circle-vs-rect with checkered strip) ──
+        // Strip: centered at finishPoint, width = arena.width * 0.6, height = ROWS * CELL = 24
+        const FINISH_STRIP_HALF_H = 12; // 2 rows × 12px cell / 2
         const finishHalfW = this.arena.width * 0.3;
-        const inFinishX = this.x + radius > this.arena.finishPoint.x - finishHalfW
-            && this.x - radius < this.arena.finishPoint.x + finishHalfW;
-        if (!this.finished && inFinishX && this.y - radius <= this.arena.finishPoint.y) {
+        const fpx = this.arena.finishPoint.x;
+        const fpy = this.arena.finishPoint.y;
+        // Circle-vs-AABB: closest point on rect to circle center
+        const closestX = Math.max(fpx - finishHalfW, Math.min(this.x, fpx + finishHalfW));
+        const closestY = Math.max(fpy - FINISH_STRIP_HALF_H, Math.min(this.y, fpy + FINISH_STRIP_HALF_H));
+        const distX = this.x - closestX;
+        const distY = this.y - closestY;
+        const touchesStrip = (distX * distX + distY * distY) <= radius * radius;
+        if (!this.finished && touchesStrip) {
             this.finished = true;
             this.finishTime = this.elapsedTime;
             this.isNewRecord = this.bestTime === 0 || this.elapsedTime < this.bestTime;
@@ -824,11 +874,6 @@ export class BonkLab {
                 this.bestTime = this.elapsedTime;
             }
             return; // freeze simulation
-        }
-
-        // ── 8. Update elapsed time (only if not finished) ──
-        if (!this.finished) {
-            this.elapsedTime += dt;
         }
     }
 
@@ -842,6 +887,7 @@ export class BonkLab {
         const dragK = this.worldPhysics.linearDragK;
         const spikeKill = this.params["orbs.spikeKill"] as boolean ?? true;
         const restitution = this.worldPhysics.restitution;
+        const passageRestitution = (this.params["worldPhysics.passageRestitution"] as number) ?? restitution * 0.5;
         const ORB_DEATH_DURATION = 0.5; // seconds
 
         // 1. Drag + position integration for each live orb
@@ -886,7 +932,8 @@ export class BonkLab {
                         x: obs.x, y: obs.y, radius: obs.radius,
                         type: obs.type === "passage" ? "pillar" : (obs.type as "pillar" | "spike" | "wall"),
                     };
-                    const collided = resolveCircleStaticCollision(ob, staticObs, restitution, collisionConfig);
+                    const obsRestitution = obs.type === "passage" ? passageRestitution : restitution;
+                    const collided = resolveCircleStaticCollision(ob, staticObs, obsRestitution, collisionConfig);
                     if (collided && obs.type === "spike") spikeHit[i] = true;
                 }
 

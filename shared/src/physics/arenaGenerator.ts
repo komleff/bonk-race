@@ -279,7 +279,8 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
             const r = rng.range(orbMinR, orbMaxR);
             const pt = randomPoint(rng, halfW, halfH, r + OBSTACLE_SPACING);
-            if (canPlace(pt.x, pt.y, r, obstacles, halfW, halfH, exclusionPoints)) {
+            if (canPlace(pt.x, pt.y, r, obstacles, halfW, halfH, exclusionPoints)
+                && !orbs.some(o => Math.hypot(o.x - pt.x, o.y - pt.y) < o.radius + r + OBSTACLE_SPACING)) {
                 const speed = rng.range(orbMinSpd, orbMaxSpd);
                 const angle = rng.range(0, Math.PI * 2);
                 const mass = orbDensity * Math.PI * r * r;
