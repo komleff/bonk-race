@@ -531,8 +531,13 @@ export class BonkLab {
         this.lastSeed = seed;
         this.lastDensity = density;
         this.arena = this.buildArena(seed, density);
+        // Preserve orbDensityManual across reset (regenerateArena is called from
+        // updateParams paths including manual orbs.density change — reset() must
+        // not clobber the flag that was just set)
+        const savedOrbDensityManual = this.orbDensityManual;
         // Full state reset (position, velocity, FA state, timers, orbs)
         this.reset();
+        this.orbDensityManual = savedOrbDensityManual;
         this.bestTime = 0; // reset record — track layout changed
         // Reapply zone overrides from current params to new arena zones
         for (const key of Object.keys(this.params)) {
