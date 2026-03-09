@@ -17,7 +17,19 @@ interface Preset {
 
 const PRESETS: Preset[] = [
     {
-        label: "По умолчанию",
+        label: "Ультралёгкий",
+        values: {
+            "mass": 20,
+            "propulsion.thrustForwardN": 80000,
+            "propulsion.thrustReverseN": 25000,
+            "propulsion.thrustLateralN": 30000,
+            "propulsion.turnTorqueNm": 60000,
+            "limits.speedLimitForwardMps": 500,
+            "worldPhysics.linearDragK": 0.001,
+        },
+    },
+    {
+        label: "Slime Arena",
         values: {}, // empty = reset to defaults
     },
     {
@@ -169,9 +181,11 @@ export interface LabToolbarProps {
     lab: BonkLab;
     /** Called when params are changed externally (reset/import/preset) so panel can sync */
     onParamsChanged?: () => void;
+    /** Incremented when user changes a param via LabPanel slider — marks preset as Custom */
+    externalParamChange?: number;
 }
 
-export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
+export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToolbarProps) {
     // Inject styles once
     useEffect(() => {
         injectStyles("lab-toolbar-styles", toolbarCss);
@@ -180,9 +194,19 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
     // Store defaults snapshot (taken once on mount)
     const [defaults] = useState<Record<string, number | boolean>>(() => ({ ...lab.params }));
 
+    // Active preset tracking (-1 = Custom, index = preset)
+    const [activePreset, setActivePreset] = useState(2);
+
+    // When LabPanel changes a param, mark preset as Custom
+    useEffect(() => {
+        if (externalParamChange !== undefined && externalParamChange > 0) {
+            setActivePreset(-1);
+        }
+    }, [externalParamChange]);
+
     // Seed & density state
     const [seed, setSeed] = useState(42);
-    const [density, setDensity] = useState(1.0);
+    const [density, setDensity] = useState(5.0);
 
     // Timer — poll elapsed time from lab state
     const [elapsed, setElapsed] = useState(0);
@@ -222,8 +246,8 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
         lab.reset();
         setElapsed(0);
 
-        // 3-2-1-GO countdown
-        const steps = ["3", "2", "1", "GO!"];
+        // Quick "Go!" countdown (TZ v1.2 §A4)
+        const steps = ["Go!"];
         let i = 0;
         setCountdown(steps[i]);
 
@@ -267,9 +291,11 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
             if (!isNaN(v)) {
                 setDensity(v);
                 lab.updateParams("arena.objectDensity", v);
+                setActivePreset(-1);
+                onParamsChanged?.();
             }
         },
-        [lab],
+        [lab, onParamsChanged],
     );
 
     // ── Reset params to defaults ──
@@ -278,8 +304,9 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
             lab.updateParams(key, val);
         }
         // Sync toolbar density from restored defaults
-        const restoredDensity = (defaults["arena.objectDensity"] as number) ?? 1.0;
+        const restoredDensity = (defaults["arena.objectDensity"] as number) ?? 5.0;
         setDensity(restoredDensity);
+        setActivePreset(-1);
         lab.reset();
         onParamsChanged?.();
     }, [lab, defaults, onParamsChanged]);
@@ -302,6 +329,7 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
             if (typeof data["arena.objectDensity"] === "number") {
                 setDensity(data["arena.objectDensity"]);
             }
+            setActivePreset(-1);
             onParamsChanged?.();
         },
         [lab, onParamsChanged],
@@ -326,10 +354,9 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
             }
 
             // Sync toolbar density from restored/overridden value
-            setDensity((lab.params["arena.objectDensity"] as number) ?? 1.0);
+            setDensity((lab.params["arena.objectDensity"] as number) ?? 5.0);
+            setActivePreset(idx);
             onParamsChanged?.();
-            // Reset select to placeholder
-            (e.target as HTMLSelectElement).value = "-1";
         },
         [lab, defaults, onParamsChanged],
     );
@@ -366,13 +393,13 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
 
                 {/* Density */}
                 <div class="lab-tb-seed-group">
-                    <span class="lab-tb-seed-label" title="Плотность объектов на карте (0.1 – 10.0)">
+                    <span class="lab-tb-seed-label" title="Плотность объектов на карте (0.1 – 25.0)">
                         Плотность:
                     </span>
                     <input
                         type="range"
                         min="0.1"
-                        max="10.0"
+                        max="25.0"
                         step="0.1"
                         value={density}
                         onInput={handleDensityChange}
@@ -403,9 +430,9 @@ export function LabToolbar({ lab, onParamsChanged }: LabToolbarProps) {
                 <div class="lab-tb-sep" />
 
                 {/* Presets */}
-                <select class="lab-tb-select" onChange={handlePreset}>
-                    <option value="-1" selected>
-                        Пресеты...
+                <select class="lab-tb-select" value={activePreset} onChange={handlePreset}>
+                    <option value={-1}>
+                        {activePreset === -1 ? "Custom" : "Пресеты..."}
                     </option>
                     {PRESETS.map((p, i) => (
                         <option key={i} value={i}>

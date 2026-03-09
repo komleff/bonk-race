@@ -32,8 +32,24 @@ const uiContainer = document.createElement("div");
 uiContainer.id = "lab-ui";
 root.appendChild(uiContainer);
 
+
 // Instantiate core systems
 const lab = new BonkLab(canvas);
+
+// Apply "Лёгкий и быстрый" preset on startup (TZ v1.2 §A2)
+const STARTUP_PRESET: Record<string, number | boolean> = {
+    "mass": 40,
+    "propulsion.thrustForwardN": 50000,
+    "propulsion.thrustReverseN": 18000,
+    "propulsion.thrustLateralN": 22000,
+    "propulsion.turnTorqueNm": 40000,
+    "limits.speedLimitForwardMps": 400,
+    "worldPhysics.linearDragK": 0.005,
+};
+for (const [key, val] of Object.entries(STARTUP_PRESET)) {
+    lab.updateParams(key, val);
+}
+
 const input = new LabInput(canvas);
 const renderer = new LabRenderer(canvas);
 const hud = new TelemetryHUD();
@@ -45,25 +61,39 @@ function onResize(): void {
 window.addEventListener("resize", onResize);
 onResize(); // initial sizing
 
-// Sync trigger — incremented when toolbar changes params externally
-let syncTrigger = 0;
+// Sync triggers for cross-component communication
+let syncTrigger = 0;        // toolbar → panel: re-read params
+let paramChangeCounter = 0; // panel → toolbar: mark preset as Custom
 
-function renderUI(): void {
-    syncTrigger++;
-    render(h(LabPanel, { lab, syncTrigger }), uiContainer);
+function renderToolbar(): void {
+    render(
+        h(LabToolbar, {
+            lab,
+            onParamsChanged: () => renderPanel(),
+            externalParamChange: paramChangeCounter,
+        }),
+        toolbarContainer,
+    );
 }
 
-// Render toolbar
-render(
-    h(LabToolbar, {
-        lab,
-        onParamsChanged: () => renderUI(),
-    }),
-    toolbarContainer,
-);
+function renderPanel(): void {
+    syncTrigger++;
+    render(
+        h(LabPanel, {
+            lab,
+            syncTrigger,
+            onParamChanged: () => {
+                paramChangeCounter++;
+                renderToolbar();
+            },
+        }),
+        uiContainer,
+    );
+}
 
-// Render parameter panel
-renderUI();
+// Initial render
+renderToolbar();
+renderPanel();
 
 // Expose to window for dev console access
 (window as unknown as Record<string, unknown>).__bonkLab = lab;

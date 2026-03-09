@@ -147,7 +147,7 @@ export type {
     IIntegratorResult,
 } from "./physics/integrator";
 export { generateArena } from "./physics/arenaGenerator";
-export type { Arena, ArenaConfig, ArenaObject, ArenaZone } from "./physics/arenaGenerator";
+export type { Arena, ArenaConfig, ArenaObject, ArenaOrb, ArenaZone } from "./physics/arenaGenerator";
 
 // ─── Track config (BonkRace — GDD §3.3, §4) ─────────────────────────────────
 export type {

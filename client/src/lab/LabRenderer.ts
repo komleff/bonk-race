@@ -18,7 +18,7 @@ const GRID_SPACING = 100; // metres
 
 const ZONE_COLORS: Record<ArenaZone["type"], string> = {
     ice: "#4488cc",
-    mud: "#8B5E3C",
+    mud: "#6B3A1F",
     turbo: "#ff8800",
 };
 const ZONE_ALPHA = 0.3;
@@ -36,6 +36,9 @@ const CHAR_FILL_OUTER = "#44aaff";
 const CHAR_FILL_INNER = "#2288dd";
 const CHAR_BORDER = "#ffffff";
 const CHAR_BORDER_WIDTH = 2;
+
+const ORB_COLOR = "#00cccc";
+const ORB_DEATH_COLOR = "#33ffff";
 
 const BEACON_COLOR = "#ffee44";
 const BEACON_RADIUS = 5;
@@ -112,9 +115,9 @@ export class LabRenderer {
         ctx.fillRect(0, 0, w, h);
 
         // ── Camera transform (world → screen) ──
-        // Character at center of canvas. Y-axis: world Y+ is down (canvas convention).
+        // Character offset to lower 65% of screen — racing game going upward needs more view ahead.
         const cx = w / 2;
-        const cy = h / 2;
+        const cy = h * 0.65;
         const s = this.scale;
 
         ctx.setTransform(s, 0, 0, s, cx - state.x * s, cy - state.y * s);
@@ -125,6 +128,7 @@ export class LabRenderer {
         this.drawSpawnAndFinish(ctx, state);
         this.drawWalls(ctx, state);
         this.drawObstacles(ctx, state);
+        this.drawOrbs(ctx, state);
         if (state.deathTimer > 0) {
             this.drawDeathEffect(ctx, state);
         } else {
@@ -136,6 +140,16 @@ export class LabRenderer {
         // ── Minimap (screen-space) ──
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.drawMinimap(ctx, state, w, h);
+
+        // ── Death distance message (screen-space) ──
+        if (state.deathTimer > 0) {
+            this.drawDeathMessage(ctx, state, w, h);
+        }
+
+        // ── Finish overlay (screen-space) ──
+        if (state.finished) {
+            this.drawFinishOverlay(ctx, state, w, h);
+        }
     }
 
     // ── Layer: Grid ──────────────────────────────────────────────────────────
@@ -256,7 +270,42 @@ export class LabRenderer {
         }
     }
 
-    // ── Layer: Character ─────────────────────────────────────────────────────
+    // ── Layer: Orbs ─────────────────────────────────────────────────────────
+
+    private drawOrbs(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        for (const orb of state.orbs) {
+            if (!orb.alive) {
+                // Death animation: expanding cyan ring
+                if (orb.deathProgress >= 0 && orb.deathProgress < 1) {
+                    const progress = orb.deathProgress;
+                    const ringRadius = orb.radius * (1 + progress * 3);
+                    const alpha = 1 - progress;
+
+                    ctx.beginPath();
+                    ctx.arc(orb.x, orb.y, ringRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(51, 255, 255, ${(alpha * 0.3).toFixed(2)})`;
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(51, 255, 255, ${alpha.toFixed(2)})`;
+                    ctx.lineWidth = 2 / this.scale;
+                    ctx.stroke();
+                }
+                continue;
+            }
+
+            // Live orb: filled cyan circle with subtle shadow
+            ctx.beginPath();
+            ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
+            ctx.fillStyle = ORB_COLOR;
+            ctx.globalAlpha = 0.8;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = ORB_DEATH_COLOR;
+            ctx.lineWidth = 1.5 / this.scale;
+            ctx.stroke();
+        }
+    }
+
+    // ── Layer: Character ─────────────────────────────────────────────────────────
 
     private drawCharacter(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const { x, y, radius, angle } = state;
@@ -323,6 +372,89 @@ export class LabRenderer {
             ctx.lineTo(deathX - sz, deathY + sz);
             ctx.stroke();
         }
+    }
+
+    /** Screen-space death message showing distance traveled */
+    private drawDeathMessage(
+        ctx: CanvasRenderingContext2D,
+        state: SandboxState,
+        w: number,
+        h: number,
+    ): void {
+        const progress = 1 - state.deathTimer / DEATH_FREEZE_S;
+        const alpha = Math.min(progress * 3, 1); // fade in quickly
+
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // Distance text
+        const dist = Math.round(state.deathDistanceM);
+        const pct = Math.round(state.progressPct * 100);
+        ctx.font = "bold 28px monospace";
+        ctx.fillStyle = `rgba(255, 80, 80, ${alpha.toFixed(2)})`;
+        ctx.fillText(`${dist} м  (${pct}%)`, w / 2, h * 0.38);
+
+        ctx.restore();
+    }
+
+    /** Screen-space finish overlay with time and record */
+    private drawFinishOverlay(
+        ctx: CanvasRenderingContext2D,
+        state: SandboxState,
+        w: number,
+        h: number,
+    ): void {
+        ctx.save();
+
+        // Semi-transparent backdrop
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const centerX = w / 2;
+        let y = h * 0.35;
+
+        // Title
+        ctx.font = "bold 36px monospace";
+        ctx.fillStyle = "#ffcc00";
+        ctx.fillText(state.isNewRecord ? "Финиш! Новый рекорд!" : "Финиш!", centerX, y);
+        y += 50;
+
+        // Time
+        const mins = Math.floor(state.finishTime / 60);
+        const secs = state.finishTime % 60;
+        const timeStr = `${String(mins).padStart(2, "0")}:${secs.toFixed(2).padStart(5, "0")}`;
+        ctx.font = "bold 48px monospace";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(timeStr, centerX, y);
+        y += 50;
+
+        // Best time (if different from current)
+        if (state.bestTime > 0 && !state.isNewRecord) {
+            const bMins = Math.floor(state.bestTime / 60);
+            const bSecs = state.bestTime % 60;
+            const bestStr = `${String(bMins).padStart(2, "0")}:${bSecs.toFixed(2).padStart(5, "0")}`;
+            ctx.font = "20px monospace";
+            ctx.fillStyle = "#888888";
+            ctx.fillText(`Рекорд: ${bestStr}`, centerX, y);
+            y += 35;
+        }
+
+        // Distance
+        ctx.font = "20px monospace";
+        ctx.fillStyle = "#aaaaaa";
+        ctx.fillText(`${Math.round(state.distanceM)} м`, centerX, y);
+        y += 50;
+
+        // Restart hint
+        ctx.font = "18px monospace";
+        ctx.fillStyle = "#ffcc00";
+        ctx.fillText("Нажмите Restart для перезапуска", centerX, y);
+
+        ctx.restore();
     }
 
     // ── Layer: Beacon ────────────────────────────────────────────────────────
@@ -524,6 +656,17 @@ export class LabRenderer {
             ctx.globalAlpha = 1;
         }
 
+        // Orbs (small cyan dots)
+        for (const orb of state.orbs) {
+            if (!orb.alive) continue;
+            ctx.beginPath();
+            ctx.arc(toMX(orb.x), toMY(orb.y), Math.max(orb.radius * ms, 1.5), 0, Math.PI * 2);
+            ctx.fillStyle = ORB_COLOR;
+            ctx.globalAlpha = 0.7;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
         // Spawn marker (green)
         ctx.beginPath();
         ctx.arc(toMX(state.arena.spawnPoint.x), toMY(state.arena.spawnPoint.y), 3, 0, Math.PI * 2);
@@ -542,17 +685,18 @@ export class LabRenderer {
         ctx.fillStyle = "#44aaff";
         ctx.fill();
 
-        // Viewport rectangle
-        const vpHalfW = this.viewRange;
-        const vpHalfH = this.viewRange * (canvasH / canvasW);
+        // Viewport rectangle (asymmetric: camera places character at 65% from top)
+        const vpHalfW = canvasW / (2 * this.scale);
+        const vpFullH = canvasH / this.scale;
+        const vpTop = state.y - vpFullH * 0.65;
         ctx.strokeStyle = "rgba(255,255,255,0.5)";
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 2]);
         ctx.strokeRect(
             toMX(state.x - vpHalfW),
-            toMY(state.y - vpHalfH),
+            toMY(vpTop),
             vpHalfW * 2 * ms,
-            vpHalfH * 2 * ms,
+            vpFullH * ms,
         );
         ctx.setLineDash([]);
     }

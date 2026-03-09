@@ -12,7 +12,7 @@ import type { SandboxState } from "./BonkLab";
 const PAD = 10;
 const LINE_H = 20;
 const PANEL_W = 210;
-const PANEL_H = 7 * LINE_H + PAD * 2;
+const PANEL_H = 9 * LINE_H + PAD * 2;
 const FONT = "14px monospace";
 const CORNER_R = 6;
 
@@ -154,6 +154,25 @@ export class TelemetryHUD {
         // Row 7: Time
         this.drawLabel(ctx, labelX, rowY, "Время");
         this.drawValue(ctx, valueX, rowY, timeStr);
+        rowY += LINE_H;
+
+        // Row 8: Distance
+        this.drawLabel(ctx, labelX, rowY, "Дистанция");
+        this.drawValue(ctx, valueX, rowY, `${Math.round(state.distanceM)} м`);
+        rowY += LINE_H;
+
+        // Row 9: Progress bar
+        this.drawLabel(ctx, labelX, rowY, "Прогресс");
+        const pctText = `${Math.round(state.progressPct * 100)}%`;
+        this.drawValue(ctx, valueX - 60, rowY, pctText);
+        const pBarX = valueX - 50;
+        const pBarW = 40;
+        const pBarH = 8;
+        const pBarY = rowY + 6;
+        ctx.fillStyle = COL_BAR_BG;
+        ctx.fillRect(pBarX, pBarY, pBarW, pBarH);
+        ctx.fillStyle = "#42a5f5";
+        ctx.fillRect(pBarX, pBarY, pBarW * Math.min(state.progressPct, 1), pBarH);
 
         ctx.restore();
     }

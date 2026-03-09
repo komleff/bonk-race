@@ -11,7 +11,7 @@ export interface ArenaConfig {
     seed: number;
     widthM: number;
     heightM: number;
-    /** Object count multiplier (0.1 – 40.0) */
+    /** Object count multiplier (0.1 – 25.0) */
     objectDensity: number;
     /** Configurable obstacle radii (optional, defaults to constants) */
     pillarRadius?: number;
@@ -89,15 +89,15 @@ const SPAWN_EXCLUSION_RADIUS = 60;
 const ZONE_TYPES: ArenaZone["type"][] = ["ice", "mud", "turbo"];
 
 const ZONE_PARAMS: Record<ArenaZone["type"], Record<string, number>> = {
-    ice:   { frictionMultiplier: 0.3 },
-    mud: { speedMultiplier: 0.5, frictionMultiplier: 2.0 },
-    turbo: { speedMultiplier: 1.4 },
+    ice:   { frictionMultiplier: 0.1 },
+    mud: { speedMultiplier: 0.5, frictionMultiplier: 500 },
+    turbo: { accelBoost: 1000 },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function clampDensity(d: number): number {
-    return Math.max(0.1, Math.min(40.0, d));
+    return Math.max(0.1, Math.min(25.0, d));
 }
 
 function scaledCount(base: number, density: number): number {
