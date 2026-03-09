@@ -52,7 +52,7 @@
 |----------|-----------|----------|
 | **Seed** | Числовое поле + кнопка «Rnd» | Seed генератора. Ручной ввод или случайный. При смене — перегенерация. |
 | **Ширина карты** | Слайдер [200 … 5000] | `worldPhysics.widthM` (**[v1.2]** BonkLab default: 800 м, balance.json default: 1000 м) |
-| **Высота карты** | Слайдер [200 … 25000] | `worldPhysics.heightM` (**[v1.2]** BonkLab default: 10120 м, balance.json default: 1000 м. Максимум слайдера увеличен до 25000 м.) |
+| **Высота карты** | Слайдер [200 … 25000] | `worldPhysics.heightM` (**[v1.2]** BonkLab default: 10130 м, balance.json default: 1000 м. Максимум слайдера увеличен до 25000 м.) |
 | **Плотность объектов** | Слайдер [0.1 … 25.0] | Множитель количества препятствий и зон. **[v1.1]** Участвует в Export/Import через `arena.objectDensity`. **[v1.2]** Max увеличен до 25, default = 5.0 (было 1.0). |
 
 **[v1.2]** BonkLab переопределяет ряд значений из `balance.json` при инициализации (overrides применяются поверх balance.json, сам balance.json не меняется):
@@ -424,7 +424,7 @@ Spike contact → 0.8s freeze → respawn с полным сбросом FA-со
 11. **[v1.1] Export = полный конфиг.** `JSON.stringify(lab.params)` — все параметры, не только изменённые. Проще для round-trip.
 12. **[v1.1] Density в lab.params.** Ключ `arena.objectDensity` участвует в export/import/reset/preset.
 13. **[v1.1] syncTrigger вместо remount.** Toolbar-вызовы (reset/import/preset) не пересоздают Panel-компонент, а синхронизируют значения через prop.
-14. **[v1.2] BonkLab overrides.** Дефолты BonkLab отличаются от balance.json (высота 10120, ширина 800, baseRadius 20, density 5). Overrides применяются при инициализации, balance.json не модифицируется.
+14. **[v1.2] BonkLab overrides.** Дефолты BonkLab отличаются от balance.json (высота 10130, ширина 800, baseRadius 20, density 5). Overrides применяются при инициализации, balance.json не модифицируется.
 15. **[v1.2] Пресет «Лёгкий и быстрый» при старте.** BonkLab запускается с пресетом «Лёгкий и быстрый» вместо дефолтных значений.
 16. **[v1.2] Active preset tracking.** Dropdown показывает текущий пресет, ручное изменение параметра → «Custom». Cross-component sync panel↔toolbar.
 17. **[v1.2] slime → mud.** Полное переименование зоны по всем слоям. Цвет: `#6B3A1F`. HUD: «Грязь».
