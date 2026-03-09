@@ -5,8 +5,8 @@
 ## Текущее состояние (10 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `main` (после merge PR#9)
-**GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
+**Активная ветка:** `feat/gdd-v4-ugc` (ожидает merge)
+**GDD версия:** 4.0 (`docs/gdd/GDD-index.md`) — в PR #10
 **Версия:** 0.1.0 (релиз: BonkLab v1.2)
 
 ---
@@ -23,7 +23,8 @@
 | #6 | `feat/bonklab-v1` | BonkLab v1.0: physics sandbox | Merged |
 | #7 | `ci/deploy-lab-workflow` | CI: GitHub Pages deployment for BonkLab | Merged |
 | #8 | `fix/lab-pages-base` | Fix: base path for GitHub Pages | Merged |
-| #9 | `feat/bonklab-v1.2` | **BonkLab v1.2: orbs, finish, geometry, presets** | **APPROVED → ready to merge** |
+| #9 | `feat/bonklab-v1.2` | **BonkLab v1.2: orbs, finish, geometry, presets** | **Merged** |
+| #10 | `feat/gdd-v4-ugc` | **GDD v4.0: UGC, split docs, russify, PR review applied** | **In review → ready to merge** |
 
 ---
 
@@ -91,16 +92,22 @@
 
 ---
 
-## Следующие шаги (Sprint 3)
+## Следующие шаги
 
-1. Merge PR#5 (MVP loop) в main
-2. Sprint 3: BonkLab track editor (визуальное редактирование объектов)
-3. Sprint 3: `reverseZoneAngleDeg` — реализовать в движке
-4. Sprint 3: DevAuth flow (быстрое переключение профилей)
-5. Sprint 3: Вынести hardcoded константы в config
-6. Sprint 3: replayData — `Number.isFinite` валидация
-7. Sprint 3: idempotency для `/api/v1/runs/submit`
-8. CI/CD для bonk-race
+### Ближайшие (в этой сессии)
+
+1. Merge PR#10 (GDD v4.0) в main
+2. Merge PR#5 (MVP loop) в main, если готов
+
+### Sprint 3 и далее
+
+1. BonkLab track editor (визуальное редактирование объектов)
+2. `reverseZoneAngleDeg` — реализовать в движке
+3. DevAuth flow (быстрое переключение профилей)
+4. Вынести hardcoded константы в config
+5. replayData — `Number.isFinite` валидация
+6. idempotency для `/api/v1/runs/submit`
+7. CI/CD для bonk-race
 
 ---
 
