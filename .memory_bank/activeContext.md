@@ -6,7 +6,7 @@
 
 **Репозиторий:** `komleff/bonk-race`
 **Активная ветка:** `main` (после merge PR#9)
-**GDD версия:** 3.0 (`docs/gdd/BonkRace-GDD-v3_0.md`)
+**GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
 **Версия:** 0.1.0 (релиз: BonkLab v1.2)
 
 ---

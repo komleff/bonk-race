@@ -42,7 +42,7 @@
 
 | Файл | Содержание |
 |------|------------|
-| [BonkRace-GDD-v3_0.md](gdd/BonkRace-GDD-v3_0.md) | Game Design Document v3.0 |
+| [GDD-index.md](gdd/GDD-index.md) | Game Design Document v4.0 |
 | [GDD-Core.md](gdd/GDD-Core.md) | Ядро: блобы, масса, арена |
 | [GDD-Combat.md](gdd/GDD-Combat.md) | Боевая система |
 | [GDD-Arena.md](gdd/GDD-Arena.md) | Арена, зоны, объекты |

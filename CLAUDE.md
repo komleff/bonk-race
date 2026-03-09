@@ -88,6 +88,6 @@ bd close <id> --reason="..."
 
 - **Архитектура:** `docs/soft-launch/SlimeArena-Architecture-v4.2.5-Part1.md` (и Part2-4)
 - **Технический план:** `docs/soft-launch/TZ-SoftLaunch-v1.4.7.md`
-- **GDD:** `docs/gdd/` (BonkRace-GDD-v3_0.md)
+- **GDD:** `docs/gdd/GDD-index.md` (v4.0, разбит на суб-документы по доменам)
 - **Memory Bank:** `.memory_bank/`
 - **Роли агентов:** `.agents/AGENT_ROLES.md`

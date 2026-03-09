@@ -8,7 +8,7 @@
 - **Активная ветка**: `main` (после merge PR#9)
 - **Production:** BonkLab на GitHub Pages, основная игра не задеплоена
 - **Версия:** 0.1.0
-- **GDD версия**: v3.0 (`docs/gdd/BonkRace-GDD-v3_0.md`)
+- **GDD версия**: v4.0 (`docs/gdd/GDD-index.md`)
 
 ---
 
