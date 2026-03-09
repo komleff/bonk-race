@@ -24,15 +24,32 @@
 ## Ключевые механики
 
 - **Wall-thrust** — при скольжении о стену блоб получает ускорение вдоль неё
-- **Поверхности** — Slow (drag x3), Ice (drag x0.05), Boost (drag x0.3 + speed clamp)
+- **Поверхности** — Ice (минимальное трение), Mud (повышенное трение + замедление), Turbo (ускорение в направлении движения)
 - **Пикапы** — Nitro (рывок), Teleport (shortcut)
 - **Ghost-система** — replay предыдущей попытки отображается полупрозрачно
 - **Трасса дня** — seed-based, одна для всех игроков
 - **Медали** — Bronze / Silver / Gold / Author по времени финиша
 
-## Что переиспользуется из SlimeArena
+## BonkLab — Physics Sandbox
 
-Auth (Yandex, Telegram, VK, Dev), WalletService, ShopService, AdsService, Admin Dashboard, Platform Adapters, DB миграции 001-010, InputManager, GameLoopManager, SmoothingSystem.
+Dev-only инструмент для настройки физики движения. Отдельная страница `/lab`, ~50 параметров в реальном времени.
+
+**Возможности:**
+- 60Hz Newtonian physics (F=ma, semi-implicit Euler, Flight Assist)
+- Canvas 2D renderer: камера, векторы сил, минимап
+- TelemetryHUD: скорость, масса, FA-состояние, зона, дистанция, прогресс
+- 13 групп параметров: геометрия, тяга, лимиты, FA, зоны, орбы
+- 6 пресетов: Ультралёгкий, Лёгкий и быстрый, Slime Arena, Тяжёлый, Минимальный FA, Космос
+- Орбы — баллистические объекты, столкновения со всем, spike kill
+- Настраиваемая геометрия трассы (радиусы столбов, шипов, проходов)
+- Export/Import JSON, seed control, density slider
+- Финиш с рекордами и таймером
+
+```bash
+npm run dev:client    # http://localhost:5173/lab
+```
+
+Подробнее: [docs/BonkLab-Guide.md](docs/BonkLab-Guide.md)
 
 ## Технологический стек
 
@@ -44,8 +61,9 @@ Auth (Yandex, Telegram, VK, Dev), WalletService, ShopService, AdsService, Admin 
 ## Структура проекта
 
 - [client/](client/) — Веб-клиент (Vite + Preact + Canvas)
+  - [client/src/lab/](client/src/lab/) — BonkLab physics sandbox
 - [server/](server/) — Meta-server (Express REST API)
-- [shared/](shared/) — Общие типы, TrackConfig, RNG, mathUtils
+- [shared/](shared/) — Общие типы, TrackConfig, RNG, physics
 - [config/](config/) — Конфигурационные файлы
 - [admin-dashboard/](admin-dashboard/) — Админ-панель (Preact)
 - [docs/](docs/) — Документация, GDD, планы
@@ -68,6 +86,9 @@ cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts
 
 # Терминал 2: Клиент
 npm run dev:client    # http://localhost:5173
+
+# BonkLab (physics sandbox)
+# http://localhost:5173/lab
 ```
 
 ### Сборка
@@ -90,8 +111,7 @@ docker exec -i slime-pg psql -U bonk -d postgres -c "CREATE DATABASE bonk_race O
 ### Тестирование
 
 ```bash
-# Smoke test tracks API
-node server/tests/tracks-smoke.test.js
+npm run test    # determinism + orb-bite + arena-generation + tracks smoke
 ```
 
 ## API
@@ -101,6 +121,8 @@ node server/tests/tracks-smoke.test.js
 | `/api/v1/tracks/today` | GET | Трасса дня |
 | `/api/v1/tracks/list` | GET | Список всех трасс |
 | `/api/v1/tracks/:id` | GET | Конкретная трасса по ID |
+| `/api/v1/runs/submit` | POST | Отправка результата |
+| `/api/v1/ghosts` | GET | Ghost-replay данные |
 
 ## Docker
 
@@ -108,6 +130,10 @@ node server/tests/tracks-smoke.test.js
 |-----------|-----------|-------|
 | `bonk-race-app` | Meta-server + Client + Admin | 3000, 5173, 5175 |
 | `bonk-race-db` | PostgreSQL 16 + Redis 7 | 5432, 6379 |
+
+## Версия
+
+**v0.1.0** — BonkLab physics sandbox (Sprint 1b + Sprint 2)
 
 ---
 

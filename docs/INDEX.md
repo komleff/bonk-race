@@ -1,143 +1,91 @@
-# Навигация по документации Slime Arena
+# Навигация по документации Bonk Race
 
-> Актуально на: 2026-02-08 | Версия: v0.8.5
+> Актуально на: 2026-03-10 | Версия: v0.1.0
 
 ---
 
-## 🤖 Для ИИ-агентов (живая инфраструктура)
-
-Эти файлы — рабочий инструментарий. Читайте их перед началом работы.
+## Для ИИ-агентов (живая инфраструктура)
 
 | Что | Где | Назначение |
 |-----|-----|------------|
-| **Роли агентов** | [.agents/AGENT_ROLES.md](../.agents/AGENT_ROLES.md) | Каноничный документ: PM, Architect, Developer, Reviewer (v2.0) |
+| **Роли агентов** | [.agents/AGENT_ROLES.md](../.agents/AGENT_ROLES.md) | PM, Architect, Developer, Reviewer |
 | **Роль PM** | [.agents/PM_ROLE.md](../.agents/PM_ROLE.md) | Оркестрация, эскалация, цикл ревью |
-| **Арт-директор** | [.agents/ART_DIRECTOR_ROLE.md](../.agents/ART_DIRECTOR_ROLE.md) | Визуальный стиль «Sticker Pack 3D» |
-| **Шпаргалка ролей** | [.agents/HOW_TO_USE_AGENT_ROLES.md](../.agents/HOW_TO_USE_AGENT_ROLES.md) | Промпты для быстрой активации |
 | **Beads CLI** | [.beads/README.md](../.beads/README.md) | `bd create`, `bd show`, `bd sync` |
 | **Claude** | [CLAUDE.md](../CLAUDE.md) | Beads, архитектура, команды |
-| **Memory Bank** | [AGENTS.md](../AGENTS.md) | Точка входа для AI-моделей, правила Memory Bank |
-| **Агент** | [agent.md](../agent.md) | Режимы работы, обновление документации |
-| **Copilot** | [.github/copilot-instructions.md](../.github/copilot-instructions.md) | Паттерны симуляции, конфигурация, спрайты |
+| **Memory Bank** | [AGENTS.md](../AGENTS.md) | Точка входа для AI-моделей |
+| **Copilot** | [.github/copilot-instructions.md](../.github/copilot-instructions.md) | Паттерны симуляции, конфигурация |
 
 ### Memory Bank (`.memory_bank/`)
 
 | Файл | Назначение |
 |------|------------|
-| [activeContext.md](../.memory_bank/activeContext.md) | Текущее состояние, последние изменения |
-| [progress.md](../.memory_bank/progress.md) | Статус задач, контрольные точки |
+| [activeContext.md](../.memory_bank/activeContext.md) | Текущее состояние, PR-история, техдолг |
+| [progress.md](../.memory_bank/progress.md) | Статус спринтов, контрольные точки |
 | [systemPatterns.md](../.memory_bank/systemPatterns.md) | Архитектура, порядок систем |
 | [techContext.md](../.memory_bank/techContext.md) | Стек, инфраструктура, ограничения |
 | [productContext.md](../.memory_bank/productContext.md) | Бизнес-логика, UX |
 | [projectbrief.md](../.memory_bank/projectbrief.md) | Суть проекта, цели |
-| [modules/](../.memory_bank/modules/) | U2-визуализация, бой |
-| [ui_extension/](../.memory_bank/ui_extension/) | UI-компоненты, страницы |
 
 ---
 
-## 📋 Актуальная документация
+## Документация проекта
+
+### BonkLab (dev-only physics sandbox)
+
+| Файл | Содержание |
+|------|------------|
+| [BonkLab-Guide.md](BonkLab-Guide.md) | Руководство пользователя (~50 параметров, пресеты, export/import) |
+| [tz/BonkLab-TZ-v1.2.md](tz/BonkLab-TZ-v1.2.md) | Техническое задание v1.2 (орбы, финиш, геометрия, камера) |
+| [review-prompt-bonklab-v1.2.md](review-prompt-bonklab-v1.2.md) | Промпт для AI-ревью BonkLab v1.2 |
 
 ### Дизайн игры (`docs/gdd/`)
 
 | Файл | Содержание |
 |------|------------|
-| [GDD-Core.md](gdd/GDD-Core.md) | Ядро: слаймы, масса, арена |
+| [BonkRace-GDD-v3_0.md](gdd/BonkRace-GDD-v3_0.md) | Game Design Document v3.0 |
+| [GDD-Core.md](gdd/GDD-Core.md) | Ядро: блобы, масса, арена |
 | [GDD-Combat.md](gdd/GDD-Combat.md) | Боевая система |
-| [GDD-Abilities.md](gdd/GDD-Abilities.md) | Способности |
-| [GDD-Talents.md](gdd/GDD-Talents.md) | Таланты |
 | [GDD-Arena.md](gdd/GDD-Arena.md) | Арена, зоны, объекты |
-| [GDD-Chests.md](gdd/GDD-Chests.md) | Сундуки и лут |
 | [GDD-UI.md](gdd/GDD-UI.md) | Интерфейс |
 | [GDD-Glossary.md](gdd/GDD-Glossary.md) | Глоссарий терминов |
 
-### Архитектура (`docs/architecture/`)
+### Архитектура (`docs/soft-launch/`)
 
 | Файл | Содержание |
 |------|------------|
-| [data-flow.md](architecture/data-flow.md) | Поток данных клиент ↔ сервер |
-
-Полная архитектура v4.2.5 (4 части) → [docs/soft-launch/](soft-launch/)
-
-### Эксплуатация (`docs/operations/`)
-
-| Файл | Содержание |
-|------|------------|
-| [SERVER_SETUP.md](operations/SERVER_SETUP.md) | Настройка боевого сервера |
-| [SERVER_UPDATE.md](operations/SERVER_UPDATE.md) | Обновление, откат, добавление домена |
-| [backup-restore.md](operations/backup-restore.md) | Бэкапы и восстановление |
-| [AI_AGENT_GUIDE.md](operations/AI_AGENT_GUIDE.md) | Гайд для агентов по ops |
-| [AI-AGENTS-AUTOMATION.md](operations/AI-AGENTS-AUTOMATION.md) | Автоматизация через агентов |
-
-### Технические задания (`docs/meta-min/`)
-
-| Файл | Содержание |
-|------|------------|
-| [TZ-MetaGameplay-v1.9-Index.md](meta-min/TZ-MetaGameplay-v1.9-Index.md) | Мета-геймплей (индекс) |
-| [TZ-MetaGameplay-v1.9-Core.md](meta-min/TZ-MetaGameplay-v1.9-Core.md) | Мета: ядро |
-| [TZ-MetaGameplay-v1.9-Backend.md](meta-min/TZ-MetaGameplay-v1.9-Backend.md) | Мета: бэкенд |
-| [TZ-MetaGameplay-v1.9-Client.md](meta-min/TZ-MetaGameplay-v1.9-Client.md) | Мета: клиент |
-| [TZ-LeaderboardScreen-v1.6.md](meta-min/TZ-LeaderboardScreen-v1.6.md) | Таблица лидеров |
-| [TZ-StandaloneAdapter-OAuth-v1.9.md](meta-min/TZ-StandaloneAdapter-OAuth-v1.9.md) | OAuth-адаптер |
-| [TZ-PlatformAdapters-*.md](meta-min/) | Платформенные адаптеры |
-
-### Мониторинг (`docs/monitor/`)
-
-| Файл | Содержание |
-|------|------------|
-| [TZ-MON-v1_6-Index.md](monitor/TZ-MON-v1_6-Index.md) | ТЗ мониторинга (индекс) |
-| [TECH-DEBT-Monitoring-Dashboard.md](monitor/TECH-DEBT-Monitoring-Dashboard.md) | Техдолг дашборда |
+| [SlimeArena-Architecture-v4.2.5-Part1..4](soft-launch/) | Полная архитектура (4 части) |
+| [TZ-SoftLaunch-v1.4.7.md](soft-launch/TZ-SoftLaunch-v1.4.7.md) | Требования софт-лонча |
+| [architecture/data-flow.md](architecture/data-flow.md) | Поток данных клиент ↔ сервер |
 
 ### Релизы (`docs/releases/`)
 
 | Файл | Содержание |
 |------|------------|
-| [v0.8.4-local-test-report.md](releases/v0.8.4-local-test-report.md) | Тест-отчёт v0.8.4 |
-| [v0.8.1-test-report.md](releases/v0.8.1-test-report.md) | Тест-отчёт v0.8.1 |
-| [v0.7.3-release-notes.md](releases/v0.7.3-release-notes.md) | Релиз v0.7.3 |
-| [v0.7.0-release-notes.md](releases/v0.7.0-release-notes.md) | Релиз v0.7.0 |
+| [v0.1.0-release-notes.md](releases/v0.1.0-release-notes.md) | **BonkLab v0.1.0** — physics sandbox + orbs |
+| [v0.8.6-release-notes.md](releases/v0.8.6-release-notes.md) | SlimeArena v0.8.6 (legacy) |
 
-### Soft Launch (`docs/soft-launch/`)
-
-23 файла: архитектура v4.2.5, ТЗ мобильных контролов, A/B-тестирование, пуш-уведомления, UI-карты экранов. [Полный список →](soft-launch/)
-
-### Презентации (`docs/presentations/`)
+### Планы (`docs/plans/`)
 
 | Файл | Содержание |
 |------|------------|
-| [AI-Driven-Development-Report.md](presentations/AI-Driven-Development-Report.md) | Отчёт: 31 день, 83K строк |
-| [AI-Driven-Development-Plan.md](presentations/AI-Driven-Development-Plan.md) | План доклада v2.0 |
-| [AI-Native-Development-Report.md](presentations/AI-Native-Development-Report.md) | AI-Native отчёт |
+| [archive/sprint-2-bonklab-v1.2-plan.md](plans/archive/sprint-2-bonklab-v1.2-plan.md) | Sprint 2: BonkLab v1.2 (завершён) |
+| [archive/sprint-1-mvp-loop-plan.md](plans/archive/sprint-1-mvp-loop-plan.md) | Sprint 1: MVP loop (завершён) |
+| [archive/sprint-1b-bonklab-v1-spec.md](plans/archive/sprint-1b-bonklab-v1-spec.md) | Sprint 1b: BonkLab v1.0 spec (завершён) |
 
-### Автоматизация (Python) (`tools/`)
+### Эксплуатация (`docs/operations/`)
 
-| Файл | Назначение |
+| Файл | Содержание |
 |------|------------|
-| [pm_orchestrator.py](../tools/pm_orchestrator.py) | Review-fix-review цикл |
-| [consensus.py](../tools/consensus.py) | Консенсус 3+ APPROVED |
-| [gemini_reviewer.py](../tools/gemini_reviewer.py) | Gemini 2.5 Flash ревью |
+| [SERVER_SETUP.md](operations/SERVER_SETUP.md) | Настройка сервера |
+| [SERVER_UPDATE.md](operations/SERVER_UPDATE.md) | Обновление, откат |
+| [backup-restore.md](operations/backup-restore.md) | Бэкапы |
 
 ---
 
-## 📦 Архив (`docs/backlog/`)
-
-Устаревшие версии документов. Сохранены для истории, заменены актуальными.
-
-| Подпапка | Содержание |
-|----------|------------|
-| [pm/](backlog/pm/) | Старые PM-ROLE, ORCHESTRATION-PLAN, AGENT_ROLES_QUICKSTART, sprint-13-pm |
-| [reviews/](backlog/reviews/) | Артефакты ревью sprint-13 |
-| [sprints/](backlog/sprints/) | Завершённые спринты 14–21, мониторинг |
-| [versions/](backlog/versions/) | Технические снапшоты v0.6, v0.7, тест-планы |
-| Корень | Старые GDD v2.3–2.5, Architecture v1.4–3.3, Plans v1.7–3.3, ТЗ |
-
----
-
-## 📁 Корневые файлы
+## Корневые файлы
 
 | Файл | Назначение |
 |------|------------|
 | [README.md](../README.md) | Главный README проекта |
-| [CHANGELOG.md](../CHANGELOG.md) | История изменений |
-| [TODO.md](../TODO.md) | Текущие задачи |
-| [TECH_DEBT.md](../TECH_DEBT.md) | Технический долг |
 | [config/balance.json](../config/balance.json) | Баланс (единственный источник) |
+| [CLAUDE.md](../CLAUDE.md) | Инструкции для Claude Code |

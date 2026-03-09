@@ -2,12 +2,12 @@
 
 Текущее состояние проекта и фокус работы.
 
-## Текущее состояние (9 марта 2026)
+## Текущее состояние (10 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `feat/bonklab-v1` → PR #6, APPROVED, ready to merge
+**Активная ветка:** `main` (после merge PR#9)
 **GDD версия:** 3.0 (`docs/gdd/BonkRace-GDD-v3_0.md`)
-**Версия:** 0.1.0
+**Версия:** 0.1.0 (релиз: BonkLab v1.2)
 
 ---
 
@@ -15,55 +15,52 @@
 
 | PR | Ветка | Описание | Статус |
 |----|-------|---------|--------|
-| #1 | `race/init` | Shared package: TrackConfig, physics types, rng в shared | Merged |
-| #2 | `race/phase5-track` | Starter Circuit preset, tracks API, wall/surface physics, smoke test | Merged |
-| #3 | `fix/db-defaults-uuid` | Миграции UUID fix + bonk_race DB defaults | Merged |
-| #4 | `chore/rebrand-and-memory-bank` | Ребрендинг slime-arena → bonk-race, README | Merged |
-| #5 | `feat/vite-proxy-client-connect` | **Sprint 1 MVP: auth, submit, ghosts, vertical track** | **Open → ready to merge** |
-| #6 | `feat/bonklab-v1` | **BonkLab: dev-only physics sandbox** | **APPROVED → ready to merge** |
+| #1 | `race/init` | Shared package: TrackConfig, physics types, rng | Merged |
+| #2 | `race/phase5-track` | Starter Circuit, tracks API, wall/surface physics | Merged |
+| #3 | `fix/db-defaults-uuid` | UUID миграции fix, bonk_race DB defaults | Merged |
+| #4 | `chore/rebrand-and-memory-bank` | Ребрендинг slime-arena → bonk-race | Merged |
+| #5 | `feat/vite-proxy-client-connect` | Sprint 1: auth, submit, ghosts, vertical track | **Open → ready to merge** |
+| #6 | `feat/bonklab-v1` | BonkLab v1.0: physics sandbox | Merged |
+| #7 | `ci/deploy-lab-workflow` | CI: GitHub Pages deployment for BonkLab | Merged |
+| #8 | `fix/lab-pages-base` | Fix: base path for GitHub Pages | Merged |
+| #9 | `feat/bonklab-v1.2` | **BonkLab v1.2: orbs, finish, geometry, presets** | **APPROVED → ready to merge** |
 
 ---
 
-## Sprint 1a — MVP playable loop (ЗАВЕРШЁН, ожидает merge)
+## Sprint 2 — BonkLab v1.2 (ЗАВЕРШЁН 10 марта 2026)
 
-**PR:** #5 (`feat/vite-proxy-client-connect`)
-**Ревью пройдено:** GPT-5.3-Codex ✅, ChatGPT-5.4 ✅, Gemini 3.1 Pro ✅ (4 итерации)
-
-### Что реализовано
-Guest auth, submit results, ghost replays, medal/leaderboard, instant restart, vertical track "First Run", checkered finish line, camera lookahead, git hooks.
-
----
-
-## Sprint 1b — BonkLab physics sandbox (ЗАВЕРШЁН 9 марта 2026)
-
-**PR:** #6 (`feat/bonklab-v1`) — **APPROVED, ready to merge**
-**Ревью:** GPT-5.4 ✅, GPT-5.3-Codex ✅, Claude ✅, Internal Physics ✅, Internal Frontend ✅ (14 итераций)
+**PR:** #9 (`feat/bonklab-v1.2`) — 7 коммитов, 4 ревьюера (GPT-5 Codex, GPT-5.3-Codex, GPT-5.4, Claude Opus 4.6)
+**Итог:** 2 × APPROVED (Claude, GPT-5.3), 1 × CHANGES_REQUESTED с 1 остаточным P1 (GPT-5.4 — исправлен), 11 багов найдено и исправлено.
 
 ### Что реализовано
 
-| Компонент | Файл | Описание |
-|-----------|------|---------|
-| Simulation | `client/src/lab/BonkLab.ts` | 60Hz fixed-step, F=ma, FA, collisions |
-| Renderer | `client/src/lab/LabRenderer.ts` | Canvas 2D, camera follow, vectors, minimap |
-| TelemetryHUD | `client/src/lab/TelemetryHUD.ts` | Speed, angVel, mass, FA state, zone |
-| Input | `client/src/lab/LabInput.ts` | Mouse/touch input |
-| Panel | `client/src/lab/ui/LabPanel.tsx` | ~45 params, grouped, sliders + number inputs |
-| Toolbar | `client/src/lab/ui/LabToolbar.tsx` | Restart, seed, density, reset, export/import, presets |
-| Physics (shared) | `shared/src/physics/` | flightAssist, integrator, collisions, arenaGenerator |
-| RNG (shared) | `shared/src/rng.ts` | Deterministic generator |
+| Фича | Описание |
+|------|---------|
+| **Орбы** | Баллистические cyan-объекты: drag, collision (orb-orb, orb-player, orb-obstacle, orb-wall), spike kill с анимацией, детерминизм от seed |
+| **Геометрия трассы** | `arena.pillarRadius`, `arena.spikeRadius`, `arena.passageRadius`, `arena.passageGap` — перегенерация при изменении |
+| **Финиш** | Circle-vs-AABB по обеим осям, оверлей с временем/дистанцией, best time tracking |
+| **Камера** | Персонаж на 65% от верха экрана |
+| **Прогресс и дистанция** | HUD-телеметрия: метры, процент, прогресс-бар |
+| **Пресет-трекинг** | Dropdown с активным пресетом, «Custom» при ручном изменении |
+| **Пресет «Ультралёгкий»** | mass=20, thrust=80000, speedLimit=500, drag=0.001 |
+| **Rename slime → mud** | Полный rename: shared types, server, BonkLab, renderer, panel, HUD. Цвет: #6B3A1F |
+| **Turbo rework** | `speedMultiplier → accelBoost`, сила в направлении скорости |
+| **Смерть/респаун** | Сброс таймера, «Go!» overlay 0.8с с fade-out |
 
-### Ключевые решения
-- Separate Vite entry point (`/lab`), dev-only, не в production bundle
-- Physics в `shared/` — единый код для клиента, сервера и BonkLab
-- 60Hz (BonkLab) vs 30Hz (сервер) — комментарий в коде
-- Death/respawn: 0.8s freeze, full FA state reset
-- Passage restitution: отдельный параметр (default 0.5× main)
-- `reverseZoneAngleDeg`: locked в UI, не реализован в движке
-- Export/Import: full round-trip через `lab.params`
+### Ключевые исправления по ревью
+
+| Приоритет | Баг | Исправление |
+|-----------|-----|-------------|
+| P0 | Финиш-детекция — только по Y | Circle-vs-AABB с высотой полосы 24px |
+| P1 | Начальная арена density=1.0 vs UI 5.0 | `buildArena(42, this.lastDensity)` |
+| P1 | orbDensityManual залипал после reset/preset | `resetOrbDensityManual()` в reset/import/preset |
+| P1 | Auto-sync density не обновлял массы орбов | Пересчёт `orb.mass` для живых орбов |
+| P1 | Defaults snapshot после startup preset | `trueDefaults` до startup preset |
+| P1 | orbDensityManual терялся при regenerateArena | Save/restore вокруг reset() |
 
 ---
 
-## Известный техдолг (Sprint 2)
+## Известный техдолг (Sprint 3)
 
 | Приоритет | Файл | Проблема |
 |-----------|------|---------|
@@ -71,13 +68,14 @@ Guest auth, submit results, ghost replays, medal/leaderboard, instant restart, v
 | P2 | `server/src/meta/routes/runs.ts:43` | operationId от клиента не используется сервером |
 | P2 | `client/src/lab/BonkLab.ts` | Zone modifier 1-tick application lag (architectural) |
 | P2 | `client/src/lab/BonkLab.ts` | correctionPercent in static collisions always 1.0 |
-| P3 | `client/src/raceMain.ts:208` | `INPUT_THRUST_BLEND` hardcoded (нужен в config) |
-| P3 | `client/src/raceMain.ts:632` | `CAMERA_LOOKAHEAD_Y` hardcoded |
+| P2 | `client/src/lab/BonkLab.ts` | reverseZoneAngleDeg — не реализован в движке |
+| P2 | `client/src/lab/main.ts` ↔ `LabToolbar.tsx` | STARTUP_PRESET дублирует PRESETS[2].values |
+| P3 | `client/src/raceMain.ts:208` | `INPUT_THRUST_BLEND = 0.3` hardcoded |
+| P3 | `client/src/raceMain.ts:632` | `CAMERA_LOOKAHEAD_Y = -120` hardcoded |
 | P3 | `server/src/meta/routes/runs.ts:17` | `MAX_COINS_PER_RUN` hardcoded |
-| P3 | `server/src/meta/routes/runs.ts:108` | Ответ возвращает `coinsCollected` хотя монеты отложены |
-| P3 | `server/src/meta/routes/ghosts.ts:78` | Гостевые записи без `profiles` не участвуют в opponent ghost |
+| P3 | `server/src/meta/routes/ghosts.ts:78` | Гостевые без `profiles` — нет opponent ghost |
 | P3 | `client/src/lab/LabRenderer.ts` | Sub-pixel anti-aliasing blur on object edges |
-| P3 | `client/src/lab/` | Hardcoded физические константы — вынести в config |
+| P3 | `client/src/lab/` | Hardcoded физические константы → config |
 
 ---
 
@@ -87,22 +85,22 @@ Guest auth, submit results, ghost replays, medal/leaderboard, instant restart, v
 |-----------|------|--------|
 | Meta-server | :3000 | `cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts` |
 | Client (Vite) | :5173 | `npm run dev:client` |
+| BonkLab | :5173/lab | `npm run dev:client` → `/lab` |
 | PostgreSQL | :5432 | Docker `slime-pg` (БД `bonk_race`, user `bonk`) |
 | Redis | :6379 | Docker `slime-redis` |
 
 ---
 
-## Следующие шаги (после merge PR#5 и PR#6)
+## Следующие шаги (Sprint 3)
 
-1. Merge PR#5 и PR#6 в main
-2. Создать git tag `v0.1.0` (`git tag v0.1.0 && git push origin v0.1.0`)
-3. Sprint 2: BonkLab track editor (визуальное редактирование объектов трассы)
-4. Sprint 2: `reverseZoneAngleDeg` — реализовать в движке, разблокировать в UI
-5. Sprint 2: DevAuth flow (быстрое переключение профилей)
-6. Sprint 2: Вынести hardcoded константы в config
-7. Sprint 2: replayData — `Number.isFinite` валидация
-8. Sprint 2: idempotency для `/api/v1/runs/submit`
-9. CI/CD для bonk-race
+1. Merge PR#5 (MVP loop) в main
+2. Sprint 3: BonkLab track editor (визуальное редактирование объектов)
+3. Sprint 3: `reverseZoneAngleDeg` — реализовать в движке
+4. Sprint 3: DevAuth flow (быстрое переключение профилей)
+5. Sprint 3: Вынести hardcoded константы в config
+6. Sprint 3: replayData — `Number.isFinite` валидация
+7. Sprint 3: idempotency для `/api/v1/runs/submit`
+8. CI/CD для bonk-race
 
 ---
 
@@ -115,13 +113,12 @@ npm run build           # shared -> server -> client
 # Разработка
 cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts
 npm run dev:client      # http://localhost:5173
+# BonkLab: http://localhost:5173/lab
 
 # Тесты
-npm run test                              # все тесты
-node server/tests/tracks-smoke.test.js   # 41 passed
+npm run test            # determinism + orb-bite + arena-generation
 
 # Beads
 bd ready
 bd list --status=open
-bd show bonk-race-twu
 ```
