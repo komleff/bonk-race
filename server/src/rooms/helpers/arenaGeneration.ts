@@ -3,7 +3,7 @@ import {
     OBSTACLE_TYPE_SPIKES,
     ZONE_TYPE_NECTAR,
     ZONE_TYPE_ICE,
-    ZONE_TYPE_SLIME,
+    ZONE_TYPE_MUD,
     ZONE_TYPE_LAVA,
     ZONE_TYPE_TURBO,
     type MapSizeConfig,
@@ -227,7 +227,7 @@ export function generateZoneSeeds(
     const totalWeight =
         Math.max(0, weights.nectar) +
         Math.max(0, weights.ice) +
-        Math.max(0, weights.slime) +
+        Math.max(0, weights.mud) +
         Math.max(0, weights.lava) +
         Math.max(0, weights.turbo);
     const margin = radius + 10;
@@ -238,7 +238,7 @@ export function generateZoneSeeds(
         const entries: Array<[number, number]> = [
             [ZONE_TYPE_NECTAR, Math.max(0, weights.nectar)],
             [ZONE_TYPE_ICE, Math.max(0, weights.ice)],
-            [ZONE_TYPE_SLIME, Math.max(0, weights.slime)],
+            [ZONE_TYPE_MUD, Math.max(0, weights.mud)],
             [ZONE_TYPE_LAVA, Math.max(0, weights.lava)],
             [ZONE_TYPE_TURBO, Math.max(0, weights.turbo)],
         ];

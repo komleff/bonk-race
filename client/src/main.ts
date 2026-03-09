@@ -16,7 +16,7 @@ import {
     FLAG_RESPAWN_SHIELD,
     ZONE_TYPE_NECTAR,
     ZONE_TYPE_ICE,
-    ZONE_TYPE_SLIME,
+    ZONE_TYPE_MUD,
     ZONE_TYPE_LAVA,
     ZONE_TYPE_TURBO,
     OBSTACLE_TYPE_PILLAR,
@@ -2577,7 +2577,7 @@ async function connectToServer(playerName: string, classId: number) {
                 let color = "rgba(200, 200, 200, 0.3)";
                 if (zone.type === ZONE_TYPE_NECTAR) color = "rgba(200, 255, 140, 0.3)";
                 else if (zone.type === ZONE_TYPE_ICE) color = "rgba(120, 220, 255, 0.3)";
-                else if (zone.type === ZONE_TYPE_SLIME) color = "rgba(180, 80, 220, 0.3)";
+                else if (zone.type === ZONE_TYPE_MUD) color = "rgba(180, 80, 220, 0.3)";
                 else if (zone.type === ZONE_TYPE_LAVA) color = "rgba(255, 120, 50, 0.3)";
                 else if (zone.type === ZONE_TYPE_TURBO) color = "rgba(80, 160, 255, 0.3)";
                 
@@ -2893,7 +2893,7 @@ async function connectToServer(playerName: string, classId: number) {
                     } else if (zone.type === ZONE_TYPE_ICE) {
                         fill = "rgba(120, 220, 255, 0.16)";
                         stroke = "rgba(80, 180, 255, 0.55)";
-                    } else if (zone.type === ZONE_TYPE_SLIME) {
+                    } else if (zone.type === ZONE_TYPE_MUD) {
                         fill = "rgba(180, 80, 220, 0.16)";
                         stroke = "rgba(130, 50, 200, 0.6)";
                     } else if (zone.type === ZONE_TYPE_LAVA) {

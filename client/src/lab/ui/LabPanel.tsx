@@ -50,7 +50,7 @@ const PARAM_GROUPS: GroupDef[] = [
                 label: "Базовый радиус",
                 key: "geometry.baseRadiusM",
                 min: 3,
-                max: 30,
+                max: 40,
                 unit: "м",
                 tooltip:
                     "Радиус тела персонажа.",
@@ -370,7 +370,7 @@ const PARAM_GROUPS: GroupDef[] = [
                 label: "Высота карты",
                 key: "worldPhysics.heightM",
                 min: 200,
-                max: 10000,
+                max: 25000,
                 unit: "м",
                 tooltip:
                     "Высота игрового поля. Увеличьте для длинной трассы (старт внизу, финиш наверху).",
@@ -410,6 +410,95 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
+    // Track geometry
+    {
+        title: "Геометрия трассы",
+        params: [
+            {
+                label: "Радиус столбов",
+                key: "arena.pillarRadius",
+                min: 5, max: 100,
+                unit: "м",
+                tooltip: "Радиус серых препятствий-столбов",
+            },
+            {
+                label: "Радиус шипов",
+                key: "arena.spikeRadius",
+                min: 5, max: 100,
+                unit: "м",
+                tooltip: "Радиус красных шипованных препятствий",
+            },
+            {
+                label: "Радиус столба прохода",
+                key: "arena.passageRadius",
+                min: 5, max: 100,
+                unit: "м",
+                tooltip: "Радиус каждого столба в проходе",
+            },
+            {
+                label: "Зазор прохода",
+                key: "arena.passageGap",
+                min: 10, max: 200,
+                unit: "м",
+                tooltip: "Расстояние между поверхностями столбов прохода. Должен быть > диаметра персонажа.",
+            },
+        ],
+    },
+    // Orbs
+    {
+        title: "Орбы",
+        params: [
+            {
+                label: "Количество",
+                key: "orbs.count",
+                min: 0, max: 100,
+                unit: "шт.",
+                tooltip: "Количество орбов на арене. Независимо от плотности препятствий.",
+            },
+            {
+                label: "Плотность (физ.)",
+                key: "orbs.density",
+                min: 0.001, max: 10,
+                unit: "кг/м²",
+                tooltip: "Физическая плотность орбов. Масса = density × π × radius². Auto-sync с плотностью персонажа.",
+            },
+            {
+                label: "Мин. радиус",
+                key: "orbs.minRadius",
+                min: 2, max: 50,
+                unit: "м",
+                tooltip: "Минимальный радиус орба при генерации",
+            },
+            {
+                label: "Макс. радиус",
+                key: "orbs.maxRadius",
+                min: 2, max: 100,
+                unit: "м",
+                tooltip: "Максимальный радиус орба при генерации",
+            },
+            {
+                label: "Мин. скорость",
+                key: "orbs.minSpeed",
+                min: 0, max: 200,
+                unit: "м/с",
+                tooltip: "Минимальная начальная скорость орба",
+            },
+            {
+                label: "Макс. скорость",
+                key: "orbs.maxSpeed",
+                min: 0, max: 500,
+                unit: "м/с",
+                tooltip: "Максимальная начальная скорость орба",
+            },
+            {
+                label: "Гибнет от шипов",
+                key: "orbs.spikeKill",
+                min: 0, max: 1,
+                isBoolean: true,
+                tooltip: "Орб исчезает при контакте с шипом",
+            },
+        ],
+    },
     // 3.10 Zones
     {
         title: "Зоны",
@@ -422,25 +511,26 @@ const PARAM_GROUPS: GroupDef[] = [
                 tooltip: "Множитель трения на ледяной зоне.",
             },
             {
-                label: "Слизь: трение",
-                key: "zones.slime.frictionMultiplier",
+                label: "Грязь: трение",
+                key: "zones.mud.frictionMultiplier",
                 min: 0.5,
-                max: 10.0,
-                tooltip: "Множитель трения на слизи.",
+                max: 2000,
+                tooltip: "Множитель трения на грязи.",
             },
             {
-                label: "Слизь: скорость",
-                key: "zones.slime.speedMultiplier",
+                label: "Грязь: скорость",
+                key: "zones.mud.speedMultiplier",
                 min: 0.1,
                 max: 1.0,
-                tooltip: "Множитель скорости на слизи.",
+                tooltip: "Множитель скорости на грязи.",
             },
             {
-                label: "Турбо: скорость",
-                key: "zones.turbo.speedMultiplier",
-                min: 1.0,
-                max: 10.0,
-                tooltip: "Множитель скорости на турбо-зоне.",
+                label: "Турбо: ускорение",
+                key: "zones.turbo.accelBoost",
+                min: 50,
+                max: 10000,
+                unit: "м/с²",
+                tooltip: "Дополнительное ускорение в направлении движения на турбо-зоне.",
             },
         ],
     },
@@ -500,6 +590,9 @@ const PARAM_GROUPS: GroupDef[] = [
  */
 function autoStep(min: number, max: number): number {
     const range = max - min;
+    // If min is very small, use step that can represent it
+    if (min > 0 && min < 0.01) return 0.001;
+    if (min > 0 && min < 0.1) return 0.01;
     if (range <= 0.2) return 0.001;
     if (range <= 2) return 0.01;
     if (range <= 20) return 0.1;
@@ -678,9 +771,11 @@ export interface LabPanelProps {
     lab: BonkLab;
     /** Incremented externally (reset/import/preset) to trigger values sync */
     syncTrigger?: number;
+    /** Called when user manually changes a parameter via slider */
+    onParamChanged?: () => void;
 }
 
-export function LabPanel({ lab, syncTrigger }: LabPanelProps) {
+export function LabPanel({ lab, syncTrigger, onParamChanged }: LabPanelProps) {
     // Inject styles once
     useEffect(() => {
         injectStyles("lab-panel-styles", panelCss);
@@ -720,9 +815,12 @@ export function LabPanel({ lab, syncTrigger }: LabPanelProps) {
     const handleChange = useCallback(
         (key: string, val: number | boolean) => {
             lab.updateParams(key, val);
-            setValues((prev) => ({ ...prev, [key]: val }));
+            // After updateParams, some keys trigger side-effects (e.g. mass → auto-sync orb density).
+            // Re-read all params that may have changed.
+            setValues({ ...lab.params });
+            onParamChanged?.();
         },
-        [lab],
+        [lab, onParamChanged],
     );
 
     // On mobile, default panel hidden

@@ -20,7 +20,7 @@ export const FLAG_SHIELD_ACTIVE = 1 << 13;
 // ─── Zone types (SlimeArena legacy, kept for ArenaRoom) ──────────────────────
 export const ZONE_TYPE_NECTAR = 1;
 export const ZONE_TYPE_ICE = 2;
-export const ZONE_TYPE_SLIME = 3;
+export const ZONE_TYPE_MUD = 3;
 export const ZONE_TYPE_LAVA = 4;
 export const ZONE_TYPE_TURBO = 5;
 
