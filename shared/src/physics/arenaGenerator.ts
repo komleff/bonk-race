@@ -25,7 +25,7 @@ export interface ArenaObject {
 }
 
 export interface ArenaZone {
-    type: "ice" | "slime" | "turbo";
+    type: "ice" | "mud" | "turbo";
     x: number;
     y: number;
     radius: number;
@@ -63,11 +63,11 @@ const PLACEMENT_RETRIES = 30;
 const OBSTACLE_SPACING = 8;
 const SPAWN_EXCLUSION_RADIUS = 60;
 
-const ZONE_TYPES: ArenaZone["type"][] = ["ice", "slime", "turbo"];
+const ZONE_TYPES: ArenaZone["type"][] = ["ice", "mud", "turbo"];
 
 const ZONE_PARAMS: Record<ArenaZone["type"], Record<string, number>> = {
     ice:   { frictionMultiplier: 0.3 },
-    slime: { speedMultiplier: 0.5, frictionMultiplier: 2.0 },
+    mud: { speedMultiplier: 0.5, frictionMultiplier: 2.0 },
     turbo: { speedMultiplier: 1.4 },
 };
 

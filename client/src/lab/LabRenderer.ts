@@ -18,8 +18,8 @@ const GRID_SPACING = 100; // metres
 
 const ZONE_COLORS: Record<ArenaZone["type"], string> = {
     ice: "#4488cc",
-    slime: "#44aa44",
-    turbo: "#ccaa44",
+    mud: "#8B5E3C",
+    turbo: "#ff8800",
 };
 const ZONE_ALPHA = 0.3;
 

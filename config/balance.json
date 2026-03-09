@@ -590,14 +590,14 @@
     "typeWeights": {
       "nectar": 1,
       "ice": 1,
-      "slime": 1,
+      "mud": 1,
       "lava": 1,
       "turbo": 1
     },
     "lavaMinDistanceFromSpawn": 100,
     "nectar": { "massGainPctPerSec": 0.01 },
     "ice": { "frictionMultiplier": 0.3 },
-    "slime": { "speedMultiplier": 0.5, "frictionMultiplier": 2.0 },
+    "mud": { "speedMultiplier": 0.5, "frictionMultiplier": 2.0 },
     "lava": { "damagePctPerSec": 0.02, "scatterPct": 0.5, "scatterOrbCount": 6, "scatterSpeedMps": 60 },
     "turbo": { "speedMultiplier": 1.4 }
   },

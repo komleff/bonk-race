@@ -58,7 +58,7 @@ export {
     // Zone types (legacy)
     ZONE_TYPE_NECTAR,
     ZONE_TYPE_ICE,
-    ZONE_TYPE_SLIME,
+    ZONE_TYPE_MUD,
     ZONE_TYPE_LAVA,
     ZONE_TYPE_TURBO,
     // Obstacle types

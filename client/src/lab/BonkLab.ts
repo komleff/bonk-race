@@ -462,8 +462,8 @@ export class BonkLab {
         };
 
         // Apply zone effects to slowPct
-        if (this.currentZone === "slime") {
-            // slime zone slows the character
+        if (this.currentZone === "mud") {
+            // mud zone slows the character
             const zoneData = this.findCurrentZone();
             if (zoneData) {
                 faState.slowPct = 1 - (zoneData.params.speedMultiplier ?? 1);
@@ -556,7 +556,7 @@ export class BonkLab {
             if (zoneData) {
                 zoneFrictionMultiplier = zoneData.params.frictionMultiplier ?? 1;
             }
-        } else if (this.currentZone === "slime") {
+        } else if (this.currentZone === "mud") {
             const zoneData = this.findCurrentZone();
             if (zoneData) {
                 zoneFrictionMultiplier = zoneData.params.frictionMultiplier ?? 1;
@@ -767,8 +767,8 @@ export class BonkLab {
 
             // Zone defaults (from arenaGenerator)
             "zones.ice.frictionMultiplier": 0.3,
-            "zones.slime.frictionMultiplier": 2.0,
-            "zones.slime.speedMultiplier": 0.5,
+            "zones.mud.frictionMultiplier": 2.0,
+            "zones.mud.speedMultiplier": 0.5,
             "zones.turbo.speedMultiplier": 1.4,
         };
     }

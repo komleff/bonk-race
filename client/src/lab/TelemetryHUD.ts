@@ -40,7 +40,7 @@ const FA_LABELS: Record<string, string> = {
 const ZONE_LABELS: Record<string, string> = {
     "ice": "Лёд",
     "turbo": "Турбо",
-    "slime": "Слизь",
+    "mud": "Грязь",
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

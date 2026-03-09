@@ -82,7 +82,7 @@ export interface SafeZoneConfig {
 export interface ZoneTypeWeights {
     nectar: number;
     ice: number;
-    slime: number;
+    mud: number;
     lava: number;
     turbo: number;
 }
@@ -100,7 +100,7 @@ export interface ZonesConfig {
     ice: {
         frictionMultiplier: number;
     };
-    slime: {
+    mud: {
         speedMultiplier: number;
         frictionMultiplier: number;
     };
@@ -1239,7 +1239,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
         typeWeights: {
             nectar: 1,
             ice: 1,
-            slime: 1,
+            mud: 1,
             lava: 1,
             turbo: 1,
         },
@@ -1250,7 +1250,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
         ice: {
             frictionMultiplier: 0.3,
         },
-        slime: {
+        mud: {
             speedMultiplier: 0.5,
             frictionMultiplier: 2.0,
         },
@@ -1781,7 +1781,7 @@ export function resolveBalanceConfig(raw: unknown): ResolvedBalanceConfig {
     const zoneTypeWeights = isRecord(zones.typeWeights) ? zones.typeWeights : {};
     const zoneNectar = isRecord(zones.nectar) ? zones.nectar : {};
     const zoneIce = isRecord(zones.ice) ? zones.ice : {};
-    const zoneSlime = isRecord(zones.slime) ? zones.slime : {};
+    const zoneMud = isRecord(zones.mud) ? zones.mud : {};
     const zoneLava = isRecord(zones.lava) ? zones.lava : {};
     const zoneTurbo = isRecord(zones.turbo) ? zones.turbo : {};
     const worldMapSize = readNumber(world.mapSize, DEFAULT_BALANCE_CONFIG.world.mapSize, "world.mapSize");
@@ -2802,10 +2802,10 @@ export function resolveBalanceConfig(raw: unknown): ResolvedBalanceConfig {
                     DEFAULT_BALANCE_CONFIG.zones.typeWeights.ice,
                     "zones.typeWeights.ice"
                 ),
-                slime: readNumber(
-                    zoneTypeWeights.slime,
-                    DEFAULT_BALANCE_CONFIG.zones.typeWeights.slime,
-                    "zones.typeWeights.slime"
+                mud: readNumber(
+                    zoneTypeWeights.mud,
+                    DEFAULT_BALANCE_CONFIG.zones.typeWeights.mud,
+                    "zones.typeWeights.mud"
                 ),
                 lava: readNumber(
                     zoneTypeWeights.lava,
@@ -2837,16 +2837,16 @@ export function resolveBalanceConfig(raw: unknown): ResolvedBalanceConfig {
                     "zones.ice.frictionMultiplier"
                 ),
             },
-            slime: {
+            mud: {
                 speedMultiplier: readNumber(
-                    zoneSlime.speedMultiplier,
-                    DEFAULT_BALANCE_CONFIG.zones.slime.speedMultiplier,
-                    "zones.slime.speedMultiplier"
+                    zoneMud.speedMultiplier,
+                    DEFAULT_BALANCE_CONFIG.zones.mud.speedMultiplier,
+                    "zones.mud.speedMultiplier"
                 ),
                 frictionMultiplier: readNumber(
-                    zoneSlime.frictionMultiplier,
-                    DEFAULT_BALANCE_CONFIG.zones.slime.frictionMultiplier,
-                    "zones.slime.frictionMultiplier"
+                    zoneMud.frictionMultiplier,
+                    DEFAULT_BALANCE_CONFIG.zones.mud.frictionMultiplier,
+                    "zones.mud.frictionMultiplier"
                 ),
             },
             lava: {

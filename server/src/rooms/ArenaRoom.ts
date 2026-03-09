@@ -37,7 +37,7 @@ import {
     FLAG_LEVIATHAN,
     ZONE_TYPE_NECTAR,
     ZONE_TYPE_ICE,
-    ZONE_TYPE_SLIME,
+    ZONE_TYPE_MUD,
     ZONE_TYPE_LAVA,
     ZONE_TYPE_TURBO,
     OBSTACLE_TYPE_PILLAR,
@@ -1944,8 +1944,8 @@ export class ArenaRoom extends Room<GameState> {
         if (zone.type === ZONE_TYPE_TURBO) {
             return Math.max(0, this.balance.zones.turbo.speedMultiplier);
         }
-        if (zone.type === ZONE_TYPE_SLIME) {
-            return Math.max(0, this.balance.zones.slime.speedMultiplier);
+        if (zone.type === ZONE_TYPE_MUD) {
+            return Math.max(0, this.balance.zones.mud.speedMultiplier);
         }
         return 1;
     }
@@ -1956,8 +1956,8 @@ export class ArenaRoom extends Room<GameState> {
         if (zone.type === ZONE_TYPE_ICE) {
             return Math.max(0, this.balance.zones.ice.frictionMultiplier);
         }
-        if (zone.type === ZONE_TYPE_SLIME) {
-            return Math.max(0, this.balance.zones.slime.frictionMultiplier);
+        if (zone.type === ZONE_TYPE_MUD) {
+            return Math.max(0, this.balance.zones.mud.frictionMultiplier);
         }
         return 1;
     }
