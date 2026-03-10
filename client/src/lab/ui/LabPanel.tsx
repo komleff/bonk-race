@@ -508,41 +508,6 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.10 Zones
-    {
-        title: "Зоны",
-        params: [
-            {
-                label: "Лёд: трение",
-                key: "zones.ice.frictionMultiplier",
-                min: 0,
-                max: 1.0,
-                tooltip: "Множитель трения на ледяной зоне.",
-            },
-            {
-                label: "Грязь: трение",
-                key: "zones.mud.frictionMultiplier",
-                min: 0.5,
-                max: 2000,
-                tooltip: "Множитель трения на грязи.",
-            },
-            {
-                label: "Грязь: скорость",
-                key: "zones.mud.speedMultiplier",
-                min: 0.1,
-                max: 1.0,
-                tooltip: "Множитель скорости на грязи.",
-            },
-            {
-                label: "Турбо: ускорение",
-                key: "zones.turbo.accelBoost",
-                min: 50,
-                max: 10000,
-                unit: "м/с²",
-                tooltip: "Дополнительное ускорение в направлении движения на турбо-зоне.",
-            },
-        ],
-    },
     // 3.11 Mass scaling
     {
         title: "Масштабирование по массе",

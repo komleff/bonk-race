@@ -439,11 +439,6 @@ export class BonkLab {
             return;
         }
 
-        // Zone params → update arena zones live
-        if (key.startsWith("zones.")) {
-            this.syncZoneParams(key, value as number);
-            return;
-        }
 
         // All other keys map to slimeConfig
         setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
@@ -474,19 +469,6 @@ export class BonkLab {
         }
     }
 
-    /** Sync zone slider values into arena zone objects */
-    private syncZoneParams(key: string, value: number): void {
-        // key format: "zones.ice.frictionMultiplier" → zoneType="ice", paramKey="frictionMultiplier"
-        const parts = key.split(".");
-        if (parts.length < 3) return;
-        const zoneType = parts[1];
-        const paramKey = parts[2];
-        for (const zone of this.arena.zones) {
-            if (zone.type === zoneType) {
-                zone.params[paramKey] = value;
-            }
-        }
-    }
 
     getState(): SandboxState {
         return {
@@ -561,12 +543,6 @@ export class BonkLab {
         this.reset();
         this.orbDensityManual = savedOrbDensityManual;
         this.bestTime = 0; // reset record — track layout changed
-        // Reapply zone overrides from current params to new arena zones
-        for (const key of Object.keys(this.params)) {
-            if (key.startsWith("zones.")) {
-                this.syncZoneParams(key, this.params[key] as number);
-            }
-        }
 
         console.log("[BonkLab] arena regenerated", { seed, density, obstacles: this.arena.obstacles.length });
     }
@@ -1063,12 +1039,6 @@ export class BonkLab {
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
             "worldPhysics.passageRestitution": wp.restitution * 0.5,
-
-            // Zone defaults (from arenaGenerator)
-            "zones.ice.frictionMultiplier": 0.1,
-            "zones.mud.frictionMultiplier": 500,
-            "zones.mud.speedMultiplier": 0.5,
-            "zones.turbo.accelBoost": 1000,
         };
     }
 }
