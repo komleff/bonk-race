@@ -37,7 +37,7 @@ export interface ArenaObject {
 }
 
 export interface ArenaZone {
-    type: "ice" | "mud" | "turbo";
+    type: "ice" | "mud" | "turbo" | "sand";
     x: number;
     y: number;
     radius: number;
@@ -86,7 +86,7 @@ const PLACEMENT_RETRIES = 30;
 const OBSTACLE_SPACING = 8;
 const SPAWN_EXCLUSION_RADIUS = 60;
 
-const ZONE_TYPES: ArenaZone["type"][] = ["ice", "mud", "turbo"];
+const ZONE_TYPES: ArenaZone["type"][] = ["ice", "mud", "turbo", "sand"];
 
 // DEPRECATED: Legacy zone params — physics now uses SurfaceConfig presets from surfaceConfig.ts.
 // These values are still written to ArenaZone.params for backward compatibility with Colyseus schema.
@@ -95,6 +95,7 @@ const ZONE_PARAMS: Record<ArenaZone["type"], Record<string, number>> = {
     ice:   { frictionMultiplier: 0.1 },
     mud: { speedMultiplier: 0.5, frictionMultiplier: 500 },
     turbo: { accelBoost: 1000 },
+    sand:  { frictionMultiplier: 1.5 },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -245,8 +246,18 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
             const margin = zoneRadius + OBSTACLE_SPACING;
             const pt = randomPoint(rng, halfW, halfH, margin);
 
-            // Check distance to other zones
+            // Keep zones clear of spawn/finish points
             let tooClose = false;
+            for (const ep of exclusionPoints) {
+                const minDist = zoneRadius + SPAWN_EXCLUSION_RADIUS;
+                if (distSq(pt.x, pt.y, ep.x, ep.y) < minDist * minDist) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (tooClose) continue;
+
+            // Check distance to other zones
             for (const z of zones) {
                 const minDist = zoneRadius + z.radius + OBSTACLE_SPACING * 2;
                 if (distSq(pt.x, pt.y, z.x, z.y) < minDist * minDist) {

@@ -49,6 +49,9 @@ const STARTUP_PRESET: Record<string, number | boolean> = {
     "worldPhysics.lateralGripMultiplier": 25.0,
     "worldPhysics.angularDragK": 0.15,
     "worldPhysics.restitution": 0.80,
+    "trail.enabled": true,
+    "trail.maxAge": 3.5,
+    "trail.baseAlpha": 0.6,
 };
 for (const [key, val] of Object.entries(STARTUP_PRESET)) {
     lab.updateParams(key, val);
@@ -123,6 +126,13 @@ function frame(): void {
     renderer.setNormalization(
         lab.params["limits.speedLimitForwardMps"] as number,
         lab.params["propulsion.thrustForwardN"] as number,
+    );
+
+    // Trail config
+    renderer.setTrailConfig(
+        Boolean(lab.params["trail.enabled"]),
+        (lab.params["trail.maxAge"] as number) ?? 3.5,
+        (lab.params["trail.baseAlpha"] as number) ?? 0.6,
     );
 
     // Get simulation state and render

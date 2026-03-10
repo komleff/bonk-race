@@ -12,6 +12,7 @@
  */
 
 import type { TrackConfig, TrackCheckpoint, TrackWall } from "@bonk-race/shared";
+import balanceJson from "../../config/balance.json";
 import {
     clamp, wrapAngle, distance,
     SURFACE_SLOW, SURFACE_BOOST, SURFACE_ICE,
@@ -208,7 +209,7 @@ function flightAssistSystem(
 
         // Тяга: смесь направления блоба (70%) и направления ввода (30%)
         // GDD §3.1: «блоб ускоряется в направлении курсора»
-        const INPUT_THRUST_BLEND = 0.3;
+        const INPUT_THRUST_BLEND = (balanceJson as Record<string, any>).race?.inputThrustBlend ?? 0.3;
         const thrustMag = mag;
         const facingX = Math.cos(player.angle);
         const facingY = Math.sin(player.angle);
@@ -564,6 +565,9 @@ export class RaceGame {
                     this.startTimeMs = performance.now();
                     this.recorder.start();
                     this.accumulator = 0;
+                    // Сбросить stale input чтобы персонаж не двигался после Go!
+                    input.moveX = 0;
+                    input.moveY = 0;
                     break;
                 }
                 this.accumulator -= fixedDt;
@@ -652,7 +656,7 @@ export class RaceGame {
         const H = canvas.height = canvas.clientHeight * devicePixelRatio;
 
         // Smooth camera follow с опережением вверх (GDD §1.5)
-        const CAMERA_LOOKAHEAD_Y = -120; // камера смещена выше блоба
+        const CAMERA_LOOKAHEAD_Y = (balanceJson as Record<string, any>).race?.cameraLookaheadY ?? -120;
         camera.x += (player.x - camera.x) * CAMERA_FOLLOW_LERP;
         camera.y += ((player.y + CAMERA_LOOKAHEAD_Y) - camera.y) * CAMERA_FOLLOW_LERP;
 

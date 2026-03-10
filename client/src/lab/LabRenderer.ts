@@ -16,7 +16,6 @@ import {
     RESPAWN_GO_TOTAL_S,
     computePunchIn,
 } from "@bonk-race/shared";
-import type { ArenaZone } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -25,10 +24,11 @@ const BG_COLOR = "#1a1a2e";
 const GRID_COLOR = "#2a2a3e";
 const GRID_SPACING = 100; // metres
 
-const ZONE_COLORS: Record<ArenaZone["type"], string> = {
+const ZONE_COLORS: Record<string, string> = {
     ice: "#4488cc",
     mud: "#6B3A1F",
     turbo: "#ff8800",
+    sand: "#c2a64e",
 };
 const ZONE_ALPHA = 0.3;
 
@@ -74,6 +74,16 @@ const MINIMAP_MARGIN = 12;
 const MINIMAP_BG = "rgba(0,0,0,0.55)";
 const MINIMAP_BORDER = "rgba(255,255,255,0.25)";
 
+// ─── Типы следов ─────────────────────────────────────────────────────────────
+
+interface TrailPoint {
+    x: number;
+    y: number;
+    age: number;
+}
+
+const TRAIL_MAX_POINTS = 600;
+
 // ─── LabRenderer ─────────────────────────────────────────────────────────────
 
 export class LabRenderer {
@@ -95,6 +105,17 @@ export class LabRenderer {
     /** Кэшированный прямоугольник canvas (обновляется при resize). */
     private cachedRect: DOMRect;
 
+    // ── Trail state ──
+    private trailBuffer: TrailPoint[] = [];
+    private trailHead = 0;
+    private trailCount = 0;
+    private trailEnabled = false;
+    private trailMaxAge = 3.5;
+    private trailBaseAlpha = 0.6;
+    private trailPrevX = NaN;
+    private trailPrevY = NaN;
+    private lastRenderTs = 0;
+
     // Pre-allocated reusable objects to avoid GC in render loop
     private _gradient: CanvasGradient | null = null;
 
@@ -114,6 +135,23 @@ export class LabRenderer {
     setNormalization(speedLimit: number, maxThrust: number): void {
         this.normSpeedLimit = speedLimit || 260;
         this.normMaxThrust = maxThrust || 27000;
+    }
+
+    setTrailConfig(enabled: boolean, maxAge: number, baseAlpha: number): void {
+        // Очистить буфер при выключении следов
+        if (!enabled && this.trailEnabled) {
+            this.clearTrail();
+        }
+        this.trailEnabled = enabled;
+        this.trailMaxAge = maxAge;
+        this.trailBaseAlpha = baseAlpha;
+    }
+
+    clearTrail(): void {
+        this.trailCount = 0;
+        this.trailHead = 0;
+        this.trailPrevX = NaN;
+        this.trailPrevY = NaN;
     }
 
     resize(): void {
@@ -154,8 +192,19 @@ export class LabRenderer {
         this.drawWalls(ctx, state);
         this.drawObstacles(ctx, state);
         this.drawOrbs(ctx, state);
+
+        // Trail: записываем точку и рисуем
+        const now = performance.now();
+        const trailDt = this.lastRenderTs > 0 ? Math.min((now - this.lastRenderTs) / 1000, 0.1) : 1 / 60;
+        this.lastRenderTs = now;
+        if (this.trailEnabled && state.deathTimer <= 0) {
+            this.pushTrailPoint(state.x, state.y, trailDt);
+            this.drawTrail(ctx, state.radius);
+        }
+
         if (state.deathTimer > 0) {
             this.drawDeathEffect(ctx, state);
+            if (this.trailEnabled) this.clearTrail();
         } else {
             this.drawCharacter(ctx, state);
             this.drawBeacon(ctx, state, input);
@@ -235,7 +284,7 @@ export class LabRenderer {
             ctx.fillStyle = color;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            const ZONE_LABELS: Record<string, string> = { ice: "Лёд", mud: "Грязь", turbo: "Турбо" };
+            const ZONE_LABELS: Record<string, string> = { ice: "Лёд", mud: "Грязь", turbo: "Турбо", sand: "Песок" };
             ctx.fillText(ZONE_LABELS[zone.type] ?? zone.type, zone.x, zone.y);
         }
     }
@@ -339,6 +388,68 @@ export class LabRenderer {
         }
     }
 
+    // ── Trail system ──────────────────────────────────────────────────────────
+
+    private pushTrailPoint(x: number, y: number, dt: number): void {
+        // Телепорт: если расстояние слишком большое — очистить буфер (restart/respawn)
+        const dx = x - this.trailPrevX;
+        const dy = y - this.trailPrevY;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > 500 * 500) {
+            this.clearTrail();
+            this.trailPrevX = x;
+            this.trailPrevY = y;
+            return;
+        }
+        // Прореживание: записывать точку только если персонаж сдвинулся ≥ 0.4 радиуса
+        const minDist = 8; // ~0.4 * baseRadius(20)
+        if (distSq < minDist * minDist) {
+            this.ageTrail(dt);
+            return;
+        }
+        this.trailPrevX = x;
+        this.trailPrevY = y;
+
+        // Инициализация буфера при первом использовании
+        if (this.trailBuffer.length < TRAIL_MAX_POINTS) {
+            this.trailBuffer.push({ x, y, age: 0 });
+            this.trailCount = this.trailBuffer.length;
+            this.trailHead = this.trailCount % TRAIL_MAX_POINTS;
+        } else {
+            const pt = this.trailBuffer[this.trailHead];
+            pt.x = x; pt.y = y; pt.age = 0;
+            this.trailHead = (this.trailHead + 1) % TRAIL_MAX_POINTS;
+            if (this.trailCount < TRAIL_MAX_POINTS) this.trailCount++;
+        }
+        this.ageTrail(dt);
+    }
+
+    private ageTrail(dt: number): void {
+        for (let i = 0; i < this.trailCount; i++) {
+            this.trailBuffer[i].age += dt;
+        }
+    }
+
+    private drawTrail(ctx: CanvasRenderingContext2D, charRadius: number): void {
+        if (this.trailCount === 0) return;
+        const maxAge = this.trailMaxAge;
+        const baseAlpha = this.trailBaseAlpha;
+
+        ctx.fillStyle = CHAR_FILL_OUTER;
+        for (let i = 0; i < this.trailCount; i++) {
+            const pt = this.trailBuffer[i];
+            if (pt.age >= maxAge) continue;
+
+            const t = pt.age / maxAge; // 0→1
+            ctx.globalAlpha = baseAlpha * (1 - t);
+            const r = charRadius * (1 - t * 0.6);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
     // ── Layer: Character ─────────────────────────────────────────────────────────
 
     private drawCharacter(ctx: CanvasRenderingContext2D, state: SandboxState): void {
@@ -357,15 +468,33 @@ export class LabRenderer {
         ctx.lineWidth = CHAR_BORDER_WIDTH / this.scale;
         ctx.stroke();
 
-        // Direction triangle (nose)
+        // Внутренняя стрелка направления (внутри круга, под клювом)
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+        const perpXi = -sinA * radius * 0.4;
+        const perpYi = cosA * radius * 0.4;
+        const innerTipX = x + cosA * radius;
+        const innerTipY = y + sinA * radius;
+        const innerBaseX = x + cosA * radius * 0.2;
+        const innerBaseY = y + sinA * radius * 0.2;
+
+        ctx.beginPath();
+        ctx.moveTo(innerTipX, innerTipY);
+        ctx.lineTo(innerBaseX + perpXi, innerBaseY + perpYi);
+        ctx.lineTo(innerBaseX - perpXi, innerBaseY - perpYi);
+        ctx.closePath();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+        ctx.fill();
+
+        // Direction triangle (nose / beak outside circle)
         const triLen = radius * 0.7;
         const triHalf = radius * 0.3;
-        const tipX = x + Math.cos(angle) * (radius + triLen * 0.3);
-        const tipY = y + Math.sin(angle) * (radius + triLen * 0.3);
-        const baseX = x + Math.cos(angle) * radius;
-        const baseY = y + Math.sin(angle) * radius;
-        const perpX = -Math.sin(angle) * triHalf;
-        const perpY = Math.cos(angle) * triHalf;
+        const tipX = x + cosA * (radius + triLen * 0.3);
+        const tipY = y + sinA * (radius + triLen * 0.3);
+        const baseX = x + cosA * radius;
+        const baseY = y + sinA * radius;
+        const perpX = -sinA * triHalf;
+        const perpY = cosA * triHalf;
 
         ctx.beginPath();
         ctx.moveTo(tipX, tipY);

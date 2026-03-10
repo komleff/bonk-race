@@ -412,6 +412,11 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
         (data: Record<string, number | boolean>) => {
             // Reset orbDensityManual before batch-applying imported params
             lab.resetOrbDensityManual();
+            // First reset all params to defaults (handles keys missing from old exports)
+            for (const [key, val] of Object.entries(defaults)) {
+                lab.updateParams(key, val);
+            }
+            // Then apply imported values on top
             for (const [key, val] of Object.entries(data)) {
                 // Only apply keys that exist in current params (ignore unknown keys)
                 if (key in lab.params && (typeof val === "number" || typeof val === "boolean")) {
@@ -425,7 +430,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
             setActivePreset(-1);
             onParamsChanged?.();
         },
-        [lab, onParamsChanged],
+        [lab, defaults, onParamsChanged],
     );
 
     // ── Presets ──
