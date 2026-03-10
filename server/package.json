@@ -10,7 +10,7 @@
     "start": "node dist/server/src/index.js",
     "start:meta": "node dist/server/src/meta/server.js",
     "db:migrate": "node dist/server/src/db/migrate.js",
-    "test": "npm run build && node tests/determinism.test.js && node tests/orb-bite.test.js && node tests/arena-generation.test.js",
+    "test": "npm run build && node tests/determinism.test.js && node tests/orb-bite.test.js && node tests/arena-generation.test.js && node tests/anisotropic-friction.test.js",
     "test:admin": "ts-node tests/admin-auth.test.ts"
   },
   "dependencies": {

@@ -30,9 +30,25 @@ export interface IIntegratorForces {
 
 /** World-physics drag constants */
 export interface IWorldDragParams {
-    linearDragK: number;
+    forwardDragK: number;
+    lateralGripMultiplier: number;
     angularDragK: number;
 }
+
+/** Surface-zone physics parameters (per-zone overrides for integrator) */
+export interface ISurfaceParams {
+    forwardDragMultiplier: number;   // 1.0 = normal
+    lateralGripMultiplier: number;   // 1.0 = same as forward drag
+    angularDragMultiplier: number;   // 1.0 = normal
+    zoneThrustN: number;             // 0 = no extra thrust
+}
+
+export const DEFAULT_SURFACE_PARAMS: ISurfaceParams = {
+    forwardDragMultiplier: 1.0,
+    lateralGripMultiplier: 1.0,
+    angularDragMultiplier: 1.0,
+    zoneThrustN: 0,
+};
 
 /** Result of a single integration step */
 export interface IIntegratorResult {
@@ -47,26 +63,17 @@ export interface IIntegratorResult {
 // ─── Integration ─────────────────────────────────────────────────────────────
 
 /**
- * Semi-implicit Euler integration for a single slime.
+ * Anisotropic physics integration with exponential decay.
  *
  * Steps:
- *   1. Compute drag forces from current velocity
- *   2. Sum all forces (assist + drag)
- *   3. Update velocity (v += a * dt)
- *   4. Clamp angular velocity to limit
- *   5. Update position (x += v * dt)
- *   6. Normalize angle
- *
- * @param state       Current position, velocity, angle state
- * @param forces      FA forces + torque for this tick
- * @param mass        Effective mass (already clamped to minSlimeMass)
- * @param inertia     Moment of inertia
- * @param slimeConfig Slime configuration (for angular speed limit scaling)
- * @param drag        World drag constants
- * @param zoneFrictionMultiplier  Friction zone multiplier (1.0 = normal)
- * @param isLastBreath Whether last-breath penalty applies
- * @param lastBreathSpeedPenalty Penalty multiplier for last-breath
- * @param dt          Time step in seconds
+ *   1. Apply FA forces to velocity (semi-implicit Euler)
+ *   2. Apply zoneThrustN along heading
+ *   3. Decompose velocity into forward/lateral components
+ *   4. Apply exponential decay: vFwd *= exp(-forwardDragK * surfaceFwdMul * dt)
+ *      and vLat *= exp(-forwardDragK * gripMul * surfaceGripMul * dt)
+ *   5. Reassemble velocity from decayed components
+ *   6. Apply angular decay: angVel *= exp(-angularDragK * surfaceAngMul * dt)
+ *   7. Clamp angular velocity, update position and angle
  */
 export function integratePhysics(
     state: IIntegratorState,
@@ -75,32 +82,54 @@ export function integratePhysics(
     inertia: number,
     slimeConfig: SlimeConfig,
     drag: IWorldDragParams,
-    zoneFrictionMultiplier: number,
+    surface: ISurfaceParams,
     isLastBreath: boolean,
     lastBreathSpeedPenalty: number,
     dt: number,
 ): IIntegratorResult {
-    // ── Linear drag ──
-    const dragFx = -mass * drag.linearDragK * zoneFrictionMultiplier * state.vx;
-    const dragFy = -mass * drag.linearDragK * zoneFrictionMultiplier * state.vy;
-    const dragTorque = -inertia * drag.angularDragK * zoneFrictionMultiplier * state.angVel;
-
-    // ── Sum forces ──
-    const totalFx = forces.assistFx + dragFx;
-    const totalFy = forces.assistFy + dragFy;
-
-    // ── Update velocity (semi-implicit Euler: force → velocity first) ──
     const safeMass = Math.max(mass, 1e-6);
-    const newVx = state.vx + (totalFx / safeMass) * dt;
-    const newVy = state.vy + (totalFy / safeMass) * dt;
 
-    // ── Update position ──
-    const newX = state.x + newVx * dt;
-    const newY = state.y + newVy * dt;
+    // ── 1. Apply FA forces to velocity (semi-implicit Euler) ──
+    let vx = state.vx + (forces.assistFx / safeMass) * dt;
+    let vy = state.vy + (forces.assistFy / safeMass) * dt;
 
-    // ── Angular: torque → angular velocity ──
-    const totalTorque = forces.assistTorque + dragTorque;
-    let newAngVel = state.angVel + (totalTorque / Math.max(inertia, 1e-6)) * dt;
+    // ── 2. Apply zone thrust along heading ──
+    if (surface.zoneThrustN > 0) {
+        const thrustAx = (surface.zoneThrustN / safeMass) * Math.cos(state.angle);
+        const thrustAy = (surface.zoneThrustN / safeMass) * Math.sin(state.angle);
+        vx += thrustAx * dt;
+        vy += thrustAy * dt;
+    }
+
+    // ── 3. Decompose velocity into forward/lateral ──
+    const fwdX = Math.cos(state.angle);
+    const fwdY = Math.sin(state.angle);
+    const rightX = -fwdY;
+    const rightY = fwdX;
+
+    const vFwd = vx * fwdX + vy * fwdY;
+    const vLat = vx * rightX + vy * rightY;
+
+    // ── 4. Anisotropic exponential decay ──
+    const decayFwd = Math.exp(-drag.forwardDragK * surface.forwardDragMultiplier * dt);
+    const lateralK = drag.forwardDragK * drag.lateralGripMultiplier * surface.lateralGripMultiplier;
+    const decayLat = Math.exp(-lateralK * dt);
+
+    const vFwdNew = vFwd * decayFwd;
+    const vLatNew = vLat * decayLat;
+
+    // ── 5. Reassemble velocity ──
+    vx = fwdX * vFwdNew + rightX * vLatNew;
+    vy = fwdY * vFwdNew + rightY * vLatNew;
+
+    // ── 6. Update position ──
+    const newX = state.x + vx * dt;
+    const newY = state.y + vy * dt;
+
+    // ── 7. Angular: apply FA torque then exponential decay ──
+    let newAngVel = state.angVel + (forces.assistTorque / Math.max(inertia, 1e-6)) * dt;
+    const angDecay = Math.exp(-drag.angularDragK * surface.angularDragMultiplier * dt);
+    newAngVel *= angDecay;
 
     // ── Angular speed limit ──
     let angularLimit = scaleSlimeValue(
@@ -121,8 +150,8 @@ export function integratePhysics(
     return {
         x: newX,
         y: newY,
-        vx: newVx,
-        vy: newVy,
+        vx,
+        vy,
         angle: newAngle,
         angVel: newAngVel,
     };

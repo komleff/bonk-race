@@ -136,7 +136,7 @@ async function main() {
     console.log("Test 5: Physics config sanity");
     const phys = preset.physics;
     assert(phys.thrustForwardN > 0, "thrustForwardN is positive");
-    assert(phys.linearDragK > 0 && phys.linearDragK < 1, "linearDragK is in (0, 1)");
+    assert(phys.forwardDragK > 0 && phys.forwardDragK < 1, "forwardDragK is in (0, 1)");
     assert(phys.wallThrustCoeff >= 0 && phys.wallThrustCoeff <= 1, "wallThrustCoeff is in [0, 1]");
     assert(phys.tickRate === 60, "tickRate is 60 Hz");
     console.log();

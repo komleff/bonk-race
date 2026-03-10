@@ -151,7 +151,7 @@ export const TRACK_FIRST_RUN: TrackConfig = {
         thrustForwardN: 6000,
         thrustLateralN: 5500,
         turnTorqueNm: 2400,
-        linearDragK: 0.15,
+        forwardDragK: 0.15,
         comfortableBrakingTimeS: 2.5,
         wallThrustCoeff: 0.3,
         tickRate: TICK_RATE,

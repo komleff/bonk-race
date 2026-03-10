@@ -246,7 +246,7 @@ function physicsSystem(
     config: TrackConfig,
     dt: number,
 ): void {
-    const baseDrag = config.physics.linearDragK;
+    const baseDrag = config.physics.forwardDragK;
     const surfaceMul = getSurfaceDragMultiplier(player, config);
     const drag = baseDrag * surfaceMul;
 

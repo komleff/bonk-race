@@ -44,7 +44,8 @@ const STARTUP_PRESET: Record<string, number | boolean> = {
     "propulsion.thrustLateralN": 22000,
     "propulsion.turnTorqueNm": 40000,
     "limits.speedLimitForwardMps": 400,
-    "worldPhysics.linearDragK": 0.005,
+    "worldPhysics.forwardDragK": 0.005,
+    "worldPhysics.lateralGripMultiplier": 1.0,
 };
 for (const [key, val] of Object.entries(STARTUP_PRESET)) {
     lab.updateParams(key, val);

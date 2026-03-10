@@ -23,6 +23,7 @@ export const ZONE_TYPE_ICE = 2;
 export const ZONE_TYPE_MUD = 3;
 export const ZONE_TYPE_LAVA = 4;
 export const ZONE_TYPE_TURBO = 5;
+export const ZONE_TYPE_SAND = 6;
 
 // ─── Obstacle types ──────────────────────────────────────────────────────────
 export const OBSTACLE_TYPE_PILLAR = 1;

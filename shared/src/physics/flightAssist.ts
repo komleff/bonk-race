@@ -39,10 +39,9 @@ export interface ISlimeModifiers {
     lightningSpeedBonus: number;
 }
 
-/** External multipliers (haste, zone, etc.) */
+/** External multipliers (haste, etc.) */
 export interface IExternalMultipliers {
     hasteSpeedMultiplier: number;
-    zoneSpeedMultiplier: number;
     lastBreathSpeedPenalty: number;
 }
 
@@ -57,6 +56,19 @@ export interface IFlightAssistOutput {
 export interface IWorldPhysicsParams {
     angularDragK: number;
 }
+
+/** Surface-zone assist parameters (per-zone overrides for flight assist) */
+export interface ISurfaceAssistParams {
+    thrustMultiplier: number;        // 1.0 = normal
+    turnTorqueMultiplier: number;    // 1.0 = normal
+    speedLimitMultiplier: number;    // 1.0 = normal
+}
+
+export const DEFAULT_SURFACE_ASSIST_PARAMS: ISurfaceAssistParams = {
+    thrustMultiplier: 1.0,
+    turnTorqueMultiplier: 1.0,
+    speedLimitMultiplier: 1.0,
+};
 
 // ─── Yaw Oscillation Damping ─────────────────────────────────────────────────
 
@@ -113,6 +125,7 @@ export function computeFlightAssist(
     modifiers: ISlimeModifiers,
     external: IExternalMultipliers,
     worldPhysics: IWorldPhysicsParams,
+    surfaceAssist: ISurfaceAssistParams,
     dt: number,
 ): IFlightAssistOutput {
     if (state.isDead) {
@@ -147,7 +160,13 @@ export function computeFlightAssist(
     thrustForward *= 1 + modifiers.thrustForwardBonus;
     thrustReverse *= 1 + modifiers.thrustReverseBonus;
     thrustLateral *= 1 + modifiers.thrustLateralBonus;
-    const turnTorqueAdjusted = turnTorque * (1 + modifiers.turnBonus);
+    let turnTorqueAdjusted = turnTorque * (1 + modifiers.turnBonus);
+
+    // Surface-zone multipliers
+    thrustForward *= surfaceAssist.thrustMultiplier;
+    thrustReverse *= surfaceAssist.thrustMultiplier;
+    thrustLateral *= surfaceAssist.thrustMultiplier;
+    turnTorqueAdjusted *= surfaceAssist.turnTorqueMultiplier;
 
     // ── Scale speed limits by mass ──
     let speedLimitForward = scaleSlimeValue(
@@ -166,7 +185,7 @@ export function computeFlightAssist(
         slimeConfig.massScaling.speedLimitLateralMps,
     );
     const speedBonus = 1 + modifiers.speedLimitBonus + modifiers.lightningSpeedBonus;
-    const totalSpeedMultiplier = speedBonus * external.hasteSpeedMultiplier * external.zoneSpeedMultiplier;
+    const totalSpeedMultiplier = speedBonus * external.hasteSpeedMultiplier * surfaceAssist.speedLimitMultiplier;
     speedLimitForward *= totalSpeedMultiplier;
     speedLimitReverse *= totalSpeedMultiplier;
     speedLimitLateral *= totalSpeedMultiplier;

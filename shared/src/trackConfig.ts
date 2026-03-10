@@ -94,7 +94,7 @@ export interface TrackPhysicsConfig {
     thrustForwardN: number;
     thrustLateralN: number;
     turnTorqueNm: number;
-    linearDragK: number;
+    forwardDragK: number;
     comfortableBrakingTimeS: number;
     wallThrustCoeff: number;       // default 0.3
     tickRate: number;              // 30 or 60 Hz
