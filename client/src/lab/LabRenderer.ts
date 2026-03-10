@@ -74,7 +74,7 @@ const MINIMAP_MARGIN = 12;
 const MINIMAP_BG = "rgba(0,0,0,0.55)";
 const MINIMAP_BORDER = "rgba(255,255,255,0.25)";
 
-// ─── Trail types ─────────────────────────────────────────────────────────────
+// ─── Типы следов ─────────────────────────────────────────────────────────────
 
 interface TrailPoint {
     x: number;
@@ -138,6 +138,10 @@ export class LabRenderer {
     }
 
     setTrailConfig(enabled: boolean, maxAge: number, baseAlpha: number): void {
+        // Очистить буфер при выключении следов
+        if (!enabled && this.trailEnabled) {
+            this.clearTrail();
+        }
         this.trailEnabled = enabled;
         this.trailMaxAge = maxAge;
         this.trailBaseAlpha = baseAlpha;
@@ -280,7 +284,7 @@ export class LabRenderer {
             ctx.fillStyle = color;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            const ZONE_LABELS: Record<string, string> = { ice: "Лёд", mud: "Грязь", turbo: "Турбо" };
+            const ZONE_LABELS: Record<string, string> = { ice: "Лёд", mud: "Грязь", turbo: "Турбо", sand: "Песок" };
             ctx.fillText(ZONE_LABELS[zone.type] ?? zone.type, zone.x, zone.y);
         }
     }
@@ -387,11 +391,19 @@ export class LabRenderer {
     // ── Trail system ──────────────────────────────────────────────────────────
 
     private pushTrailPoint(x: number, y: number, dt: number): void {
-        // Прореживание: записывать точку только если персонаж сдвинулся ≥ 0.4 радиуса
+        // Телепорт: если расстояние слишком большое — очистить буфер (restart/respawn)
         const dx = x - this.trailPrevX;
         const dy = y - this.trailPrevY;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > 500 * 500) {
+            this.clearTrail();
+            this.trailPrevX = x;
+            this.trailPrevY = y;
+            return;
+        }
+        // Прореживание: записывать точку только если персонаж сдвинулся ≥ 0.4 радиуса
         const minDist = 8; // ~0.4 * baseRadius(20)
-        if (dx * dx + dy * dy < minDist * minDist) {
+        if (distSq < minDist * minDist) {
             this.ageTrail(dt);
             return;
         }
@@ -423,21 +435,19 @@ export class LabRenderer {
         const maxAge = this.trailMaxAge;
         const baseAlpha = this.trailBaseAlpha;
 
+        ctx.fillStyle = CHAR_FILL_OUTER;
         for (let i = 0; i < this.trailCount; i++) {
             const pt = this.trailBuffer[i];
             if (pt.age >= maxAge) continue;
 
             const t = pt.age / maxAge; // 0→1
-            const alpha = baseAlpha * (1 - t);
-
-            {
-                const r = charRadius * (1 - t * 0.6);
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(68, 170, 255, ${alpha.toFixed(2)})`;
-                ctx.fill();
-            }
+            ctx.globalAlpha = baseAlpha * (1 - t);
+            const r = charRadius * (1 - t * 0.6);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+            ctx.fill();
         }
+        ctx.globalAlpha = 1;
     }
 
     // ── Layer: Character ─────────────────────────────────────────────────────────
@@ -458,7 +468,7 @@ export class LabRenderer {
         ctx.lineWidth = CHAR_BORDER_WIDTH / this.scale;
         ctx.stroke();
 
-        // Inner direction arrow (inside circle, behind the beak)
+        // Внутренняя стрелка направления (внутри круга, под клювом)
         const cosA = Math.cos(angle);
         const sinA = Math.sin(angle);
         const perpXi = -sinA * radius * 0.4;

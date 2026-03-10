@@ -24,6 +24,7 @@ import {
     Rng,
     DEFAULT_SURFACE_CONFIG,
     SURFACE_PRESETS,
+    clampSurfaceConfig,
     toSurfaceParams,
     toSurfaceAssistParams,
 } from "@bonk-race/shared";
@@ -441,6 +442,9 @@ export class BonkLab {
                 const surface = this.zoneSurfaces[zoneName];
                 if (surface && field in surface) {
                     (surface as unknown as Record<string, number>)[field] = value as number;
+                    // Валидация диапазонов
+                    const clamped = clampSurfaceConfig(surface);
+                    Object.assign(surface, clamped);
                 }
             }
             return;
@@ -1062,6 +1066,11 @@ export class BonkLab {
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
             "worldPhysics.passageRestitution": wp.restitution * 0.5,
+
+            // Trail defaults
+            "trail.enabled": true,
+            "trail.maxAge": 3.5,
+            "trail.baseAlpha": 0.6,
 
             // Zone surface overrides (from SURFACE_PRESETS defaults)
             ...this.buildZoneParams(),
