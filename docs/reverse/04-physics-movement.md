@@ -541,15 +541,15 @@ inertia = inertiaFactor × mass × baseRadiusM² × (mass / baseMassKg)
 
 | Вход | Значение |
 |---|---|
-| inertiaFactor | 0.5 |
+| inertiaFactor | 0.10 |
 | baseMassKg | 100 |
 | baseRadiusM | 10.0 |
 
 Примеры:
 | Масса | Инерция |
 |---:|---:|
-| 100 кг | 0.5 × 100 × 100 = 5000 |
-| 400 кг | 0.5 × 400 × 400 = 80000 |
+| 100 кг | 0.10 × 100 × 100 = 1000 |
+| 400 кг | 0.10 × 400 × 400 = 16000 |
 
 **Заметка:** в ArenaRoom `getSlimeInertiaForPlayer()` дополнительно умножает на `classStats.radiusMult²`.
 
@@ -708,7 +708,7 @@ GDD и `getSlimeRadiusFromConfig()` совпадают (с учётом safeMass
 | GDD-Core §9.3 | `0.5 × mass × radius²` |
 | Код: `getSlimeInertia()` | `inertiaFactor × mass × radius²` |
 
-Совпадают при `inertiaFactor = 0.5` (текущее значение).
+Совпадают при `inertiaFactor = 0.10` (текущее значение).
 
 ### 9.6. Масштабирование момента поворота
 
@@ -761,7 +761,7 @@ GDD-Arena §3.2: «Слаймы тяжелее 350 кг не могут прой
 
 - `physics.collisionRestitution` (0.5) — нигде не используется
 - `physics.collisionImpulseCap` (10000) — нигде не используется
-- `physics.environmentDrag` (0.01) — нигде не используется (используется `worldPhysics.linearDragK`)
+- `physics.environmentDrag` (0.01) — нигде не используется (используется `worldPhysics.forwardDragK`)
 - `physics.slimeLinearDamping` (0.02) — нигде не используется
 - `physics.maxSlimeSpeed` (500) — `applySpeedCap()` существует в ArenaRoom, но не вызывается из physicsSystem
 - `physics.maxOrbSpeed` (1000) — аналогично

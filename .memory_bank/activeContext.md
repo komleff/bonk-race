@@ -5,9 +5,9 @@
 ## Текущее состояние (10 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `feat/countdown-and-respawn-overlay` (PR#12, от main)
+**Активная ветка:** `tz-lateral-grip` (PR#14, от main)
 **GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
-**Версия:** 0.1.0 (релиз: BonkLab v1.2)
+**Версия:** 0.3.0
 
 ---
 
@@ -26,75 +26,71 @@
 | #9 | `feat/bonklab-v1.2` | **BonkLab v1.2: orbs, finish, geometry, presets** | **APPROVED → ready to merge** |
 | #10 | `feat/gdd-v4-ugc` | GDD v4.0: UGC-секция, русификация | Merged |
 | #11 | `fix/lab-input-direction` | Fix: направление мыши в BonkLab (2x angle error) | Merged |
-| #12 | `feat/countdown-and-respawn-overlay` | **Countdown 3-2-1-Go! + Go!-Go! respawn overlay** | **Open — ревью** |
+| #12 | `feat/countdown-and-respawn-overlay` | Countdown 3-2-1-Go! + respawn overlay | **Open — ревью** |
+| #14 | `tz-lateral-grip` | **Анизотропное трение + BonkRace v0.3 пресеты** | **Open — готов к merge** |
 
 ---
 
-## Sprint 2 — BonkLab v1.2 (ЗАВЕРШЁН 10 марта 2026)
+## Релиз 0.3.0 — Анизотропное трение + BonkRace v0.3 (10 марта 2026)
 
-**PR:** #9 (`feat/bonklab-v1.2`) — 7 коммитов, 4 ревьюера (GPT-5 Codex, GPT-5.3-Codex, GPT-5.4, Claude Opus 4.6)
-**Итог:** 2 × APPROVED (Claude, GPT-5.3), 1 × CHANGES_REQUESTED с 1 остаточным P1 (GPT-5.4 — исправлен), 11 багов найдено и исправлено.
+**PR:** #14 (`tz-lateral-grip`)
+**Ревью:** 3× APPROVED (Security, Architecture, Code Quality) + Gemini + Codex
+**Тесты:** 15/15 anisotropic-friction, все остальные зелёные
 
-### Что реализовано
+### Ключевые изменения
 
 | Фича | Описание |
 |------|---------|
-| **Орбы** | Баллистические cyan-объекты: drag, collision (orb-orb, orb-player, orb-obstacle, orb-wall), spike kill с анимацией, детерминизм от seed |
-| **Геометрия трассы** | `arena.pillarRadius`, `arena.spikeRadius`, `arena.passageRadius`, `arena.passageGap` — перегенерация при изменении |
-| **Финиш** | Circle-vs-AABB по обеим осям, оверлей с временем/дистанцией, best time tracking |
-| **Камера** | Персонаж на 65% от верха экрана |
-| **Прогресс и дистанция** | HUD-телеметрия: метры, процент, прогресс-бар |
-| **Пресет-трекинг** | Dropdown с активным пресетом, «Custom» при ручном изменении |
-| **Пресет «Ультралёгкий»** | mass=20, thrust=80000, speedLimit=500, drag=0.001 |
-| **Rename slime → mud** | Полный rename: shared types, server, BonkLab, renderer, panel, HUD. Цвет: #6B3A1F |
-| **Turbo rework** | `speedMultiplier → accelBoost`, сила в направлении скорости |
-| **Смерть/респаун** | Сброс таймера, «Go!» overlay 0.8с с fade-out |
+| **Анизотропный decay** | `exp(-k*dt)` вместо force-based drag. Forward/lateral/angular decay раздельно |
+| **SurfaceConfig** | `ISurfaceParams` (4 поля) + `ISurfaceAssistParams` (3 поля) для 5 зон |
+| **12 BonkLab пресетов** | Ультралёгкий, Slime Arena, BonkRace v0.1, **BonkRace v0.3**, Грузовик, Дрифт, Космос FA-On, Космос FA-Off, Ралли, Бампер-кар, Картинг, Формула |
+| **BonkRace v0.3 (дефолт)** | mass=40, inertia=0.05, thrust=70k, torque=80k, grip=25, стрейфы=25k — казуальное аркадное управление |
+| **inertiaFactor** | Переименован в "Коэф. формы", default 0.10, min 0.01 |
+| **Runtime-валидация** | `clampSurfaceConfig()` с NaN guard |
+| **Зона Sand** | `ZONE_TYPE_SAND = 6` с вязким характером |
+| **Серверные зоны** | `getSurfaceParams()`/`getSurfaceAssistParams()` в ArenaRoom |
 
-### Ключевые исправления по ревью
+### Пресеты по категориям
 
-| Приоритет | Баг | Исправление |
-|-----------|-----|-------------|
-| P0 | Финиш-детекция — только по Y | Circle-vs-AABB с высотой полосы 24px |
-| P1 | Начальная арена density=1.0 vs UI 5.0 | `buildArena(42, this.lastDensity)` |
-| P1 | orbDensityManual залипал после reset/preset | `resetOrbDensityManual()` в reset/import/preset |
-| P1 | Auto-sync density не обновлял массы орбов | Пересчёт `orb.mass` для живых орбов |
-| P1 | Defaults snapshot после startup preset | `trueDefaults` до startup preset |
-| P1 | orbDensityManual терялся при regenerateArena | Save/restore вокруг reset() |
+**Слаймы/абстрактные** (со стрейфами):
+- Ультралёгкий, Slime Arena, BonkRace v0.1, BonkRace v0.3, Бампер-кар
 
----
+**Автомобили** (без стрейфов):
+- Грузовик, Дрифт, Ралли, Картинг, Формула
 
-## Countdown и респаун-оверлей (10 марта 2026)
+**Космос** (со стрейфами, Elite Dangerous):
+- Космос FA-On (drag=0, FA активен), Космос FA-Off (полный Ньютон)
 
-**PR:** #12 (`feat/countdown-and-respawn-overlay`)
-**Ревьюеры:** Copilot, GPT-5 Codex, GPT-5.3 Codex
+### Отложено
 
-**Что реализовано:**
-
-- Стартовый countdown 3→2→1→Go! (0.7с на шаг, 2.8с итого), физика заморожена
-- Go!→Go! после смерти (2×0.4с = 0.8с), тот же крупный шрифт
-- Анимация punch-in (easeOutQuad масштабирование, жёлтый glow для Go!)
-- Общий `computePunchIn()` в shared — единый расчёт для BonkLab и raceMain
-- Константы таймингов вынесены в `@bonk-race/shared`
-- CSS-оверлей countdown в LabToolbar заменён на canvas-рендер
+- LG-5 (bonk-race-6nu): Серверная интеграция movementSystems
+- LG-6 (bonk-race-b18.1): raceMain.ts — анизотропный decay
 
 ---
 
-## Известный техдолг (Sprint 3)
+## Известный техдолг
 
 | Приоритет | Файл | Проблема |
 |-----------|------|---------|
 | P2 | `server/src/meta/routes/runs.ts:57` | replayData: нет проверки `Number.isFinite` |
 | P2 | `server/src/meta/routes/runs.ts:43` | operationId от клиента не используется сервером |
-| P2 | `client/src/lab/BonkLab.ts` | Zone modifier 1-tick application lag (architectural) |
+| P2 | `client/src/lab/BonkLab.ts` | Zone modifier 1-tick application lag |
 | P2 | `client/src/lab/BonkLab.ts` | correctionPercent in static collisions always 1.0 |
-| P2 | `client/src/lab/BonkLab.ts` | reverseZoneAngleDeg — не реализован в движке |
-| P2 | `client/src/lab/main.ts` ↔ `LabToolbar.tsx` | STARTUP_PRESET дублирует PRESETS[2].values |
+| P2 | `client/src/lab/BonkLab.ts` | reverseZoneAngleDeg — не реализован |
+| P2 | `shared/src/physics/arenaGenerator.ts` | ZONE_PARAMS legacy — заменён SurfaceConfig |
+| P3 | `client/src/raceMain.ts` | Isotropic drag (TODO LG-6) |
 | P3 | `client/src/raceMain.ts:208` | `INPUT_THRUST_BLEND = 0.3` hardcoded |
-| P3 | `client/src/raceMain.ts:632` | `CAMERA_LOOKAHEAD_Y = -120` hardcoded |
-| P3 | `server/src/meta/routes/runs.ts:17` | `MAX_COINS_PER_RUN` hardcoded |
-| P3 | `server/src/meta/routes/ghosts.ts:78` | Гостевые без `profiles` — нет opponent ghost |
-| P3 | `client/src/lab/LabRenderer.ts` | Sub-pixel anti-aliasing blur on object edges |
-| P3 | `client/src/lab/` | Hardcoded физические константы → config |
+| P3 | `server/src/meta/routes/ghosts.ts:78` | Guest без profiles — нет opponent ghost |
+| P3 | `client/src/lab/LabRenderer.ts` | Sub-pixel anti-aliasing blur |
+
+---
+
+## Новые задачи (Beads)
+
+| ID | Тип | Описание |
+|----|-----|---------|
+| bonk-race-vyh | P2 feature | Перерисовать персонажа: треугольник внутри круга |
+| bonk-race-hmg | P2 feature | Следы движения (motion trails) |
 
 ---
 
@@ -110,40 +106,6 @@
 
 ---
 
-## Анизотропное трение (10 марта 2026)
-
-**Ветка:** `tz-lateral-grip`
-**План:** `docs/plans/immutable-gathering-frost.md`
-
-**Что реализовано:**
-- `forwardDragK` + `lateralGripMultiplier` вместо `linearDragK` (анизотропное трение)
-- Decay-модель `exp(-k*dt)` вместо force-based drag
-- `ISurfaceParams` (4 параметра) + `ISurfaceAssistParams` (3 параметра) = `SurfaceConfig`
-- 5 зон: default, ice, mud, turbo, sand (ZONE_TYPE_SAND = 6)
-- 10 BonkLab пресетов (Ультралёгкий, Slime Arena, BonkRace v0.1, Грузовик, Дрифт, Космос, Ралли, Бампер-кар, Картинг, Рельсы)
-- Runtime-валидация `clampSurfaceConfig()`
-- 15 тестов (integrator + FA surface multipliers)
-- Обновлены GDD, reverse docs, memory bank
-
-**Отложено:** LG-5 (серверная интеграция ArenaRoom), LG-6 (raceMain.ts)
-
----
-
-## Следующие шаги (Sprint 3)
-
-1. Merge PR#5 (MVP loop) в main
-2. Sprint 3: BonkLab track editor (визуальное редактирование объектов)
-3. Sprint 3: `reverseZoneAngleDeg` — реализовать в движке
-4. Sprint 3: DevAuth flow (быстрое переключение профилей)
-5. Sprint 3: Вынести hardcoded константы в config
-6. Sprint 3: replayData — `Number.isFinite` валидация
-7. Sprint 3: idempotency для `/api/v1/runs/submit`
-8. CI/CD для bonk-race
-9. LG-5: Серверная интеграция анизотропного трения (ArenaRoom, movementSystems)
-10. LG-6: raceMain.ts — анизотропный decay, overspeed damping
-
----
-
 ## Команды
 
 ```bash
@@ -151,12 +113,11 @@
 npm run build           # shared -> server -> client
 
 # Разработка
-cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts
 npm run dev:client      # http://localhost:5173
 # BonkLab: http://localhost:5173/lab
 
 # Тесты
-npm run test            # determinism + orb-bite + arena-generation
+npm run test            # determinism + orb-bite + arena-generation + anisotropic-friction
 
 # Beads
 bd ready

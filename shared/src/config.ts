@@ -687,7 +687,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
             geometry: {
                 baseMassKg: 100,
                 baseRadiusM: 10.0,
-                inertiaFactor: 0.5,
+                inertiaFactor: 0.10,
             },
             propulsion: {
                 thrustForwardN: 9000,
@@ -746,7 +746,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
             geometry: {
                 baseMassKg: 100,
                 baseRadiusM: 10.0,
-                inertiaFactor: 0.5,
+                inertiaFactor: 0.10,
             },
             propulsion: {
                 thrustForwardN: 9000,
@@ -805,7 +805,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
             geometry: {
                 baseMassKg: 100,
                 baseRadiusM: 10.0,
-                inertiaFactor: 0.5,
+                inertiaFactor: 0.10,
             },
             propulsion: {
                 thrustForwardN: 9000,
@@ -864,7 +864,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
             geometry: {
                 baseMassKg: 100,
                 baseRadiusM: 10.0,
-                inertiaFactor: 0.5,
+                inertiaFactor: 0.10,
             },
             propulsion: {
                 thrustForwardN: 9000,

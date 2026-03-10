@@ -229,7 +229,7 @@ function assert(condition, msg) {
     const { computeFlightAssist, DEFAULT_SURFACE_ASSIST_PARAMS, DEFAULT_BALANCE_CONFIG } = require(sharedDist);
     // Use low turnTorqueNm so the clamp kicks in (desiredAlpha > maxAngularAccel)
     const sc = JSON.parse(JSON.stringify(DEFAULT_BALANCE_CONFIG.slimeConfigs.base));
-    sc.propulsion.turnTorqueNm = 200; // very low → maxAngularAccel = 200/50 = 4 rad/s²
+    sc.propulsion.turnTorqueNm = 40; // very low → maxAngularAccel = 40/10 = 4 rad/s² (inertia=mass*0.10=10)
     const mass = sc.geometry.baseMassKg;
     const inertia = mass * sc.geometry.inertiaFactor;
     const modifiers = {
