@@ -132,7 +132,7 @@ export function computeFlightAssist(
         return { assistFx: 0, assistFy: 0, assistTorque: 0 };
     }
 
-    const mass = state.mass;
+    const mass = Math.max(state.mass, 1e-6);
 
     // ── Scale propulsion by mass ──
     let thrustForward = scaleSlimeValue(

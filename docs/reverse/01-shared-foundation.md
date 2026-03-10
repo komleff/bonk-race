@@ -184,7 +184,7 @@ SlimeConfig {
 | 8 | `slimeConfigs.hunter` | `SlimeConfig` | (структура идентична base) |
 | 9 | `slimeConfigs.warrior` | `SlimeConfig` | (структура идентична base) |
 | 10 | `slimeConfigs.collector` | `SlimeConfig` | (структура идентична base) |
-| 11 | `worldPhysics` | `WorldPhysicsConfig` | `linearDragK`, `angularDragK`, `restitution`, `maxPositionCorrectionM`, `worldShape`, `widthM`, `heightM` |
+| 11 | `worldPhysics` | `WorldPhysicsConfig` | `forwardDragK`, `lateralGripMultiplier`, `angularDragK`, `restitution`, `maxPositionCorrectionM`, `worldShape`, `widthM`, `heightM` |
 | 12 | `clientNetSmoothing` | `ClientNetSmoothingConfig` | `lookAheadMs`, `velocityWeight`, `catchUpSpeed`, `maxCatchUpSpeed`, `teleportThreshold`, `angleCatchUpSpeed` |
 | 13 | `camera` | `CameraConfig` | `zoomMin`, `zoomMax`, `zoomSpeed`, `zoomDamageHoldSec`, `zoomMassMin`, `zoomMassMax` |
 | 14 | `visual` | `BalanceConfig.visual?` (optional) | `mouthSector`, `inputArrow`, `keyboardMixWeight` |

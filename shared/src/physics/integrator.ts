@@ -110,9 +110,10 @@ export function integratePhysics(
     const vFwd = vx * fwdX + vy * fwdY;
     const vLat = vx * rightX + vy * rightY;
 
-    // ── 4. Anisotropic exponential decay ──
-    const decayFwd = Math.exp(-drag.forwardDragK * surface.forwardDragMultiplier * dt);
-    const lateralK = drag.forwardDragK * drag.lateralGripMultiplier * surface.lateralGripMultiplier;
+    // ── 4. Anisotropic exponential decay (clamp drag >= 0 to prevent growth) ──
+    const fwdK = Math.max(0, drag.forwardDragK * surface.forwardDragMultiplier);
+    const decayFwd = Math.exp(-fwdK * dt);
+    const lateralK = Math.max(0, drag.forwardDragK * drag.lateralGripMultiplier * surface.lateralGripMultiplier);
     const decayLat = Math.exp(-lateralK * dt);
 
     const vFwdNew = vFwd * decayFwd;
@@ -128,7 +129,8 @@ export function integratePhysics(
 
     // ── 7. Angular: apply FA torque then exponential decay ──
     let newAngVel = state.angVel + (forces.assistTorque / Math.max(inertia, 1e-6)) * dt;
-    const angDecay = Math.exp(-drag.angularDragK * surface.angularDragMultiplier * dt);
+    const angK = Math.max(0, drag.angularDragK * surface.angularDragMultiplier);
+    const angDecay = Math.exp(-angK * dt);
     newAngVel *= angDecay;
 
     // ── Angular speed limit ──

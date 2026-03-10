@@ -705,7 +705,7 @@ export class BonkLab {
         // ── 3. Integrate Physics ──
         const dragParams: IWorldDragParams = {
             forwardDragK: this.worldPhysics.forwardDragK,
-            lateralGripMultiplier: this.worldPhysics.lateralGripMultiplier ?? 1.0,
+            lateralGripMultiplier: this.worldPhysics.lateralGripMultiplier,
             angularDragK: this.worldPhysics.angularDragK,
         };
 
@@ -944,9 +944,6 @@ export class BonkLab {
         this.vy = playerBody.vy;
     }
 
-    /**
-     * Find the ArenaZone the character is currently in (if any).
-     */
     // ── Parameter Mapping ────────────────────────────────────────────────────
 
     /**
@@ -1035,7 +1032,7 @@ export class BonkLab {
             "worldPhysics.widthM": wp.widthM ?? 800,
             "worldPhysics.heightM": wp.heightM ?? 10130,
             "worldPhysics.forwardDragK": wp.forwardDragK,
-            "worldPhysics.lateralGripMultiplier": wp.lateralGripMultiplier ?? 1.0,
+            "worldPhysics.lateralGripMultiplier": wp.lateralGripMultiplier,
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
             "worldPhysics.passageRestitution": wp.restitution * 0.5,

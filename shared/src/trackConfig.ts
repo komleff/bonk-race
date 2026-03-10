@@ -9,9 +9,9 @@
 // ─── Surface types (GDD §4.2) ──────────────────────────────────────────────
 
 export const SURFACE_NORMAL = 0;
-export const SURFACE_SLOW = 1;    // слайм/грязь — linearDragK × 3
-export const SURFACE_BOOST = 2;   // гладкая — linearDragK × 0.3 + continuous speed clamp
-export const SURFACE_ICE = 3;     // ледяная — linearDragK × 0.05, no boost
+export const SURFACE_SLOW = 1;    // слайм/грязь — SurfaceConfig: high forwardDragMultiplier
+export const SURFACE_BOOST = 2;   // гладкая — SurfaceConfig: low drag + speedLimitMultiplier
+export const SURFACE_ICE = 3;     // ледяная — SurfaceConfig: low grip, low angular drag
 
 export type SurfaceType =
     | typeof SURFACE_NORMAL
@@ -90,6 +90,7 @@ export interface TrackWall {
 
 // ─── Main TrackConfig (GDD §3.3) ───────────────────────────────────────────
 
+// TODO(LG-6): Add lateralGripMultiplier, angularDragK for anisotropic friction in race mode
 export interface TrackPhysicsConfig {
     thrustForwardN: number;
     thrustLateralN: number;

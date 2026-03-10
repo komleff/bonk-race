@@ -112,7 +112,7 @@ export function physicsSystem(room: any) {
             mass,
             inertia,
             slimeConfig,
-            { forwardDragK: world.forwardDragK, lateralGripMultiplier: world.lateralGripMultiplier ?? 1.0, angularDragK: world.angularDragK },
+            { forwardDragK: world.forwardDragK, lateralGripMultiplier: world.lateralGripMultiplier, angularDragK: world.angularDragK },
             surface,
             player.isLastBreath,
             room.balance.combat.lastBreathSpeedPenalty,

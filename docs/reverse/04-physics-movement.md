@@ -210,33 +210,64 @@ velocity = dashDirection × (distanceM / durationSec)
 ```
 Обычная физика пропускается — слайм движется линейно к цели.
 
-### 4.2. Drag (сопротивление среды)
+### 4.2. Drag (анизотропное сопротивление среды)
+
+Используется экспоненциальная decay-модель `exp(-k*dt)` вместо force-based drag.
+Скорость разлагается на продольную (forward) и боковую (lateral) компоненты:
 
 ```
-dragFx = -mass × linearDragK × zoneFrictionMultiplier × vx
-dragFy = -mass × linearDragK × zoneFrictionMultiplier × vy
-dragTorque = -inertia × angularDragK × zoneFrictionMultiplier × angVel
+vFwd = dot(vel, forward)
+vLat = dot(vel, right)
+
+decayFwd = exp(-forwardDragK × surface.forwardDragMultiplier × dt)
+lateralK = forwardDragK × lateralGripMultiplier × surface.lateralGripMultiplier
+decayLat = exp(-lateralK × dt)
+
+vFwd' = vFwd × decayFwd
+vLat' = vLat × decayLat
+vel' = forward × vFwd' + right × vLat'
+
+angVel' = angVel × exp(-angularDragK × surface.angularDragMultiplier × dt)
 ```
 
-`zoneFrictionMultiplier`:
-| Зона | Значение |
-|---|---|
-| Обычная | 1.0 |
-| Лёд | 0.3 (скольжение) |
-| Слизь | 2.0 (вязкость) |
+`ISurfaceParams` (per-zone):
+| Параметр | Описание | Default |
+|---|---|---|
+| forwardDragMultiplier | Множитель продольного трения | 1.0 |
+| lateralGripMultiplier | Множитель бокового сцепления | 1.0 |
+| angularDragMultiplier | Множитель углового трения | 1.0 |
+| zoneThrustN | Доп. тяга по heading (турбо) | 0 |
 
-### 4.3. Euler-интеграция
+Зоны:
+| Зона | forwardDrag | lateralGrip | angularDrag | zoneThrustN |
+|---|---|---|---|---|
+| Default | 1.0 | 1.0 | 1.0 | 0 |
+| Ice | 0.1 | 0.2 | 0.3 | 0 |
+| Mud | 5.0 | 4.0 | 3.0 | 0 |
+| Turbo | 0.5 | 1.0 | 1.0 | 15000 |
+| Sand | 2.5 | 3.0 | 2.0 | 0 |
+
+### 4.3. Semi-implicit Euler интеграция
 
 ```
-totalFx = assistFx + dragFx
-totalFy = assistFy + dragFy
-vx += (totalFx / mass) × dt
-vy += (totalFy / mass) × dt
+// 1. Применить силы FA к скорости
+vx += (assistFx / mass) × dt
+vy += (assistFy / mass) × dt
+
+// 2. Zone thrust по heading
+if (zoneThrustN > 0):
+  vx += (zoneThrustN / mass) × cos(angle) × dt
+  vy += (zoneThrustN / mass) × sin(angle) × dt
+
+// 3-5. Анизотропный decay (см. §4.2)
+
+// 6. Обновить позицию
 x += vx × dt
 y += vy × dt
 
-totalTorque = assistTorque + dragTorque
-angVel += (totalTorque / inertia) × dt
+// 7. Angular: FA torque → decay → clamp
+angVel += (assistTorque / inertia) × dt
+angVel *= exp(-angularDragK × surface.angularDragMultiplier × dt)
 ```
 
 ### 4.4. Angular Velocity Clamping

@@ -61,6 +61,7 @@ export {
     ZONE_TYPE_MUD,
     ZONE_TYPE_LAVA,
     ZONE_TYPE_TURBO,
+    ZONE_TYPE_SAND,
     // Obstacle types
     OBSTACLE_TYPE_PILLAR,
     OBSTACLE_TYPE_SPIKES,

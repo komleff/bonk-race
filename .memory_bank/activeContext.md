@@ -110,6 +110,25 @@
 
 ---
 
+## Анизотропное трение (10 марта 2026)
+
+**Ветка:** `tz-lateral-grip`
+**План:** `docs/plans/immutable-gathering-frost.md`
+
+**Что реализовано:**
+- `forwardDragK` + `lateralGripMultiplier` вместо `linearDragK` (анизотропное трение)
+- Decay-модель `exp(-k*dt)` вместо force-based drag
+- `ISurfaceParams` (4 параметра) + `ISurfaceAssistParams` (3 параметра) = `SurfaceConfig`
+- 5 зон: default, ice, mud, turbo, sand (ZONE_TYPE_SAND = 6)
+- 10 BonkLab пресетов (Ультралёгкий, Slime Arena, BonkRace v0.1, Грузовик, Дрифт, Космос, Ралли, Бампер-кар, Картинг, Рельсы)
+- Runtime-валидация `clampSurfaceConfig()`
+- 15 тестов (integrator + FA surface multipliers)
+- Обновлены GDD, reverse docs, memory bank
+
+**Отложено:** LG-5 (серверная интеграция ArenaRoom), LG-6 (raceMain.ts)
+
+---
+
 ## Следующие шаги (Sprint 3)
 
 1. Merge PR#5 (MVP loop) в main
@@ -120,6 +139,8 @@
 6. Sprint 3: replayData — `Number.isFinite` валидация
 7. Sprint 3: idempotency для `/api/v1/runs/submit`
 8. CI/CD для bonk-race
+9. LG-5: Серверная интеграция анизотропного трения (ArenaRoom, movementSystems)
+10. LG-6: raceMain.ts — анизотропный decay, overspeed damping
 
 ---
 
