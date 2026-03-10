@@ -125,6 +125,13 @@ function frame(): void {
         lab.params["propulsion.thrustForwardN"] as number,
     );
 
+    // Trail config
+    renderer.setTrailConfig(
+        Boolean(lab.params["trail.enabled"]),
+        (lab.params["trail.maxAge"] as number) ?? 0.8,
+        (lab.params["trail.baseAlpha"] as number) ?? 0.6,
+    );
+
     // Get simulation state and render
     const state = lab.getState();
     renderer.render(state, inputState);

@@ -554,6 +554,32 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
+    // Trail / Следы движения
+    {
+        title: "Следы движения",
+        params: [
+            {
+                label: "Включен",
+                key: "trail.enabled",
+                min: 0, max: 1,
+                isBoolean: true,
+                tooltip: "Показывать следы движения персонажа (fade trail).",
+            },
+            {
+                label: "Длина",
+                key: "trail.maxAge",
+                min: 0.1, max: 3.0,
+                unit: "с",
+                tooltip: "Время жизни точки следа. Больше = длиннее хвост.",
+            },
+            {
+                label: "Непрозрачность",
+                key: "trail.baseAlpha",
+                min: 0.1, max: 1.0,
+                tooltip: "Начальная непрозрачность точки следа.",
+            },
+        ],
+    },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

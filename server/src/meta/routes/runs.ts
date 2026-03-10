@@ -9,13 +9,15 @@ import { Pool } from 'pg';
 import { getPostgresPool } from '../../db/pool';
 import { requireAuth } from '../middleware/auth';
 import { getTrackPreset, getTrackPresetIds } from '../data/trackPresets';
+import { loadBalanceConfig } from '../../config/loadBalanceConfig';
 
 const router = express.Router();
 
 // 60-секундный заезд при 60Hz = 3600 кадров × 4 floats = 14400 элементов
 const MAX_REPLAY_ELEMENTS = 50_000;
-// GDD §7.2: максимум монет за заезд
-const MAX_COINS_PER_RUN = 50;
+// GDD §7.2: максимум монет за заезд (из config/balance.json)
+const balance = loadBalanceConfig();
+const MAX_COINS_PER_RUN = (balance as Record<string, any>).race?.maxCoinsPerRun ?? 50;
 
 let pool: Pool | null = null;
 function getPool(): Pool {
@@ -64,6 +66,12 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
     // Кратность 4 (tick, x, y, angle per frame)
     if (replayData.length % 4 !== 0) {
         return res.status(400).json({ error: 'validation_error', message: 'replayData length must be multiple of 4' });
+    }
+    // Все элементы должны быть конечными числами (защита от NaN/Infinity)
+    for (let i = 0; i < replayData.length; i++) {
+        if (typeof replayData[i] !== 'number' || !Number.isFinite(replayData[i])) {
+            return res.status(400).json({ error: 'validation_error', message: 'replayData contains non-finite values' });
+        }
     }
 
     // Cap монет на сервере (GDD §7.2: 5-15 за заезд)

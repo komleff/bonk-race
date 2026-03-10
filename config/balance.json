@@ -31,6 +31,11 @@
     "maxSlimeSpeed": 500,
     "maxOrbSpeed": 1000
   },
+  "race": {
+    "inputThrustBlend": 0.3,
+    "cameraLookaheadY": -120,
+    "maxCoinsPerRun": 50
+  },
   "controls": {
     "joystickMode": "adaptive",
     "joystickRadius": 100,
