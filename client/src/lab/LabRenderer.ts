@@ -5,8 +5,17 @@
  * Camera follows the character with world-to-screen viewport transform.
  */
 
-import { DEATH_FREEZE_S, type SandboxState } from "./BonkLab";
+import type { SandboxState } from "./BonkLab";
 import type { LabInputState } from "./LabInput";
+import {
+    COUNTDOWN_STEP_S,
+    COUNTDOWN_STEPS,
+    COUNTDOWN_TOTAL_S,
+    DEATH_FREEZE_S,
+    RESPAWN_GO_STEP_S,
+    RESPAWN_GO_TOTAL_S,
+    computePunchIn,
+} from "@bonk-race/shared";
 import type { ArenaZone } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
 
@@ -167,18 +176,8 @@ export class LabRenderer {
             this.drawDeathMessage(ctx, state, w, h);
         }
 
-        // ── Post-respawn "Go!" overlay (screen-space) ──
-        if (state.respawnCountdown > 0) {
-            ctx.save();
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.font = "bold 64px sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            const goAlpha = Math.min(1, state.respawnCountdown / DEATH_FREEZE_S * 2);
-            ctx.fillStyle = `rgba(255, 255, 100, ${goAlpha})`;
-            ctx.fillText("Go!", w / 2, h / 2);
-            ctx.restore();
-        }
+        // ── Оверлей обратного отсчёта / респауна ──
+        this.drawCountdownOverlay(ctx, state, w, h);
 
         // ── Finish overlay (screen-space) ──
         if (state.finished) {
@@ -489,6 +488,70 @@ export class LabRenderer {
         ctx.fillStyle = "#ffcc00";
         ctx.fillText("Нажмите Restart для перезапуска", centerX, y);
 
+        ctx.restore();
+    }
+
+    // ── Слой: Обратный отсчёт / респаун Go!-Go! ───────────────────────────
+
+    /**
+     * Рендерит 3-2-1-Go! при старте или Go!-Go! при респауне.
+     * Число появляется крупно и сжимается (масштабный всплеск),
+     * затем резко исчезает без плавного затухания.
+     */
+    private drawCountdownOverlay(
+        ctx: CanvasRenderingContext2D,
+        state: SandboxState,
+        w: number,
+        h: number,
+    ): void {
+        let label: string;
+        let progress: number;
+        let isRespawn = false;
+        let stepInSequence = 0;
+
+        if (state.startCountdown > 0) {
+            // 3-2-1-Go!
+            const elapsed = COUNTDOWN_TOTAL_S - state.startCountdown;
+            const stepIdx = Math.min(
+                Math.floor(elapsed / COUNTDOWN_STEP_S),
+                COUNTDOWN_STEPS.length - 1,
+            );
+            label = COUNTDOWN_STEPS[stepIdx];
+            progress = (elapsed % COUNTDOWN_STEP_S) / COUNTDOWN_STEP_S;
+        } else if (state.respawnCountdown > 0) {
+            // Go!-Go! при респауне
+            label = "Go!";
+            isRespawn = true;
+            const elapsed = RESPAWN_GO_TOTAL_S - state.respawnCountdown;
+            stepInSequence = Math.floor(elapsed / RESPAWN_GO_STEP_S);
+            progress = (elapsed % RESPAWN_GO_STEP_S) / RESPAWN_GO_STEP_S;
+        } else {
+            return;
+        }
+
+        const isGo = label === "Go!";
+        const { scale, alpha } = computePunchIn(progress, isGo);
+
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(scale, scale);
+        ctx.font = "bold 96px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.globalAlpha = alpha;
+
+        // Glow для Go! (сильнее для второго Go! при респауне)
+        if (isGo) {
+            const glowSize = isRespawn && stepInSequence === 1 ? 30 : 20;
+            const punchT = Math.min(progress / 0.6, 1);
+            const easedT = 1 - (1 - punchT) * (1 - punchT);
+            ctx.shadowColor = "rgba(255, 255, 100, 0.8)";
+            ctx.shadowBlur = glowSize * (1 - easedT * 0.5);
+        }
+
+        ctx.fillStyle = isGo ? "#ffff66" : "#ffffff";
+        ctx.fillText(label, 0, 0);
         ctx.restore();
     }
 

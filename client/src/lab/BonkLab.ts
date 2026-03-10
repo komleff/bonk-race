@@ -12,6 +12,9 @@ import type {
     WorldPhysicsConfig,
 } from "@bonk-race/shared";
 import {
+    COUNTDOWN_TOTAL_S,
+    DEATH_FREEZE_S,
+    RESPAWN_GO_TOTAL_S,
     resolveBalanceConfig,
     computeFlightAssist,
     integratePhysics,
@@ -98,7 +101,8 @@ export interface SandboxState {
     deathX: number;
     deathY: number;
     deathDistanceM: number;  // distance at moment of death (for death message)
-    respawnCountdown: number; // post-respawn "Go!" freeze timer
+    respawnCountdown: number; // таймер заморозки Go!-Go! после респауна
+    startCountdown: number;   // pre-race 3-2-1-Go! countdown timer
 
     // Finish state
     finished: boolean;
@@ -110,7 +114,7 @@ export interface SandboxState {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const FIXED_DT = 1 / 60; // 16.7ms — 60 Hz, smooth rendering (server runs 30 Hz)
-export const DEATH_FREEZE_S = 0.8; // seconds to freeze after spike death (GDD §4.2)
+// DEATH_FREEZE_S, COUNTDOWN_TOTAL_S, RESPAWN_GO_TOTAL_S — импортируются из @bonk-race/shared
 
 /**
  * Determines the FA state label based on input and velocity error.
@@ -229,8 +233,10 @@ export class BonkLab {
     private deathX = 0;
     private deathY = 0;
     private deathDistanceM = 0;
-    /** Post-respawn "Go!" countdown (0.8s freeze after respawn) */
+    /** Обратный отсчёт Go!-Go! после респауна (2×0.4с заморозка) */
     private respawnCountdown = 0;
+    /** Стартовый обратный отсчёт 3-2-1-Go! */
+    private startCountdown = 0;
 
     // Finish state
     private finished = false;
@@ -288,11 +294,12 @@ export class BonkLab {
 
     start(): void {
         if (this.running) return;
+        this.startCountdown = COUNTDOWN_TOTAL_S;
         this.running = true;
         this.lastTimestamp = 0;
         this.accumulator = 0;
         this.rafId = requestAnimationFrame((ts) => this.loop(ts));
-        console.log("[BonkLab] simulation started");
+        console.log(`[BonkLab] simulation started (countdown ${COUNTDOWN_TOTAL_S.toFixed(1)}s)`);
     }
 
     stop(): void {
@@ -325,6 +332,7 @@ export class BonkLab {
         this.deathX = 0;
         this.deathY = 0;
         this.respawnCountdown = 0;
+        this.startCountdown = 0;
         this.finished = false;
         this.finishTime = 0;
         this.isNewRecord = false;
@@ -503,6 +511,7 @@ export class BonkLab {
             deathY: this.deathY,
             deathDistanceM: this.deathDistanceM,
             respawnCountdown: this.respawnCountdown,
+            startCountdown: this.startCountdown,
 
             finished: this.finished,
             finishTime: this.finishTime,
@@ -572,6 +581,13 @@ export class BonkLab {
     }
 
     private tick(dt: number): void {
+        // Стартовый обратный отсчёт — физика заморожена
+        if (this.startCountdown > 0) {
+            this.startCountdown -= dt;
+            if (this.startCountdown <= 0) this.startCountdown = 0;
+            return;
+        }
+
         // Finished — simulation frozen until restart
         if (this.finished) return;
 
@@ -595,13 +611,13 @@ export class BonkLab {
                 this.correctionFx = 0;
                 this.correctionFy = 0;
                 this.currentZone = null;
-                // Start "Go!" countdown (TZ v1.2 §A4: 0.8s freeze after respawn)
-                this.respawnCountdown = DEATH_FREEZE_S;
+                // Go!-Go! отсчёт (2×0.4с заморозка после респауна)
+                this.respawnCountdown = RESPAWN_GO_TOTAL_S;
             }
             return;
         }
 
-        // Post-respawn "Go!" freeze — wait before allowing input
+        // Заморозка Go!-Go! после респауна — ввод запрещён
         if (this.respawnCountdown > 0) {
             this.respawnCountdown -= dt;
             if (this.respawnCountdown <= 0) {

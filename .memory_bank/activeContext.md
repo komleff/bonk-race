@@ -5,7 +5,7 @@
 ## Текущее состояние (10 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `main` (после merge PR#9)
+**Активная ветка:** `feat/countdown-and-respawn-overlay` (PR#12, от main)
 **GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
 **Версия:** 0.1.0 (релиз: BonkLab v1.2)
 
@@ -24,6 +24,9 @@
 | #7 | `ci/deploy-lab-workflow` | CI: GitHub Pages deployment for BonkLab | Merged |
 | #8 | `fix/lab-pages-base` | Fix: base path for GitHub Pages | Merged |
 | #9 | `feat/bonklab-v1.2` | **BonkLab v1.2: orbs, finish, geometry, presets** | **APPROVED → ready to merge** |
+| #10 | `feat/gdd-v4-ugc` | GDD v4.0: UGC-секция, русификация | Merged |
+| #11 | `fix/lab-input-direction` | Fix: направление мыши в BonkLab (2x angle error) | Merged |
+| #12 | `feat/countdown-and-respawn-overlay` | **Countdown 3-2-1-Go! + Go!-Go! respawn overlay** | **Open — ревью** |
 
 ---
 
@@ -57,6 +60,22 @@
 | P1 | Auto-sync density не обновлял массы орбов | Пересчёт `orb.mass` для живых орбов |
 | P1 | Defaults snapshot после startup preset | `trueDefaults` до startup preset |
 | P1 | orbDensityManual терялся при regenerateArena | Save/restore вокруг reset() |
+
+---
+
+## Countdown и респаун-оверлей (10 марта 2026)
+
+**PR:** #12 (`feat/countdown-and-respawn-overlay`)
+**Ревьюеры:** Copilot, GPT-5 Codex, GPT-5.3 Codex
+
+**Что реализовано:**
+
+- Стартовый countdown 3→2→1→Go! (0.7с на шаг, 2.8с итого), физика заморожена
+- Go!→Go! после смерти (2×0.4с = 0.8с), тот же крупный шрифт
+- Анимация punch-in (easeOutQuad масштабирование, жёлтый glow для Go!)
+- Общий `computePunchIn()` в shared — единый расчёт для BonkLab и raceMain
+- Константы таймингов вынесены в `@bonk-race/shared`
+- CSS-оверлей countdown в LabToolbar заменён на canvas-рендер
 
 ---
 
