@@ -61,6 +61,7 @@ export {
     ZONE_TYPE_MUD,
     ZONE_TYPE_LAVA,
     ZONE_TYPE_TURBO,
+    ZONE_TYPE_SAND,
     // Obstacle types
     OBSTACLE_TYPE_PILLAR,
     OBSTACLE_TYPE_SPIKES,
@@ -149,13 +150,25 @@ export type {
     IFlightAssistOutput,
     IWorldPhysicsParams,
 } from "./physics/flightAssist";
-export { integratePhysics } from "./physics/integrator";
+export { integratePhysics, DEFAULT_SURFACE_PARAMS } from "./physics/integrator";
 export type {
     IIntegratorState,
     IIntegratorForces,
     IWorldDragParams,
+    ISurfaceParams,
     IIntegratorResult,
 } from "./physics/integrator";
+export { DEFAULT_SURFACE_ASSIST_PARAMS } from "./physics/flightAssist";
+export type { ISurfaceAssistParams } from "./physics/flightAssist";
+export {
+    DEFAULT_SURFACE_CONFIG,
+    SURFACE_PRESETS,
+    getSurfaceConfigForZone,
+    toSurfaceParams,
+    toSurfaceAssistParams,
+    clampSurfaceConfig,
+} from "./surfaceConfig";
+export type { SurfaceConfig } from "./surfaceConfig";
 export { generateArena } from "./physics/arenaGenerator";
 export type { Arena, ArenaConfig, ArenaObject, ArenaOrb, ArenaZone } from "./physics/arenaGenerator";
 

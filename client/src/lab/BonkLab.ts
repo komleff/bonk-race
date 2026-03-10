@@ -22,6 +22,10 @@ import {
     resolveCircleStaticCollision,
     resolveCircleCircleCollision,
     Rng,
+    DEFAULT_SURFACE_CONFIG,
+    SURFACE_PRESETS,
+    toSurfaceParams,
+    toSurfaceAssistParams,
 } from "@bonk-race/shared";
 import type {
     ISlimePhysicsState,
@@ -34,11 +38,19 @@ import type {
     IStaticObstacle,
     IWallBounds,
     Arena,
-    ArenaZone,
+    SurfaceConfig,
 } from "@bonk-race/shared";
 import { generateArena } from "@bonk-race/shared";
 
 import balanceJson from "../../../config/balance.json";
+
+// ─── Zone name → SurfaceConfig mapping for ArenaZone.type strings ───────────
+const ZONE_NAME_TO_SURFACE: Record<string, SurfaceConfig> = {
+    ice: SURFACE_PRESETS.ice,
+    mud: SURFACE_PRESETS.mud,
+    turbo: SURFACE_PRESETS.turbo,
+    sand: SURFACE_PRESETS.sand,
+};
 
 // ─── SandboxState ────────────────────────────────────────────────────────────
 
@@ -223,6 +235,7 @@ export class BonkLab {
 
     // Zone
     private currentZone: string | null = null;
+    private currentSurface: SurfaceConfig = DEFAULT_SURFACE_CONFIG;
 
     // Arena generation state (remembered for re-generation on size change)
     private lastSeed = 42;
@@ -426,12 +439,6 @@ export class BonkLab {
             return;
         }
 
-        // Zone params → update arena zones live
-        if (key.startsWith("zones.")) {
-            this.syncZoneParams(key, value as number);
-            return;
-        }
-
         // All other keys map to slimeConfig
         setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
     }
@@ -457,20 +464,6 @@ export class BonkLab {
         for (const orb of this.orbs) {
             if (orb.alive) {
                 orb.mass = density * Math.PI * orb.radius * orb.radius;
-            }
-        }
-    }
-
-    /** Sync zone slider values into arena zone objects */
-    private syncZoneParams(key: string, value: number): void {
-        // key format: "zones.ice.frictionMultiplier" → zoneType="ice", paramKey="frictionMultiplier"
-        const parts = key.split(".");
-        if (parts.length < 3) return;
-        const zoneType = parts[1];
-        const paramKey = parts[2];
-        for (const zone of this.arena.zones) {
-            if (zone.type === zoneType) {
-                zone.params[paramKey] = value;
             }
         }
     }
@@ -548,12 +541,6 @@ export class BonkLab {
         this.reset();
         this.orbDensityManual = savedOrbDensityManual;
         this.bestTime = 0; // reset record — track layout changed
-        // Reapply zone overrides from current params to new arena zones
-        for (const key of Object.keys(this.params)) {
-            if (key.startsWith("zones.")) {
-                this.syncZoneParams(key, this.params[key] as number);
-            }
-        }
 
         console.log("[BonkLab] arena regenerated", { seed, density, obstacles: this.arena.obstacles.length });
     }
@@ -648,15 +635,6 @@ export class BonkLab {
             yawSignHistory: this.yawSignHistory,
         };
 
-        // Apply zone effects to slowPct
-        if (this.currentZone === "mud") {
-            // mud zone slows the character
-            const zoneData = this.findCurrentZone();
-            if (zoneData) {
-                faState.slowPct = 1 - (zoneData.params.speedMultiplier ?? 1);
-            }
-        }
-
         // Neutral modifiers (no talents in sandbox)
         const modifiers: ISlimeModifiers = {
             thrustForwardBonus: 0,
@@ -669,7 +647,6 @@ export class BonkLab {
 
         const external: IExternalMultipliers = {
             hasteSpeedMultiplier: 1,
-            zoneSpeedMultiplier: 1,
             lastBreathSpeedPenalty: 1,
         };
 
@@ -677,7 +654,8 @@ export class BonkLab {
             angularDragK: this.worldPhysics.angularDragK,
         };
 
-        // ── 2. Compute Flight Assist ──
+        // ── 2. Compute Flight Assist (with surface zone multipliers) ──
+        const surfaceAssist = toSurfaceAssistParams(this.currentSurface);
         const faOutput = computeFlightAssist(
             faState,
             slimeConfig,
@@ -685,28 +663,9 @@ export class BonkLab {
             modifiers,
             external,
             worldPhysicsParams,
+            surfaceAssist,
             dt,
         );
-
-        // Turbo zone: apply extra acceleration force in velocity direction
-        if (this.currentZone === "turbo") {
-            const zoneData = this.findCurrentZone();
-            if (zoneData) {
-                const accelBoost = zoneData.params.accelBoost ?? 1000;
-                const speed = Math.hypot(this.vx, this.vy);
-                if (speed > 1) {
-                    // Force in velocity direction: F = accelBoost * mass
-                    const turboF = accelBoost * mass;
-                    faOutput.assistFx += (this.vx / speed) * turboF;
-                    faOutput.assistFy += (this.vy / speed) * turboF;
-                } else if (this.inputMagnitude > 0.01) {
-                    // If nearly stopped, use input direction
-                    const turboF = accelBoost * mass;
-                    faOutput.assistFx += this.inputX * turboF;
-                    faOutput.assistFy += this.inputY * turboF;
-                }
-            }
-        }
 
         this.lastFaOutput = faOutput;
 
@@ -743,23 +702,10 @@ export class BonkLab {
 
         // ── 3. Integrate Physics ──
         const dragParams: IWorldDragParams = {
-            linearDragK: this.worldPhysics.linearDragK,
+            forwardDragK: this.worldPhysics.forwardDragK,
+            lateralGripMultiplier: this.worldPhysics.lateralGripMultiplier,
             angularDragK: this.worldPhysics.angularDragK,
         };
-
-        // Zone friction multiplier
-        let zoneFrictionMultiplier = 1;
-        if (this.currentZone === "ice") {
-            const zoneData = this.findCurrentZone();
-            if (zoneData) {
-                zoneFrictionMultiplier = zoneData.params.frictionMultiplier ?? 1;
-            }
-        } else if (this.currentZone === "mud") {
-            const zoneData = this.findCurrentZone();
-            if (zoneData) {
-                zoneFrictionMultiplier = zoneData.params.frictionMultiplier ?? 1;
-            }
-        }
 
         const integratorState = {
             x: this.x,
@@ -770,6 +716,7 @@ export class BonkLab {
             angVel: this.angVel,
         };
 
+        const surfaceParams = toSurfaceParams(this.currentSurface);
         const result = integratePhysics(
             integratorState,
             faOutput,
@@ -777,7 +724,7 @@ export class BonkLab {
             inertia,
             slimeConfig,
             dragParams,
-            zoneFrictionMultiplier,
+            surfaceParams,
             false, // isLastBreath
             1, // lastBreathSpeedPenalty
             dt,
@@ -860,11 +807,13 @@ export class BonkLab {
 
         // ── 5. Zone detection (point-in-circle) ──
         this.currentZone = null;
+        this.currentSurface = DEFAULT_SURFACE_CONFIG;
         for (const zone of this.arena.zones) {
             const dx = this.x - zone.x;
             const dy = this.y - zone.y;
             if (dx * dx + dy * dy <= zone.radius * zone.radius) {
                 this.currentZone = zone.type;
+                this.currentSurface = ZONE_NAME_TO_SURFACE[zone.type] ?? DEFAULT_SURFACE_CONFIG;
                 break;
             }
         }
@@ -905,7 +854,7 @@ export class BonkLab {
         wallBounds: IWallBounds,
         collisionConfig: { correctionPercent: number; slop: number; maxCorrection: number },
     ): void {
-        const dragK = this.worldPhysics.linearDragK;
+        const dragK = this.worldPhysics.forwardDragK;
         const spikeKill = this.params["orbs.spikeKill"] as boolean ?? true;
         const restitution = this.worldPhysics.restitution;
         const passageRestitution = (this.params["worldPhysics.passageRestitution"] as number) ?? restitution * 0.5;
@@ -921,8 +870,8 @@ export class BonkLab {
                 }
                 continue;
             }
-            // Linear drag: v *= (1 - dragK * dt)
-            const damping = Math.max(0, 1 - dragK * dt);
+            // Exponential drag decay (isotropic for orbs)
+            const damping = Math.exp(-dragK * dt);
             orb.vx *= damping;
             orb.vy *= damping;
             // Semi-implicit Euler
@@ -991,20 +940,6 @@ export class BonkLab {
         this.y = playerBody.y;
         this.vx = playerBody.vx;
         this.vy = playerBody.vy;
-    }
-
-    /**
-     * Find the ArenaZone the character is currently in (if any).
-     */
-    private findCurrentZone(): ArenaZone | null {
-        for (const zone of this.arena.zones) {
-            const dx = this.x - zone.x;
-            const dy = this.y - zone.y;
-            if (dx * dx + dy * dy <= zone.radius * zone.radius) {
-                return zone;
-            }
-        }
-        return null;
     }
 
     // ── Parameter Mapping ────────────────────────────────────────────────────
@@ -1094,16 +1029,11 @@ export class BonkLab {
             // World physics
             "worldPhysics.widthM": wp.widthM ?? 800,
             "worldPhysics.heightM": wp.heightM ?? 10130,
-            "worldPhysics.linearDragK": wp.linearDragK,
+            "worldPhysics.forwardDragK": wp.forwardDragK,
+            "worldPhysics.lateralGripMultiplier": wp.lateralGripMultiplier,
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
             "worldPhysics.passageRestitution": wp.restitution * 0.5,
-
-            // Zone defaults (from arenaGenerator)
-            "zones.ice.frictionMultiplier": 0.1,
-            "zones.mud.frictionMultiplier": 500,
-            "zones.mud.speedMultiplier": 0.5,
-            "zones.turbo.accelBoost": 1000,
         };
     }
 }

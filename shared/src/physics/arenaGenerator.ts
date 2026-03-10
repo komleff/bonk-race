@@ -88,6 +88,9 @@ const SPAWN_EXCLUSION_RADIUS = 60;
 
 const ZONE_TYPES: ArenaZone["type"][] = ["ice", "mud", "turbo"];
 
+// DEPRECATED: Legacy zone params — physics now uses SurfaceConfig presets from surfaceConfig.ts.
+// These values are still written to ArenaZone.params for backward compatibility with Colyseus schema.
+// TODO(LG-5): Remove once server-side zone migration is complete.
 const ZONE_PARAMS: Record<ArenaZone["type"], Record<string, number>> = {
     ice:   { frictionMultiplier: 0.1 },
     mud: { speedMultiplier: 0.5, frictionMultiplier: 500 },

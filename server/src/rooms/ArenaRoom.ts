@@ -49,6 +49,9 @@ import {
     ClassTalentConfig,
     BoostType,
     Rng,
+    getSurfaceConfigForZone,
+    toSurfaceParams,
+    toSurfaceAssistParams,
 } from "@bonk-race/shared";
 import { loadBalanceConfig } from "../config/loadBalanceConfig";
 import { TelemetryService } from "../telemetry/TelemetryService";
@@ -1938,28 +1941,18 @@ export class ArenaRoom extends Room<GameState> {
         return null;
     }
 
-    private getZoneSpeedMultiplier(player: Player): number {
+    /** Get ISurfaceParams for the zone the player is in */
+    getSurfaceParams(player: Player) {
         const zone = this.getZoneForPlayer(player);
-        if (!zone) return 1;
-        if (zone.type === ZONE_TYPE_TURBO) {
-            return Math.max(0, this.balance.zones.turbo.speedMultiplier);
-        }
-        if (zone.type === ZONE_TYPE_MUD) {
-            return Math.max(0, this.balance.zones.mud.speedMultiplier);
-        }
-        return 1;
+        if (!zone) return toSurfaceParams(getSurfaceConfigForZone(0));
+        return toSurfaceParams(getSurfaceConfigForZone(zone.type));
     }
 
-    private getZoneFrictionMultiplier(player: Player): number {
+    /** Get ISurfaceAssistParams for the zone the player is in */
+    getSurfaceAssistParams(player: Player) {
         const zone = this.getZoneForPlayer(player);
-        if (!zone) return 1;
-        if (zone.type === ZONE_TYPE_ICE) {
-            return Math.max(0, this.balance.zones.ice.frictionMultiplier);
-        }
-        if (zone.type === ZONE_TYPE_MUD) {
-            return Math.max(0, this.balance.zones.mud.frictionMultiplier);
-        }
-        return 1;
+        if (!zone) return toSurfaceAssistParams(getSurfaceConfigForZone(0));
+        return toSurfaceAssistParams(getSurfaceConfigForZone(zone.type));
     }
 
     private getOrbSpawnMultiplier(): number {

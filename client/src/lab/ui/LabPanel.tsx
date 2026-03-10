@@ -56,12 +56,12 @@ const PARAM_GROUPS: GroupDef[] = [
                     "Радиус тела персонажа.",
             },
             {
-                label: "Коэф. инерции",
+                label: "Коэф. формы",
                 key: "geometry.inertiaFactor",
-                min: 0.1,
+                min: 0.01,
                 max: 2.0,
                 tooltip:
-                    "Множитель момента инерции (I = factor * mass * r^2). Больше = труднее поворачивать.",
+                    "Распределение массы: 0 = вся в центре (легко крутится), 0.5 = сплошной диск, 1.0 = полое кольцо (трудно крутится).",
             },
         ],
     },
@@ -376,13 +376,22 @@ const PARAM_GROUPS: GroupDef[] = [
                     "Высота игрового поля. Увеличьте для длинной трассы (старт внизу, финиш наверху).",
             },
             {
-                label: "Линейное сопротивление",
-                key: "worldPhysics.linearDragK",
+                label: "Продольное сопротивление",
+                key: "worldPhysics.forwardDragK",
                 min: 0,
                 max: 1.0,
                 unit: "1/с",
                 tooltip:
-                    'Коэффициент "воздушного" трения. Сила = -dragK * velocity. Больше = быстрее тормозит.',
+                    "Коэффициент продольного трения (вдоль направления движения). Больше = быстрее тормозит.",
+            },
+            {
+                label: "Боковое сцепление",
+                key: "worldPhysics.lateralGripMultiplier",
+                min: 0,
+                max: 100,
+                unit: "×",
+                tooltip:
+                    "Множитель бокового сцепления. 1 = изотропно (как раньше). Больше = сильнее гасит боковое скольжение.",
             },
             {
                 label: "Угловое сопротивление",
@@ -496,41 +505,6 @@ const PARAM_GROUPS: GroupDef[] = [
                 min: 0, max: 1,
                 isBoolean: true,
                 tooltip: "Орб исчезает при контакте с шипом",
-            },
-        ],
-    },
-    // 3.10 Zones
-    {
-        title: "Зоны",
-        params: [
-            {
-                label: "Лёд: трение",
-                key: "zones.ice.frictionMultiplier",
-                min: 0,
-                max: 1.0,
-                tooltip: "Множитель трения на ледяной зоне.",
-            },
-            {
-                label: "Грязь: трение",
-                key: "zones.mud.frictionMultiplier",
-                min: 0.5,
-                max: 2000,
-                tooltip: "Множитель трения на грязи.",
-            },
-            {
-                label: "Грязь: скорость",
-                key: "zones.mud.speedMultiplier",
-                min: 0.1,
-                max: 1.0,
-                tooltip: "Множитель скорости на грязи.",
-            },
-            {
-                label: "Турбо: ускорение",
-                key: "zones.turbo.accelBoost",
-                min: 50,
-                max: 10000,
-                unit: "м/с²",
-                tooltip: "Дополнительное ускорение в направлении движения на турбо-зоне.",
             },
         ],
     },

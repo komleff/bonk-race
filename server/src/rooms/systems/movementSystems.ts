@@ -9,6 +9,7 @@ import type {
     IExternalMultipliers,
     IWorldPhysicsParams,
 } from "@bonk-race/shared";
+import { DEFAULT_SURFACE_PARAMS, DEFAULT_SURFACE_ASSIST_PARAMS } from "@bonk-race/shared";
 
 export function flightAssistSystem(room: any) {
     const dt = 1 / room.balance.server.tickRate;
@@ -57,12 +58,13 @@ export function flightAssistSystem(room: any) {
 
         const external: IExternalMultipliers = {
             hasteSpeedMultiplier: room.getHasteSpeedMultiplier(player),
-            zoneSpeedMultiplier: room.getZoneSpeedMultiplier(player),
             lastBreathSpeedPenalty: room.balance.combat.lastBreathSpeedPenalty,
         };
 
+        const surfaceAssist = room.getSurfaceAssistParams?.(player) ?? DEFAULT_SURFACE_ASSIST_PARAMS;
         const result = computeFlightAssist(
-            state, slimeConfig, inertia, modifiers, external, worldPhysics, dt,
+            state, slimeConfig, inertia, modifiers, external, worldPhysics,
+            surfaceAssist, dt,
         );
 
         player.assistFx = result.assistFx;
@@ -101,7 +103,7 @@ export function physicsSystem(room: any) {
         const classStats = room.getClassStats(player);
         const mass = Math.max(player.mass, room.balance.physics.minSlimeMass);
         const inertia = room.getSlimeInertiaForPlayer(player, slimeConfig, classStats);
-        const zoneFrictionMultiplier = room.getZoneFrictionMultiplier(player);
+        const surface = room.getSurfaceParams?.(player) ?? DEFAULT_SURFACE_PARAMS;
 
         const result = integratePhysics(
             { x: player.x, y: player.y, vx: player.vx, vy: player.vy, angle: player.angle, angVel: player.angVel },
@@ -109,8 +111,8 @@ export function physicsSystem(room: any) {
             mass,
             inertia,
             slimeConfig,
-            { linearDragK: world.linearDragK, angularDragK: world.angularDragK },
-            zoneFrictionMultiplier,
+            { forwardDragK: world.forwardDragK, lateralGripMultiplier: world.lateralGripMultiplier, angularDragK: world.angularDragK },
+            surface,
             player.isLastBreath,
             room.balance.combat.lastBreathSpeedPenalty,
             dt,

@@ -36,15 +36,19 @@ root.appendChild(uiContainer);
 // Instantiate core systems
 const lab = new BonkLab(canvas);
 
-// Apply "Лёгкий и быстрый" preset on startup (TZ v1.2 §A2)
+// Apply "BonkRace v0.3" preset on startup — casual arcade racing
 const STARTUP_PRESET: Record<string, number | boolean> = {
     "mass": 40,
-    "propulsion.thrustForwardN": 50000,
-    "propulsion.thrustReverseN": 18000,
-    "propulsion.thrustLateralN": 22000,
-    "propulsion.turnTorqueNm": 40000,
-    "limits.speedLimitForwardMps": 400,
-    "worldPhysics.linearDragK": 0.005,
+    "geometry.inertiaFactor": 0.05,
+    "propulsion.thrustForwardN": 70000,
+    "propulsion.thrustReverseN": 30000,
+    "propulsion.thrustLateralN": 25000,
+    "propulsion.turnTorqueNm": 80000,
+    "limits.speedLimitForwardMps": 380,
+    "worldPhysics.forwardDragK": 0.05,
+    "worldPhysics.lateralGripMultiplier": 25.0,
+    "worldPhysics.angularDragK": 0.15,
+    "worldPhysics.restitution": 0.80,
 };
 for (const [key, val] of Object.entries(STARTUP_PRESET)) {
     lab.updateParams(key, val);

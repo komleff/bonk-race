@@ -246,15 +246,17 @@ function physicsSystem(
     config: TrackConfig,
     dt: number,
 ): void {
-    const baseDrag = config.physics.linearDragK;
+    // TODO(LG-6): Migrate to anisotropic exp(-k*dt) decay model from shared/physics/integrator.
+    // Currently uses isotropic force-based drag. See tz-lateral-grip plan for details.
+    const baseDrag = config.physics.forwardDragK;
     const surfaceMul = getSurfaceDragMultiplier(player, config);
     const drag = baseDrag * surfaceMul;
 
-    // Linear drag
+    // Linear drag (isotropic, force-based — to be replaced by anisotropic exp decay)
     player.vx -= player.vx * drag * dt;
     player.vy -= player.vy * drag * dt;
 
-    // Angular drag
+    // Angular drag (to be replaced by exp(-angularDragK * angularDragMultiplier * dt))
     player.angVel *= (1 - drag * 2 * dt);
 
     // Integrate position

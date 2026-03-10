@@ -332,7 +332,7 @@ slimeRadius = baseRadiusM × √(mass / baseMassKg)
 | Радиус | `baseRadiusM × √(mass / baseMassKg)` |
 | Тяга двигателей | `baseThrust × √(mass / baseMassKg)` |
 | Момент поворота | `baseTorque × (mass / baseMassKg)^1.7` |
-| Момент инерции | `0.5 × mass × radius²` |
+| Момент инерции | `inertiaFactor × mass × radius²` (default: 0.10) |
 
 ### 9.4. Сервер
 

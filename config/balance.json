@@ -48,7 +48,7 @@
       "geometry": {
         "baseMassKg": 100,
         "baseRadiusM": 10.0,
-        "inertiaFactor": 0.5
+        "inertiaFactor": 0.10
       },
       "propulsion": {
         "thrustForwardN": 27000,
@@ -106,7 +106,7 @@
       "geometry": {
         "baseMassKg": 100,
         "baseRadiusM": 10.0,
-        "inertiaFactor": 0.5
+        "inertiaFactor": 0.10
       },
       "propulsion": {
         "thrustForwardN": 27000,
@@ -164,7 +164,7 @@
       "geometry": {
         "baseMassKg": 100,
         "baseRadiusM": 10.0,
-        "inertiaFactor": 0.5
+        "inertiaFactor": 0.10
       },
       "propulsion": {
         "thrustForwardN": 27000,
@@ -222,7 +222,7 @@
       "geometry": {
         "baseMassKg": 100,
         "baseRadiusM": 10.0,
-        "inertiaFactor": 0.5
+        "inertiaFactor": 0.10
       },
       "propulsion": {
         "thrustForwardN": 27000,
@@ -276,7 +276,8 @@
     }
   },
   "worldPhysics": {
-    "linearDragK": 0.1,
+    "forwardDragK": 0.1,
+    "lateralGripMultiplier": 1.0,
     "angularDragK": 1.3,
     "restitution": 0.9,
     "maxPositionCorrectionM": 0.5,

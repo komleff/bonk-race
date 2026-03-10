@@ -178,7 +178,8 @@ export interface SlimeConfig {
 }
 
 export interface WorldPhysicsConfig {
-    linearDragK: number;
+    forwardDragK: number;
+    lateralGripMultiplier: number;
     angularDragK: number;
     restitution: number;
     maxPositionCorrectionM: number;
@@ -686,7 +687,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
             geometry: {
                 baseMassKg: 100,
                 baseRadiusM: 10.0,
-                inertiaFactor: 0.5,
+                inertiaFactor: 0.10,
             },
             propulsion: {
                 thrustForwardN: 9000,
@@ -745,7 +746,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
             geometry: {
                 baseMassKg: 100,
                 baseRadiusM: 10.0,
-                inertiaFactor: 0.5,
+                inertiaFactor: 0.10,
             },
             propulsion: {
                 thrustForwardN: 9000,
@@ -804,7 +805,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
             geometry: {
                 baseMassKg: 100,
                 baseRadiusM: 10.0,
-                inertiaFactor: 0.5,
+                inertiaFactor: 0.10,
             },
             propulsion: {
                 thrustForwardN: 9000,
@@ -863,7 +864,7 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
             geometry: {
                 baseMassKg: 100,
                 baseRadiusM: 10.0,
-                inertiaFactor: 0.5,
+                inertiaFactor: 0.10,
             },
             propulsion: {
                 thrustForwardN: 9000,
@@ -918,7 +919,8 @@ export const DEFAULT_BALANCE_CONFIG: BalanceConfig = {
         },
     },
     worldPhysics: {
-        linearDragK: 0.1,
+        forwardDragK: 0.1,
+        lateralGripMultiplier: 1.0,
         angularDragK: 0.0,
         restitution: 0.9,
         maxPositionCorrectionM: 0.5,
@@ -1929,10 +1931,15 @@ export function resolveBalanceConfig(raw: unknown): ResolvedBalanceConfig {
             ),
         },
         worldPhysics: {
-            linearDragK: readNumber(
-                worldPhysics.linearDragK,
-                DEFAULT_BALANCE_CONFIG.worldPhysics.linearDragK,
-                "worldPhysics.linearDragK"
+            forwardDragK: readNumber(
+                worldPhysics.forwardDragK ?? worldPhysics.linearDragK,
+                DEFAULT_BALANCE_CONFIG.worldPhysics.forwardDragK,
+                "worldPhysics.forwardDragK"
+            ),
+            lateralGripMultiplier: readNumber(
+                worldPhysics.lateralGripMultiplier,
+                DEFAULT_BALANCE_CONFIG.worldPhysics.lateralGripMultiplier,
+                "worldPhysics.lateralGripMultiplier"
             ),
             angularDragK: readNumber(
                 worldPhysics.angularDragK,
