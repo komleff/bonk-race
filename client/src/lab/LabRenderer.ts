@@ -16,7 +16,6 @@ import {
     RESPAWN_GO_TOTAL_S,
     computePunchIn,
 } from "@bonk-race/shared";
-import type { ArenaZone } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -25,10 +24,11 @@ const BG_COLOR = "#1a1a2e";
 const GRID_COLOR = "#2a2a3e";
 const GRID_SPACING = 100; // metres
 
-const ZONE_COLORS: Record<ArenaZone["type"], string> = {
+const ZONE_COLORS: Record<string, string> = {
     ice: "#4488cc",
     mud: "#6B3A1F",
     turbo: "#ff8800",
+    sand: "#c2a64e",
 };
 const ZONE_ALPHA = 0.3;
 
@@ -80,7 +80,6 @@ interface TrailPoint {
     x: number;
     y: number;
     age: number;
-    drift: boolean;
 }
 
 const TRAIL_MAX_POINTS = 600;
@@ -115,6 +114,7 @@ export class LabRenderer {
     private trailBaseAlpha = 0.6;
     private trailPrevX = NaN;
     private trailPrevY = NaN;
+    private lastRenderTs = 0;
 
     // Pre-allocated reusable objects to avoid GC in render loop
     private _gradient: CanvasGradient | null = null;
@@ -190,8 +190,11 @@ export class LabRenderer {
         this.drawOrbs(ctx, state);
 
         // Trail: записываем точку и рисуем
+        const now = performance.now();
+        const trailDt = this.lastRenderTs > 0 ? Math.min((now - this.lastRenderTs) / 1000, 0.1) : 1 / 60;
+        this.lastRenderTs = now;
         if (this.trailEnabled && state.deathTimer <= 0) {
-            this.pushTrailPoint(state.x, state.y, state.faState === "drift-correction", 1 / 60);
+            this.pushTrailPoint(state.x, state.y, trailDt);
             this.drawTrail(ctx, state.radius);
         }
 
@@ -383,9 +386,12 @@ export class LabRenderer {
 
     // ── Trail system ──────────────────────────────────────────────────────────
 
-    private pushTrailPoint(x: number, y: number, drift: boolean, dt: number): void {
-        // Не записывать дубликаты (персонаж стоит на месте)
-        if (x === this.trailPrevX && y === this.trailPrevY) {
+    private pushTrailPoint(x: number, y: number, dt: number): void {
+        // Прореживание: записывать точку только если персонаж сдвинулся ≥ 0.4 радиуса
+        const dx = x - this.trailPrevX;
+        const dy = y - this.trailPrevY;
+        const minDist = 8; // ~0.4 * baseRadius(20)
+        if (dx * dx + dy * dy < minDist * minDist) {
             this.ageTrail(dt);
             return;
         }
@@ -394,12 +400,12 @@ export class LabRenderer {
 
         // Инициализация буфера при первом использовании
         if (this.trailBuffer.length < TRAIL_MAX_POINTS) {
-            this.trailBuffer.push({ x, y, age: 0, drift });
+            this.trailBuffer.push({ x, y, age: 0 });
             this.trailCount = this.trailBuffer.length;
             this.trailHead = this.trailCount % TRAIL_MAX_POINTS;
         } else {
             const pt = this.trailBuffer[this.trailHead];
-            pt.x = x; pt.y = y; pt.age = 0; pt.drift = drift;
+            pt.x = x; pt.y = y; pt.age = 0;
             this.trailHead = (this.trailHead + 1) % TRAIL_MAX_POINTS;
             if (this.trailCount < TRAIL_MAX_POINTS) this.trailCount++;
         }
@@ -424,15 +430,7 @@ export class LabRenderer {
             const t = pt.age / maxAge; // 0→1
             const alpha = baseAlpha * (1 - t);
 
-            if (pt.drift) {
-                // Дрифт — оранжевые точки, крупнее
-                const r = charRadius * (1.1 - t * 0.5);
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 170, 68, ${alpha.toFixed(2)})`;
-                ctx.fill();
-            } else {
-                // Обычное движение — голубые точки
+            {
                 const r = charRadius * (1 - t * 0.6);
                 ctx.beginPath();
                 ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);

@@ -45,12 +45,15 @@ import { generateArena } from "@bonk-race/shared";
 import balanceJson from "../../../config/balance.json";
 
 // ─── Zone name → SurfaceConfig mapping for ArenaZone.type strings ───────────
-const ZONE_NAME_TO_SURFACE: Record<string, SurfaceConfig> = {
-    ice: SURFACE_PRESETS.ice,
-    mud: SURFACE_PRESETS.mud,
-    turbo: SURFACE_PRESETS.turbo,
-    sand: SURFACE_PRESETS.sand,
-};
+// Mutable at runtime so LabPanel zone sliders can override presets.
+function buildZoneSurfaces(): Record<string, SurfaceConfig> {
+    return {
+        ice: { ...SURFACE_PRESETS.ice },
+        mud: { ...SURFACE_PRESETS.mud },
+        turbo: { ...SURFACE_PRESETS.turbo },
+        sand: { ...SURFACE_PRESETS.sand },
+    };
+}
 
 // ─── SandboxState ────────────────────────────────────────────────────────────
 
@@ -236,6 +239,7 @@ export class BonkLab {
     // Zone
     private currentZone: string | null = null;
     private currentSurface: SurfaceConfig = DEFAULT_SURFACE_CONFIG;
+    private zoneSurfaces: Record<string, SurfaceConfig> = buildZoneSurfaces();
 
     // Arena generation state (remembered for re-generation on size change)
     private lastSeed = 42;
@@ -424,6 +428,20 @@ export class BonkLab {
             }
             if (key !== "orbs.spikeKill") {
                 this.regenerateArena(this.lastSeed, this.lastDensity);
+            }
+            return;
+        }
+
+        // Zone surface params (e.g. "zone.ice.forwardDragMultiplier")
+        if (key.startsWith("zone.")) {
+            const parts = key.split(".");
+            if (parts.length === 3) {
+                const zoneName = parts[1];
+                const field = parts[2] as keyof SurfaceConfig;
+                const surface = this.zoneSurfaces[zoneName];
+                if (surface && field in surface) {
+                    (surface as unknown as Record<string, number>)[field] = value as number;
+                }
             }
             return;
         }
@@ -823,7 +841,7 @@ export class BonkLab {
             const dy = this.y - zone.y;
             if (dx * dx + dy * dy <= zone.radius * zone.radius) {
                 this.currentZone = zone.type;
-                this.currentSurface = ZONE_NAME_TO_SURFACE[zone.type] ?? DEFAULT_SURFACE_CONFIG;
+                this.currentSurface = this.zoneSurfaces[zone.type] ?? DEFAULT_SURFACE_CONFIG;
                 break;
             }
         }
@@ -1044,6 +1062,19 @@ export class BonkLab {
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
             "worldPhysics.passageRestitution": wp.restitution * 0.5,
+
+            // Zone surface overrides (from SURFACE_PRESETS defaults)
+            ...this.buildZoneParams(),
         };
+    }
+
+    private buildZoneParams(): Record<string, number> {
+        const result: Record<string, number> = {};
+        for (const [zoneName, surface] of Object.entries(this.zoneSurfaces)) {
+            for (const [field, value] of Object.entries(surface)) {
+                result[`zone.${zoneName}.${field}`] = value as number;
+            }
+        }
+        return result;
     }
 }
