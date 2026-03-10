@@ -53,6 +53,13 @@ const ARROW_HEAD_ANGLE = Math.PI / 6;
 /** World-metres visible around the character (half-extent). */
 const DEFAULT_VIEW_RANGE = 400;
 
+/**
+ * Vertical screen ratio where the character is rendered.
+ * 0.65 = 65% from top → character in lower part, more view ahead (upward race).
+ * Exported so LabInput can use the same value for mouse direction origin.
+ */
+export const CHAR_SCREEN_Y_RATIO = 0.65;
+
 const MINIMAP_SIZE = 140;
 const MINIMAP_MARGIN = 12;
 const MINIMAP_BG = "rgba(0,0,0,0.55)";
@@ -76,12 +83,16 @@ export class LabRenderer {
     private normSpeedLimit = 260;
     private normMaxThrust = 27000;
 
+    /** Cached canvas bounding rect (updated on resize). */
+    private cachedRect: DOMRect;
+
     // Pre-allocated reusable objects to avoid GC in render loop
     private _gradient: CanvasGradient | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d")!;
+        this.cachedRect = canvas.getBoundingClientRect();
         this.resize();
     }
 
@@ -98,10 +109,15 @@ export class LabRenderer {
 
     resize(): void {
         const dpr = window.devicePixelRatio || 1;
-        const rect = this.canvas.getBoundingClientRect();
-        this.canvas.width = rect.width * dpr;
-        this.canvas.height = rect.height * dpr;
+        this.cachedRect = this.canvas.getBoundingClientRect();
+        this.canvas.width = this.cachedRect.width * dpr;
+        this.canvas.height = this.cachedRect.height * dpr;
         this.scale = Math.min(this.canvas.width, this.canvas.height) / (this.viewRange * 2);
+    }
+
+    /** Returns cached canvas bounding rect (updated on resize). */
+    getCanvasRect(): DOMRect {
+        return this.cachedRect;
     }
 
     render(state: SandboxState, input: LabInputState): void {
@@ -117,7 +133,7 @@ export class LabRenderer {
         // ── Camera transform (world → screen) ──
         // Character offset to lower 65% of screen — racing game going upward needs more view ahead.
         const cx = w / 2;
-        const cy = h * 0.65;
+        const cy = h * CHAR_SCREEN_Y_RATIO;
         const s = this.scale;
 
         ctx.setTransform(s, 0, 0, s, cx - state.x * s, cy - state.y * s);
@@ -140,6 +156,11 @@ export class LabRenderer {
         // ── Minimap (screen-space) ──
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.drawMinimap(ctx, state, w, h);
+
+        // ── Touch joystick overlay (screen-space) ──
+        if (input.isTouch && input.active) {
+            this.drawTouchJoystick(ctx, input);
+        }
 
         // ── Death distance message (screen-space) ──
         if (state.deathTimer > 0) {
@@ -471,6 +492,41 @@ export class LabRenderer {
         ctx.restore();
     }
 
+    // ── Layer: Touch Joystick (screen-space) ───────────────────────────────
+
+    private drawTouchJoystick(
+        ctx: CanvasRenderingContext2D,
+        input: LabInputState,
+    ): void {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = this.cachedRect;
+        // Convert CSS client coordinates to canvas pixel coordinates
+        const baseX = (input.baseScreenX - rect.left) * dpr;
+        const baseY = (input.baseScreenY - rect.top) * dpr;
+        const knobX = (input.screenX - rect.left) * dpr;
+        const knobY = (input.screenY - rect.top) * dpr;
+        const baseRadius = 50 * dpr;
+        const knobRadius = 22 * dpr;
+
+        // Base circle
+        ctx.beginPath();
+        ctx.arc(baseX, baseY, baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+        ctx.lineWidth = 2 * dpr;
+        ctx.stroke();
+
+        // Knob circle
+        ctx.beginPath();
+        ctx.arc(knobX, knobY, knobRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.stroke();
+    }
+
     // ── Layer: Beacon ────────────────────────────────────────────────────────
 
     private drawBeacon(
@@ -702,7 +758,7 @@ export class LabRenderer {
         // Viewport rectangle (asymmetric: camera places character at 65% from top)
         const vpHalfW = canvasW / (2 * this.scale);
         const vpFullH = canvasH / this.scale;
-        const vpTop = state.y - vpFullH * 0.65;
+        const vpTop = state.y - vpFullH * CHAR_SCREEN_Y_RATIO;
         ctx.strokeStyle = "rgba(255,255,255,0.5)";
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 2]);

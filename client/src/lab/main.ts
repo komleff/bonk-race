@@ -3,7 +3,7 @@
 import { render, h } from "preact";
 import { BonkLab } from "./BonkLab";
 import { LabInput } from "./LabInput";
-import { LabRenderer } from "./LabRenderer";
+import { LabRenderer, CHAR_SCREEN_Y_RATIO } from "./LabRenderer";
 import { TelemetryHUD } from "./TelemetryHUD";
 import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
@@ -104,6 +104,13 @@ renderPanel();
 let rafId: number | null = null;
 
 function frame(): void {
+    // Update character screen position for correct mouse direction calculation
+    const canvasRect = renderer.getCanvasRect();
+    input.setCharacterScreenPos(
+        canvasRect.left + canvasRect.width / 2,
+        canvasRect.top + canvasRect.height * CHAR_SCREEN_Y_RATIO,
+    );
+
     // Feed input into simulation
     const inputState = input.getState();
     lab.setInput(inputState.x, inputState.y, inputState.magnitude);
