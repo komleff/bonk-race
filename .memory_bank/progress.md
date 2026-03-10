@@ -4,11 +4,24 @@
 
 ## Контроль изменений
 
-- **last_checked_commit**: `feat/bonklab-v1.2` @ 10 марта 2026 (`e93fb0e`)
-- **Активная ветка**: `main` (после merge PR#9)
+- **last_checked_commit**: `fix/lab-input-direction` @ 10 марта 2026
+- **Активная ветка**: `fix/lab-input-direction` (PR#11, от main)
 - **Production:** BonkLab на GitHub Pages, основная игра не задеплоена
 - **Версия:** 0.1.0
 - **GDD версия**: v4.0 (`docs/gdd/GDD-index.md`)
+
+---
+
+## Hotfix: Lab input direction (10 марта 2026) — ЗАВЕРШЁН
+
+**PR:** #11 (`fix/lab-input-direction`) — Open, ревью пройдено (Copilot, GPT-5, GPT-5.3 — APPROVED)
+**Ревьюеры:** Copilot ✅, GPT-5 ✅, GPT-5.3-Codex ✅
+
+- [x] Fix: направление мыши от экранной позиции персонажа (не от центра canvas)
+- [x] Извлечена константа `CHAR_SCREEN_Y_RATIO = 0.65`
+- [x] Кэш `getBoundingClientRect()` в LabRenderer
+- [x] Визуальный тач-джойстик для мобильных
+- [x] Все комментарии на русском (по замечанию Copilot)
 
 ---
 

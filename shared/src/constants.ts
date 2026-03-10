@@ -40,5 +40,14 @@ export type RacePhase =
     | typeof RACE_PHASE_RACING
     | typeof RACE_PHASE_RESULTS;
 
+// ─── Countdown / respawn timing ─────────────────────────────────────────────
+export const COUNTDOWN_STEP_S = 0.7;
+export const COUNTDOWN_STEPS = ["3", "2", "1", "Go!"] as const;
+export const COUNTDOWN_TOTAL_S = COUNTDOWN_STEP_S * COUNTDOWN_STEPS.length; // 2.8с
+export const DEATH_FREEZE_S = 0.8;
+export const RESPAWN_GO_STEP_S = 0.4;
+export const RESPAWN_GO_STEPS = 2;
+export const RESPAWN_GO_TOTAL_S = RESPAWN_GO_STEP_S * RESPAWN_GO_STEPS; // 0.8с
+
 // ─── Guest ───────────────────────────────────────────────────────────────────
 export const GUEST_DEFAULT_NICKNAME = 'Гость';

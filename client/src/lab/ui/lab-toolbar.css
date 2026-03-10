@@ -194,40 +194,6 @@
   font-size: 11px;
 }
 
-/* ─── Countdown overlay ──────────────────────────────────────────────────── */
-
-.lab-countdown-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 150;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
-.lab-countdown-text {
-  font-size: 96px;
-  font-weight: 900;
-  color: #44aaff;
-  text-shadow: 0 0 40px rgba(68, 170, 255, 0.5);
-  animation: lab-countdown-pop 0.8s ease-out;
-}
-
-@keyframes lab-countdown-pop {
-  0% {
-    transform: scale(2);
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 0.9;
-  }
-}
-
 /* ─── Mobile ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {

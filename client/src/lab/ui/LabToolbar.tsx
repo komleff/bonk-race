@@ -217,53 +217,16 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
         return () => clearInterval(id);
     }, [lab]);
 
-    // Countdown state
-    const [countdown, setCountdown] = useState<string | null>(null);
-    const restartIntervalRef = useRef<number | null>(null);
-
-    // Cleanup restart interval on unmount
-    useEffect(() => {
-        return () => {
-            if (restartIntervalRef.current !== null) {
-                clearInterval(restartIntervalRef.current);
-            }
-        };
-    }, []);
-
     // Modal state
     const [showExport, setShowExport] = useState(false);
     const [showImport, setShowImport] = useState(false);
 
-    // ── Restart with countdown ──
+    // ── Restart (countdown управляется BonkLab.start()) ──
     const handleRestart = useCallback(() => {
-        // Cancel previous countdown if still running
-        if (restartIntervalRef.current !== null) {
-            clearInterval(restartIntervalRef.current);
-            restartIntervalRef.current = null;
-        }
-
         lab.stop();
         lab.reset();
+        lab.start();
         setElapsed(0);
-
-        // Quick "Go!" countdown (TZ v1.2 §A4)
-        const steps = ["Go!"];
-        let i = 0;
-        setCountdown(steps[i]);
-
-        restartIntervalRef.current = window.setInterval(() => {
-            i++;
-            if (i < steps.length) {
-                setCountdown(steps[i]);
-            } else {
-                setCountdown(null);
-                lab.start();
-                if (restartIntervalRef.current !== null) {
-                    clearInterval(restartIntervalRef.current);
-                    restartIntervalRef.current = null;
-                }
-            }
-        }, 800);
     }, [lab]);
 
     // ── Seed ──
@@ -448,15 +411,6 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
                     ))}
                 </select>
             </div>
-
-            {/* Countdown overlay */}
-            {countdown && (
-                <div class="lab-countdown-overlay">
-                    <span class="lab-countdown-text" key={countdown}>
-                        {countdown}
-                    </span>
-                </div>
-            )}
 
             {/* Export modal */}
             {showExport && (

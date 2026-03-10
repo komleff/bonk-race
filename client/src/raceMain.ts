@@ -16,6 +16,8 @@ import {
     clamp, wrapAngle, distance,
     SURFACE_SLOW, SURFACE_BOOST, SURFACE_ICE,
     RACE_PHASE_LOBBY, RACE_PHASE_COUNTDOWN, RACE_PHASE_RACING, RACE_PHASE_RESULTS,
+    COUNTDOWN_STEP_S, COUNTDOWN_STEPS, COUNTDOWN_TOTAL_S,
+    DEATH_FREEZE_S, RESPAWN_GO_STEP_S, RESPAWN_GO_TOTAL_S,
     type RacePhase,
 } from "@bonk-race/shared";
 import { GhostRecorder } from "./game/GhostRecorder";
@@ -452,6 +454,8 @@ export class RaceGame {
     private lastFrameTime = 0;
     private accumulator = 0;
     private countdownTicks = 0;
+    private deathFreezeTicks = 0;
+    private respawnGoTicks = 0;
     private leaderboardPosition = 0;
 
     constructor(canvas: HTMLCanvasElement, config: TrackConfig) {
@@ -490,7 +494,8 @@ export class RaceGame {
         this.tick = 0;
         this.accumulator = 0;
         this.lastFrameTime = performance.now();
-        this.countdownTicks = 3 * this.config.physics.tickRate;
+        // 4 шага по 0.7с (3→2→1→Go!)
+        this.countdownTicks = Math.ceil(COUNTDOWN_TOTAL_S * this.config.physics.tickRate);
 
         this.loop(performance.now());
     }
@@ -532,6 +537,8 @@ export class RaceGame {
         this.camera.y = start.y;
         this.recorder = new GhostRecorder();
         this.leaderboardPosition = 0;
+        this.deathFreezeTicks = 0;
+        this.respawnGoTicks = 0;
         for (const g of this.ghosts) g.reset();
         this.start();
     }
@@ -574,14 +581,19 @@ export class RaceGame {
     private physicsTick(dt: number): void {
         this.tick++;
 
-        // Player physics
-        if (!this.player.isDead) {
+        // Go!-Go! freeze после респауна — ввод заморожен
+        if (this.respawnGoTicks > 0) {
+            this.respawnGoTicks--;
+            // Гостей обновляем даже во время freeze
+        } else if (!this.player.isDead) {
+            // Нормальная физика
             flightAssistSystem(this.player, input, this.config, dt);
             physicsSystem(this.player, this.config, dt);
             collisionSystem(this.player, this.config);
 
-            // Смерть прерывает тик — нельзя засчитывать прогресс после гибели
+            // Смерть прерывает тик — начинаем death freeze
             if (this.player.isDead) {
+                this.deathFreezeTicks = Math.ceil(DEATH_FREEZE_S * this.config.physics.tickRate);
                 return;
             }
 
@@ -599,8 +611,14 @@ export class RaceGame {
             // Record ghost frame
             this.recorder.record(this.tick, this.player.x, this.player.y, this.player.angle);
         } else {
-            // Respawn after death
-            this.respawn();
+            // Death freeze фаза (0.8с)
+            if (this.deathFreezeTicks > 0) {
+                this.deathFreezeTicks--;
+                if (this.deathFreezeTicks <= 0) {
+                    this.respawn();
+                    this.respawnGoTicks = Math.ceil(RESPAWN_GO_TOTAL_S * this.config.physics.tickRate);
+                }
+            }
         }
 
         // Update ghosts
@@ -705,10 +723,36 @@ export class RaceGame {
         const margin = 10;
 
         if (phase === RACE_PHASE_COUNTDOWN) {
+            const tickRate = this.config.physics.tickRate;
+            const totalTicks = Math.ceil(COUNTDOWN_TOTAL_S * tickRate);
+            const stepTicks = Math.ceil(COUNTDOWN_STEP_S * tickRate);
+            const elapsed = totalTicks - this.countdownTicks;
+            const stepIdx = Math.min(Math.floor(elapsed / stepTicks), COUNTDOWN_STEPS.length - 1);
+            const label = COUNTDOWN_STEPS[stepIdx];
+            const progress = (elapsed % stepTicks) / stepTicks;
+            const isGo = label === "Go!";
+
+            // Punch-in: scale 2.0→1.0 (2.5 для Go!) за 60% шага, easeOutQuad
+            const punchPhase = Math.min(progress / 0.6, 1);
+            const eased = 1 - (1 - punchPhase) * (1 - punchPhase);
+            const startScale = isGo ? 2.5 : 2.0;
+            const scale = startScale - (startScale - 1.0) * eased;
+            const alpha = progress < 0.85 ? 1.0 : Math.max(0, 1 - (progress - 0.85) / 0.15);
+
+            ctx.save();
+            ctx.translate(W / 2, H / 2);
+            ctx.scale(scale, scale);
             ctx.font = `bold ${fontSize * 4}px sans-serif`;
             ctx.textAlign = "center";
-            const secondsLeft = Math.ceil(this.countdownTicks / this.config.physics.tickRate);
-            ctx.fillText(secondsLeft > 0 ? String(secondsLeft) : "GO!", W / 2, H / 2);
+            ctx.textBaseline = "middle";
+            ctx.globalAlpha = alpha;
+            if (isGo) {
+                ctx.shadowColor = "rgba(255, 255, 100, 0.8)";
+                ctx.shadowBlur = 20;
+            }
+            ctx.fillStyle = isGo ? "#ffff66" : "#ffffff";
+            ctx.fillText(label, 0, 0);
+            ctx.restore();
         } else if (phase === RACE_PHASE_RACING) {
             const elapsed = performance.now() - this.startTimeMs;
             ctx.textAlign = "left";
@@ -718,6 +762,35 @@ export class RaceGame {
             // Track name
             ctx.textAlign = "right";
             ctx.fillText(config.name, W - margin, margin);
+
+            // Go!-Go! при респауне (punch-in)
+            if (this.respawnGoTicks > 0) {
+                const tickRate = this.config.physics.tickRate;
+                const totalTicks = Math.ceil(RESPAWN_GO_TOTAL_S * tickRate);
+                const stepTicks = Math.ceil(RESPAWN_GO_STEP_S * tickRate);
+                const goElapsed = totalTicks - this.respawnGoTicks;
+                const stepInSequence = Math.floor(goElapsed / stepTicks);
+                const goProgress = (goElapsed % stepTicks) / stepTicks;
+
+                const goPunch = Math.min(goProgress / 0.6, 1);
+                const goEased = 1 - (1 - goPunch) * (1 - goPunch);
+                const goScale = 2.5 - 1.5 * goEased;
+                const goAlpha = goProgress < 0.85 ? 1.0 : Math.max(0, 1 - (goProgress - 0.85) / 0.15);
+                const glowSize = stepInSequence === 1 ? 30 : 20;
+
+                ctx.save();
+                ctx.translate(W / 2, H / 2);
+                ctx.scale(goScale, goScale);
+                ctx.font = `bold ${fontSize * 4}px sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.globalAlpha = goAlpha;
+                ctx.shadowColor = "rgba(255, 255, 100, 0.8)";
+                ctx.shadowBlur = glowSize * (1 - goEased * 0.5);
+                ctx.fillStyle = "#ffff66";
+                ctx.fillText("Go!", 0, 0);
+                ctx.restore();
+            }
         } else if (phase === RACE_PHASE_RESULTS) {
             ctx.font = `bold ${fontSize * 2}px sans-serif`;
             ctx.textAlign = "center";

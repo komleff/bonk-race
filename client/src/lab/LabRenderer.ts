@@ -5,8 +5,16 @@
  * Camera follows the character with world-to-screen viewport transform.
  */
 
-import { DEATH_FREEZE_S, type SandboxState } from "./BonkLab";
+import type { SandboxState } from "./BonkLab";
 import type { LabInputState } from "./LabInput";
+import {
+    COUNTDOWN_STEP_S,
+    COUNTDOWN_STEPS,
+    COUNTDOWN_TOTAL_S,
+    DEATH_FREEZE_S,
+    RESPAWN_GO_STEP_S,
+    RESPAWN_GO_TOTAL_S,
+} from "@bonk-race/shared";
 import type { ArenaZone } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
 
@@ -167,18 +175,8 @@ export class LabRenderer {
             this.drawDeathMessage(ctx, state, w, h);
         }
 
-        // ── Post-respawn "Go!" overlay (screen-space) ──
-        if (state.respawnCountdown > 0) {
-            ctx.save();
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.font = "bold 64px sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            const goAlpha = Math.min(1, state.respawnCountdown / DEATH_FREEZE_S * 2);
-            ctx.fillStyle = `rgba(255, 255, 100, ${goAlpha})`;
-            ctx.fillText("Go!", w / 2, h / 2);
-            ctx.restore();
-        }
+        // ── Countdown / respawn overlay (punch-in) ──
+        this.drawCountdownOverlay(ctx, state, w, h);
 
         // ── Finish overlay (screen-space) ──
         if (state.finished) {
@@ -489,6 +487,76 @@ export class LabRenderer {
         ctx.fillStyle = "#ffcc00";
         ctx.fillText("Нажмите Restart для перезапуска", centerX, y);
 
+        ctx.restore();
+    }
+
+    // ── Слой: Обратный отсчёт / респаун Go!-Go! (punch-in анимация) ────────
+
+    /**
+     * Рендерит 3-2-1-Go! при старте или Go!-Go! при респауне.
+     * Стиль: Mario Kart punch-in — число появляется крупно и сжимается,
+     * затем резко исчезает без fade-out.
+     */
+    private drawCountdownOverlay(
+        ctx: CanvasRenderingContext2D,
+        state: SandboxState,
+        w: number,
+        h: number,
+    ): void {
+        let label: string;
+        let progress: number;
+        let isRespawn = false;
+        let stepInSequence = 0;
+
+        if (state.startCountdown > 0) {
+            // 3-2-1-Go!
+            const elapsed = COUNTDOWN_TOTAL_S - state.startCountdown;
+            const stepIdx = Math.min(
+                Math.floor(elapsed / COUNTDOWN_STEP_S),
+                COUNTDOWN_STEPS.length - 1,
+            );
+            label = COUNTDOWN_STEPS[stepIdx];
+            progress = (elapsed % COUNTDOWN_STEP_S) / COUNTDOWN_STEP_S;
+        } else if (state.respawnCountdown > 0) {
+            // Go!-Go! при респауне
+            label = "Go!";
+            isRespawn = true;
+            const elapsed = RESPAWN_GO_TOTAL_S - state.respawnCountdown;
+            stepInSequence = Math.floor(elapsed / RESPAWN_GO_STEP_S);
+            progress = (elapsed % RESPAWN_GO_STEP_S) / RESPAWN_GO_STEP_S;
+        } else {
+            return;
+        }
+
+        const isGo = label === "Go!";
+
+        // Punch-in: scale 2.0→1.0 (2.5 для Go!) за 60% шага, easeOutQuad
+        const punchPhase = Math.min(progress / 0.6, 1);
+        const eased = 1 - (1 - punchPhase) * (1 - punchPhase);
+        const startScale = isGo ? 2.5 : 2.0;
+        const scale = startScale - (startScale - 1.0) * eased;
+
+        // Видимость: полная до 85% шага, затем резкое исчезновение
+        const alpha = progress < 0.85 ? 1.0 : Math.max(0, 1 - (progress - 0.85) / 0.15);
+
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(scale, scale);
+        ctx.font = "bold 96px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.globalAlpha = alpha;
+
+        // Glow для Go! (сильнее для второго Go! при респауне)
+        if (isGo) {
+            const glowSize = isRespawn && stepInSequence === 1 ? 30 : 20;
+            ctx.shadowColor = "rgba(255, 255, 100, 0.8)";
+            ctx.shadowBlur = glowSize * (1 - eased * 0.5);
+        }
+
+        ctx.fillStyle = isGo ? "#ffff66" : "#ffffff";
+        ctx.fillText(label, 0, 0);
         ctx.restore();
     }
 

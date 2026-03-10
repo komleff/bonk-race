@@ -69,6 +69,14 @@ export {
     RACE_PHASE_COUNTDOWN,
     RACE_PHASE_RACING,
     RACE_PHASE_RESULTS,
+    // Countdown / respawn timing
+    COUNTDOWN_STEP_S,
+    COUNTDOWN_STEPS,
+    COUNTDOWN_TOTAL_S,
+    DEATH_FREEZE_S,
+    RESPAWN_GO_STEP_S,
+    RESPAWN_GO_STEPS,
+    RESPAWN_GO_TOTAL_S,
     // Guest
     GUEST_DEFAULT_NICKNAME,
 } from "./constants";

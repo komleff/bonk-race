@@ -5,7 +5,7 @@
 ## Текущее состояние (10 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `main` (после merge PR#9)
+**Активная ветка:** `fix/lab-input-direction` (PR#11, от main)
 **GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
 **Версия:** 0.1.0 (релиз: BonkLab v1.2)
 
@@ -24,6 +24,8 @@
 | #7 | `ci/deploy-lab-workflow` | CI: GitHub Pages deployment for BonkLab | Merged |
 | #8 | `fix/lab-pages-base` | Fix: base path for GitHub Pages | Merged |
 | #9 | `feat/bonklab-v1.2` | **BonkLab v1.2: orbs, finish, geometry, presets** | **APPROVED → ready to merge** |
+| #10 | `feat/gdd-v4-ugc` | GDD v4.0: UGC-секция, русификация | Merged |
+| #11 | `fix/lab-input-direction` | **Fix: направление мыши в BonkLab (2x angle error)** | **Open — ревью пройдено** |
 
 ---
 
@@ -57,6 +59,25 @@
 | P1 | Auto-sync density не обновлял массы орбов | Пересчёт `orb.mass` для живых орбов |
 | P1 | Defaults snapshot после startup preset | `trueDefaults` до startup preset |
 | P1 | orbDensityManual терялся при regenerateArena | Save/restore вокруг reset() |
+
+---
+
+## Hotfix: Lab input direction (10 марта 2026)
+
+**PR:** #11 (`fix/lab-input-direction`) — ревью пройдено (Copilot, GPT-5, GPT-5.3 — APPROVED)
+**Ветка:** `fix/lab-input-direction`
+
+**Проблема:** В BonkLab жёлтый маяк (beacon) и направление движения не совпадали с позицией курсора мыши. Ошибка угла ~2x при курсоре под 45°.
+
+**Причина:** `LabInput.updateMouseState()` вычислял направление от центра canvas (50% высоты), а персонаж рендерился на 65% высоты (`CHAR_SCREEN_Y_RATIO`).
+
+**Что исправлено:**
+
+- `LabInput.ts` — добавлен `setCharacterScreenPos()`, направление от позиции персонажа к курсору
+- `LabRenderer.ts` — извлечена константа `CHAR_SCREEN_Y_RATIO`, кэш `getBoundingClientRect()`, визуальный тач-джойстик
+- `lab/main.ts` — передача экранной позиции персонажа каждый кадр
+
+**Статус:** Ожидает merge в main.
 
 ---
 
