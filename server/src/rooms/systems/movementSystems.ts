@@ -61,10 +61,10 @@ export function flightAssistSystem(room: any) {
             lastBreathSpeedPenalty: room.balance.combat.lastBreathSpeedPenalty,
         };
 
-        // TODO(LG-5): migrate to per-zone ISurfaceAssistParams via room.getSurfaceAssistParams(player)
+        const surfaceAssist = room.getSurfaceAssistParams?.(player) ?? DEFAULT_SURFACE_ASSIST_PARAMS;
         const result = computeFlightAssist(
             state, slimeConfig, inertia, modifiers, external, worldPhysics,
-            DEFAULT_SURFACE_ASSIST_PARAMS, dt,
+            surfaceAssist, dt,
         );
 
         player.assistFx = result.assistFx;
@@ -103,8 +103,7 @@ export function physicsSystem(room: any) {
         const classStats = room.getClassStats(player);
         const mass = Math.max(player.mass, room.balance.physics.minSlimeMass);
         const inertia = room.getSlimeInertiaForPlayer(player, slimeConfig, classStats);
-        // TODO(LG-5): migrate to per-zone SurfaceConfig via room.getSurfaceParams(player)
-        const surface = DEFAULT_SURFACE_PARAMS;
+        const surface = room.getSurfaceParams?.(player) ?? DEFAULT_SURFACE_PARAMS;
 
         const result = integratePhysics(
             { x: player.x, y: player.y, vx: player.vx, vy: player.vy, angle: player.angle, angVel: player.angVel },

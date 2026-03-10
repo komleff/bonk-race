@@ -106,6 +106,10 @@ export function getSurfaceConfigForZone(zoneType: number): SurfaceConfig {
 // ─── Runtime validation ─────────────────────────────────────────────────────
 
 function clampField(value: number, min: number, max: number, name: string): number {
+    if (!Number.isFinite(value)) {
+        console.warn(`[SurfaceConfig] invalid ${name}: ${value} → using ${min}`);
+        return min;
+    }
     if (value < min || value > max) {
         console.warn(`[SurfaceConfig] clamping ${name}: ${value} → [${min}, ${max}]`);
         return Math.max(min, Math.min(max, value));
