@@ -1,6 +1,6 @@
 # План: Анизотропное трение (Lateral Grip) — TZ v1.4
 
-**Дата:** 2026-03-10
+**Дата:** 2026-03-10 (обновлён PM-ревью)
 **Ветка:** `tz-lateral-grip`
 **ТЗ:** `docs/tz/TZ-LateralGrip-v1_4.md`
 
@@ -11,6 +11,8 @@
 Текущая физика использует изотропный drag (`linearDragK`) — одинаковое сопротивление во всех направлениях. Блоб скользит боком при повороте ("Жигули на льду"). Нужна анизотропная модель: поперечное трение >> продольного, что даёт сцепление с дорогой и контролируемый дрифт.
 
 Дополнительно: ТЗ вводит `SurfaceConfig` (7 параметров на поверхность) для зон Ice/Mud/Boost/Sand и 3 новых BonkLab-пресета.
+
+**Смена модели трения:** текущая физика — force-based (`F_drag = -m × linearDragK × v`), новая — decay-based (`v' = v × max(0, 1 - dragK × dt)`). Decay-модель стабильнее при больших `dragK × dt` и не требует `max(0, ...)` от знака силы, только от множителя. При `lateralGripMultiplier = 1.0` разница ~0.01% — допустимо.
 
 ---
 
@@ -62,7 +64,7 @@ export const DEFAULT_SURFACE_ASSIST_PARAMS: ISurfaceAssistParams = { ... };
 - `shared/src/config.ts` — `WorldPhysicsConfig { forwardDragK, lateralGripMultiplier, ... }`
 - `shared/src/trackConfig.ts` — `TrackPhysicsConfig { forwardDragK, lateralGripMultiplier, ... }`
 
-**Все точки использования `linearDragK` (найдены grep-ом):**
+**Все точки использования `linearDragK` (верифицированы):**
 
 | Файл | Что менять |
 |------|-----------|
@@ -72,10 +74,12 @@ export const DEFAULT_SURFACE_ASSIST_PARAMS: ISurfaceAssistParams = { ... };
 | `config/balance.json:279` | `linearDragK` → `forwardDragK` + добавить `lateralGripMultiplier` |
 | `server/src/rooms/systems/movementSystems.ts:112` | Передача в `integratePhysics` |
 | `client/src/lab/BonkLab.ts:746,908,1097` | `worldPhysics.linearDragK` |
-| `client/src/lab/ui/LabToolbar.tsx:28,44,56,72` | Ключи пресетов |
+| `client/src/lab/ui/LabToolbar.tsx:28,44,56,72` | Ключи в 4 пресетах (Ультралёгкий, Лёгкий и быстрый, Тяжёлый и инертный, Космос) |
 | `client/src/lab/ui/LabPanel.tsx:380` | Ключ слайдера |
 | `client/src/lab/main.ts:47` | Стартовый пресет |
 | `client/src/raceMain.ts:249` | `config.physics.linearDragK` |
+
+**Примечание:** пресеты "Slime Arena" (пустой, сброс к дефолтам) и "Минимальный FA" (только FA-параметры) не содержат `linearDragK` — их не трогаем на этом этапе.
 
 ---
 
@@ -94,7 +98,7 @@ export const DEFAULT_SURFACE_ASSIST_PARAMS: ISurfaceAssistParams = { ... };
 4. Собрать обратно: `vel = forward * vFwd' + right * vLat'`
 5. Angular drag: `angularDragK * surface.angularDragMultiplier`
 
-**Обратная совместимость (FR-3):** При `lateralGripMultiplier=1.0` и всех surface=1.0, модель decay отличается от текущей force-based на ~0.01% (произведение dt²). Тест детерминизма **сломается** — нужно пересчитать эталон.
+**Важно (смена модели):** текущий код применяет drag как **силу** (`F = -m × dragK × v`, затем `v += F/m × dt`). Новый код применяет **decay** (`v *= max(0, 1 - dragK × dt)`). Математически при малых `dt` эквивалентно, но побитово результат отличается. Тест детерминизма пройдёт (сравнивает два запуска с одним seed, не эталонный хэш).
 
 ---
 
@@ -104,10 +108,12 @@ export const DEFAULT_SURFACE_ASSIST_PARAMS: ISurfaceAssistParams = { ... };
 
 Добавить параметр `surfaceAssist: ISurfaceAssistParams` в `computeFlightAssist`.
 
-Применение:
-- `thrustForward *= surfaceAssist.thrustMultiplier` (после talent bonuses, строки ~147)
-- `turnTorqueAdjusted *= surfaceAssist.turnTorqueMultiplier` (строка ~150)
-- `speedLimitForward *= surfaceAssist.speedLimitMultiplier` (строки ~160)
+Применение (верифицированные строки):
+- `thrustForward *= surfaceAssist.thrustMultiplier` (после talent bonuses, строка 147: `thrustForward *= 1 + modifiers.thrustForwardBonus`)
+- `turnTorqueAdjusted *= surfaceAssist.turnTorqueMultiplier` (строка 150: `turnTorque * (1 + modifiers.turnBonus)`)
+- `speedLimitForward *= surfaceAssist.speedLimitMultiplier` (строка ~160, перед `totalSpeedMultiplier`)
+
+**Удаление `zoneSpeedMultiplier`:** убрать поле `zoneSpeedMultiplier` из `IExternalMultipliers` (строка 44 flightAssist.ts) и его использование на строке 169. Заменяется на `surfaceAssist.speedLimitMultiplier`. Также удалить `getZoneSpeedMultiplier` из `ArenaRoom.ts:1941-1951`.
 
 При `DEFAULT_SURFACE_ASSIST_PARAMS` (все 1.0) — поведение идентично.
 
@@ -118,6 +124,8 @@ export const DEFAULT_SURFACE_ASSIST_PARAMS: ISurfaceAssistParams = { ... };
 **Новый файл:** `shared/src/surfaceConfig.ts`
 
 ```typescript
+import { ZONE_TYPE_ICE, ZONE_TYPE_MUD, ZONE_TYPE_TURBO } from "./constants";
+
 export interface SurfaceConfig {
     forwardDragMultiplier: number;
     lateralGripMultiplier: number;
@@ -128,14 +136,39 @@ export interface SurfaceConfig {
     zoneThrustN: number;
 }
 
-export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
-    normal: { ... all 1.0, zoneThrustN: 0 },
-    ice:    { forwardDragMultiplier: 0.3, lateralGripMultiplier: 0.15, angularDragMultiplier: 0.3, thrustMultiplier: 1.0, turnTorqueMultiplier: 0.5, speedLimitMultiplier: 1.0, zoneThrustN: 0 },
-    mud:    { 2.5, 2.5, 2.0, 0.5, 0.8, 0.6, 0 },
-    boost:  { 0.5, 0.7, 1.0, 1.0, 1.0, 1.5, 15000 },
-    sand:   { 1.5, 1.8, 1.3, 0.8, 1.0, 0.8, 0 },
+export const DEFAULT_SURFACE: SurfaceConfig = {
+    forwardDragMultiplier: 1.0,
+    lateralGripMultiplier: 1.0,
+    angularDragMultiplier: 1.0,
+    thrustMultiplier: 1.0,
+    turnTorqueMultiplier: 1.0,
+    speedLimitMultiplier: 1.0,
+    zoneThrustN: 0,
 };
+
+export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
+    normal: { ...DEFAULT_SURFACE },
+    ice:    { forwardDragMultiplier: 0.3, lateralGripMultiplier: 0.15, angularDragMultiplier: 0.3, thrustMultiplier: 1.0, turnTorqueMultiplier: 0.5, speedLimitMultiplier: 1.0, zoneThrustN: 0 },
+    mud:    { forwardDragMultiplier: 2.5, lateralGripMultiplier: 2.5, angularDragMultiplier: 2.0, thrustMultiplier: 0.5, turnTorqueMultiplier: 0.8, speedLimitMultiplier: 0.6, zoneThrustN: 0 },
+    boost:  { forwardDragMultiplier: 0.5, lateralGripMultiplier: 0.7, angularDragMultiplier: 1.0, thrustMultiplier: 1.0, turnTorqueMultiplier: 1.0, speedLimitMultiplier: 1.5, zoneThrustN: 15000 },
+    sand:   { forwardDragMultiplier: 1.5, lateralGripMultiplier: 1.8, angularDragMultiplier: 1.3, thrustMultiplier: 0.8, turnTorqueMultiplier: 1.0, speedLimitMultiplier: 0.8, zoneThrustN: 0 },
+};
+
+/** Маппинг ZONE_TYPE_* → ключ пресета поверхности */
+export const ZONE_TYPE_TO_SURFACE: Record<number, string> = {
+    [ZONE_TYPE_ICE]: "ice",
+    [ZONE_TYPE_MUD]: "mud",
+    [ZONE_TYPE_TURBO]: "boost",
+};
+
+/** Получить SurfaceConfig по типу зоны. Неизвестный тип → normal. */
+export function getSurfaceForZoneType(zoneType: number): SurfaceConfig {
+    const key = ZONE_TYPE_TO_SURFACE[zoneType];
+    return key ? SURFACE_PRESETS[key] : SURFACE_PRESETS.normal;
+}
 ```
+
+Маппинг `ZONE_TYPE → SurfaceConfig` размещён здесь, а **не** в ArenaRoom — это уменьшает зависимость ArenaRoom от деталей конфигурации поверхностей.
 
 Также добавить пресеты зон в `config/balance.json` → секция `surfaces`.
 
@@ -145,12 +178,15 @@ export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
 
 **Файлы:**
 - `server/src/rooms/systems/movementSystems.ts` — передать `ISurfaceParams` и `ISurfaceAssistParams`
-- `server/src/rooms/ArenaRoom.ts` — новые методы:
-  - `getSurfaceParams(player): ISurfaceParams` (заменяет `getZoneFrictionMultiplier`)
-  - `getSurfaceAssistParams(player): ISurfaceAssistParams` (заменяет `getZoneSpeedMultiplier`)
-  - `getZoneSurfaceConfig(zoneType): SurfaceConfig` — маппинг ZONE_TYPE_* → SurfaceConfig
+- `server/src/rooms/ArenaRoom.ts` — обновить методы:
+  - `getZoneFrictionMultiplier` (строки 1953-1963) → `getSurfaceParams(player): ISurfaceParams`
+    - Использует `getSurfaceForZoneType()` из `surfaceConfig.ts`
+    - Разделяет `SurfaceConfig` на `ISurfaceParams` (4 поля для integrator)
+  - `getZoneSpeedMultiplier` (строки 1941-1951) → **УДАЛИТЬ**
+    - Заменяется `getSurfaceAssistParams(player): ISurfaceAssistParams`
+    - Разделяет `SurfaceConfig` на `ISurfaceAssistParams` (3 поля для flightAssist)
 
-**Дублирование `zoneSpeedMultiplier`:** Текущий `getZoneSpeedMultiplier` используется в `IExternalMultipliers`. С новой системой `speedLimitMultiplier` из SurfaceConfig заменяет эту логику. Установить `zoneSpeedMultiplier = 1.0` для всех зон, а скорость модулировать через `surfaceAssist.speedLimitMultiplier`.
+**`IExternalMultipliers`:** удалить поле `zoneSpeedMultiplier`. Оставить `hasteSpeedMultiplier` и `lastBreathSpeedPenalty`. В `movementSystems.ts:60` убрать `zoneSpeedMultiplier` из объекта external, добавить передачу `surfaceAssist` как отдельного параметра в `computeFlightAssist`.
 
 ---
 
@@ -160,10 +196,14 @@ export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
 
 Это **ОТДЕЛЬНАЯ** физика. Изменения:
 
-1. **`getSurfaceDragMultiplier()`** → `getSurfaceConfig()` — возвращает `SurfaceConfig` вместо числа
-2. **`flightAssistSystem()`** — применить `thrustMultiplier`, `turnTorqueMultiplier` к тяге/моменту
-3. **`physicsSystem()`** — анизотропный decay по алгоритму ТЗ, `zoneThrustN`, `angularDragMultiplier`
-4. **`applySurfaceBoost()`** — **УДАЛИТЬ**. Заменяется `zoneThrustN` + `speedLimitMultiplier`
+1. **`getSurfaceDragMultiplier()` (строка 148)** → `getSurfaceConfig(): SurfaceConfig`
+   - Текущая: возвращает число (SLOW=3.0, ICE=0.05, BOOST=0.3)
+   - Новая: возвращает `SurfaceConfig` из `SURFACE_PRESETS`
+   - Маппинг: SLOW → `sand` (или custom), ICE → `ice`, BOOST → `boost`
+2. **`physicsSystem()`** — заменить `const drag = baseDrag * surfaceMul` (строки 249-251) на анизотропный decay по алгоритму ТЗ §4.2
+3. **`flightAssistSystem()`** — применить `thrustMultiplier`, `turnTorqueMultiplier` к тяге/моменту
+4. **`applySurfaceBoost()` (строка 166)** — **УДАЛИТЬ**. Заменяется `zoneThrustN` + `speedLimitMultiplier`.
+   - **Важно:** текущий `applySurfaceBoost` реализует hard clamp к `BOOST_SPEED_CAP = 200`. В новой модели cap обеспечивается `speedLimitMultiplier = 1.5` через FlightAssist overspeed damping. Убедиться, что overspeed damping работает корректно в raceMain (он может быть упрощён). Если нет — добавить soft cap аналогичный FA.
 
 ---
 
@@ -171,11 +211,12 @@ export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
 
 **Файлы:** `client/src/lab/BonkLab.ts`, `client/src/lab/main.ts`
 
-1. `linearDragK` → `forwardDragK` во всех местах
-2. Добавить `lateralGripMultiplier` в `buildFlatParams()`
-3. Передавать `ISurfaceParams` в `integratePhysics` (зоны ice/mud → `SURFACE_PRESETS`)
+1. `linearDragK` → `forwardDragK` во всех местах (строки 746, 908, 1097)
+2. Добавить `lateralGripMultiplier` в `buildFlatParams()` (строка 1097+)
+3. Передавать `ISurfaceParams` в `integratePhysics` (зоны ice/mud → `getSurfaceForZoneType()`)
 4. Передавать `ISurfaceAssistParams` в `computeFlightAssist`
-5. Стартовый пресет: `"worldPhysics.forwardDragK": 0.005, "worldPhysics.lateralGripMultiplier": 1.0`
+5. Стартовый пресет в `main.ts:47`: `"worldPhysics.forwardDragK": 0.005, "worldPhysics.lateralGripMultiplier": 1.0`
+6. Орб-физика (строка 908): заменить `linearDragK` → `forwardDragK`. Орбы не используют анизотропию — для них `forwardDragK` применяется изотропно, как раньше.
 
 ---
 
@@ -183,19 +224,55 @@ export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
 
 **Файлы:** `client/src/lab/ui/LabToolbar.tsx`, `client/src/lab/ui/LabPanel.tsx`
 
-**LabToolbar.tsx:**
-- Во всех 6 пресетах: `linearDragK` → `forwardDragK`, добавить `lateralGripMultiplier: 1.0`
-- Переименовать "Лёгкий и быстрый" → "BonkRace 0.1"
-- Добавить 3 новых пресета:
+**LabToolbar.tsx — обновить существующие пресеты:**
 
-| Пресет | forwardDragK | lateralGripMultiplier | angularDragK | restitution |
-|--------|-------------|----------------------|-------------|-------------|
-| Картинг | 0.08 | 15.0 | 0.15 | 0.7 |
-| Ралли | 0.06 | 7.0 | 0.10 | 0.8 |
-| Бампер-кар | 0.07 | 10.0 | 0.08 | 0.95 |
+| # | Текущий | Новый | `forwardDragK` | `lateralGripMultiplier` | Примечания |
+|---|---------|-------|----------------|------------------------|------------|
+| 0 | Ультралёгкий | Ультралёгкий | 0.001 | 5.0 | Был `linearDragK: 0.001`. Добавить grip, чтобы не скользил боком |
+| 1 | Slime Arena | Slime Arena | _(пустой, дефолты)_ | _(пустой, дефолты)_ | Без изменений — характер сохраняется через дефолты из balance.json |
+| 2 | Лёгкий и быстрый | **BonkRace v0.1** | 0.005 | 1.0 | Переименовать. Сохранить характер — grip=1.0 (изотропный, как было) |
+| 3 | Тяжёлый и инертный | Тяжёлый и инертный | 0.04 | 3.0 | Был `linearDragK: 0.04`. Добавить умеренный grip |
+| 4 | Минимальный FA | **Дрифт (без FA)** | 0.03 | 3.0 | Переосмыслить: FA отключён + низкий grip = управляемый дрифт. Добавить физ. параметры |
+| 5 | Космос | Космос | 0 | 0 | `forwardDragK: 0` → grip неважен, но ставим 0 для консистентности |
+
+**LabToolbar.tsx — добавить 3 новых пресета:**
+
+| Пресет | forwardDragK | lateralGripMultiplier | angularDragK | restitution | Ощущение |
+|--------|-------------|----------------------|-------------|-------------|----------|
+| Картинг | 0.08 | 15.0 | 0.15 | 0.7 | «Рельсы», прилипает к траектории |
+| Ралли | 0.06 | 7.0 | 0.10 | 0.8 | Контролируемый дрифт на поворотах |
+| Бампер-кар | 0.07 | 10.0 | 0.08 | 0.95 | Упругие столкновения, хорошее сцепление |
+
+**Итого: 9 пресетов** (6 обновлённых + 3 новых).
+
+**Пресет «Дрифт (без FA)» — детальное описание:**
+
+```typescript
+{
+    label: "Дрифт (без FA)",
+    values: {
+        "mass": 80,
+        "propulsion.thrustForwardN": 60000,
+        "propulsion.thrustReverseN": 20000,
+        "propulsion.thrustLateralN": 5000,     // минимальная боковая тяга
+        "propulsion.turnTorqueNm": 50000,
+        "limits.speedLimitForwardMps": 350,
+        "worldPhysics.forwardDragK": 0.03,
+        "worldPhysics.lateralGripMultiplier": 3.0,
+        "assist.counterAccelEnabled": false,
+        "assist.autoBrakeMaxThrustFraction": 0.1,
+        "assist.overspeedDampingRate": 0,
+        "assist.yawDampingBoostFactor": 1,
+        "assist.angularBrakeBoostFactor": 1,
+    },
+}
+```
+
+Характер: FA почти отключён, боковая тяга минимальна. Блоб дрейфует на поворотах, но `lateralGripMultiplier = 3.0` даёт достаточно сцепления, чтобы не превращаться в «Космос». Игрок чувствует разницу между прямой и поворотом.
 
 **LabPanel.tsx:**
 - Заменить слайдер `linearDragK` на два: `forwardDragK` + `lateralGripMultiplier`
+- `lateralGripMultiplier`: min=0, max=50, tooltip: "Множитель бокового сцепления. Больше = меньше заноса."
 
 ---
 
@@ -214,29 +291,33 @@ export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
 
 В `resolveBalanceConfig`: `linearDragK` → `forwardDragK`, добавить `lateralGripMultiplier` с дефолтом 1.0.
 
+**Примечание:** дефолт `lateralGripMultiplier: 1.0` в balance.json означает, что пресет "Slime Arena" (пустой, сброс к дефолтам) сохранит текущий изотропный характер — блоб ведёт себя как раньше (grip=1 = одинаковое трение во всех направлениях).
+
 ---
 
 ### Задача 10: Тесты
 
 **Файлы:** `server/tests/determinism.test.js`, **новый** `server/tests/anisotropic-friction.test.js`
 
-1. Пересчитать эталон детерминизма (180 тиков с новой моделью)
-2. Новые тесты:
+1. **Тест детерминизма** (`determinism.test.js`): пересчёт эталона НЕ нужен — тест сравнивает два параллельных запуска с одним seed (строки 131-137), а не snapshot с pre-computed hash. Если новая физика детерминирована — тест пройдёт автоматически. Нужно только обновить сборку (`integratePhysics` новая сигнатура).
+
+2. **Новые тесты** (`anisotropic-friction.test.js`):
    - `lateralGripMultiplier=1.0` → одинаковое затухание forward/lateral
    - `lateralGripMultiplier=10.0` + поворот 90° → боковая скорость гасится за 2-3 тика
    - `max(0,...)` при extreme values → нет инверсии
    - `zoneThrustN=15000, 10 тиков` → монотонный рост скорости
    - `thrustMultiplier=0.5` → силы FA вдвое меньше
-   - Все surface-множители = 1.0 → поведение ~идентично текущему
+   - Все surface-множители = 1.0 → поведение ~идентично текущему (допуск ~0.01%)
 
 ---
 
 ## Порядок выполнения
 
 ```
-0 (интерфейсы) → 1 (linearDragK→forwardDragK) → 4 (SurfaceConfig) → 9 (balance.json)
-    → 2 (анизотропное трение) → 3 (FlightAssist surface) → 5 (сервер)
-    → 7 (BonkLab) → 8 (пресеты UI) → 6 (raceMain.ts) → 10 (тесты)
+0 (интерфейсы) → 1 (linearDragK→forwardDragK) → 4 (SurfaceConfig + маппинг) → 9 (balance.json)
+    → 2 (анизотропное трение) → 3 (FlightAssist surface + удаление zoneSpeedMultiplier)
+    → 5 (сервер: ArenaRoom + movementSystems) → 7 (BonkLab) → 8 (пресеты UI)
+    → 6 (raceMain.ts) → 10 (тесты)
 ```
 
 ---
@@ -245,11 +326,12 @@ export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
 
 | Риск | Митигация |
 |------|-----------|
-| Тест детерминизма сломается (100%) | Пересчитать эталон. Разница < 0.01% при grip=1.0 |
+| Смена модели force→decay: побитовое расхождение | Допустимо. Тест детерминизма сравнивает два запуска, не эталон — пройдёт |
 | raceMain.ts — отдельная физика | Задача 6 выделена. Воспроизвести ту же decay-модель |
 | wall-thrust ослабнет из-за поперечного трения | Компенсировать `wallThrustCoeff`. Тестировать в BonkLab |
-| Дублирование `zoneSpeedMultiplier` / `speedLimitMultiplier` | Убрать `getZoneSpeedMultiplier`, перенести в `getSurfaceAssistParams` |
+| Удаление `applySurfaceBoost` без soft cap | Проверить, что overspeed damping в raceMain обеспечивает cap. Иначе добавить |
 | Orb-физика в BonkLab использует `linearDragK` | Заменить на `forwardDragK`. Для орбов анизотропия не применяется |
+| `zoneSpeedMultiplier` мёртвый код после удаления | Удалить полностью из `IExternalMultipliers`, `ArenaRoom`, `movementSystems` |
 
 ---
 
@@ -258,11 +340,15 @@ export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
 1. `npm run build` — проект собирается
 2. `npm run test` — детерминизм + orb-bite + arena-generation зелёные
 3. BonkLab: все 9 пресетов переключаются, слайдеры `forwardDragK` / `lateralGripMultiplier` работают
-4. BonkLab: пресет "Картинг" — блоб "прилипает" к траектории
-5. BonkLab: пресет "Ралли" — контролируемый дрифт на поворотах
-6. BonkLab: зоны Ice/Mud корректно влияют на физику
-7. Клиентская гонка (`npm run dev:client`): поверхности Slow/Ice/Boost работают по новой модели
-8. Серверная арена: зоны Ice/Mud/Turbo работают с анизотропным трением
+4. BonkLab: пресет "Slime Arena" — поведение как раньше (изотропный drag)
+5. BonkLab: пресет "BonkRace v0.1" — поведение как раньше (grip=1.0)
+6. BonkLab: пресет "Космос" — нулевое трение, свободный полёт
+7. BonkLab: пресет "Дрифт (без FA)" — управляемый дрифт, FA отключён
+8. BonkLab: пресет "Картинг" — блоб "прилипает" к траектории
+9. BonkLab: пресет "Ралли" — контролируемый дрифт на поворотах
+10. BonkLab: зоны Ice/Mud корректно влияют на физику
+11. Клиентская гонка (`npm run dev:client`): поверхности Slow/Ice/Boost работают по новой модели
+12. Серверная арена: зоны Ice/Mud/Turbo работают с анизотропным трением
 
 ---
 
@@ -271,13 +357,13 @@ export const SURFACE_PRESETS: Record<string, SurfaceConfig> = {
 | Файл | Роль |
 |------|------|
 | `shared/src/physics/integrator.ts` | Ядро: анизотропный decay |
-| `shared/src/physics/flightAssist.ts` | Surface-множители для thrust/torque/speedLimit |
-| `shared/src/surfaceConfig.ts` | **НОВЫЙ**: SurfaceConfig + SURFACE_PRESETS |
+| `shared/src/physics/flightAssist.ts` | Surface-множители для thrust/torque/speedLimit + удаление zoneSpeedMultiplier |
+| `shared/src/surfaceConfig.ts` | **НОВЫЙ**: SurfaceConfig + SURFACE_PRESETS + маппинг ZONE_TYPE→surface |
 | `shared/src/config.ts` | WorldPhysicsConfig: linearDragK → forwardDragK |
 | `shared/src/trackConfig.ts` | TrackPhysicsConfig: linearDragK → forwardDragK |
 | `config/balance.json` | Параметры: forwardDragK, lateralGripMultiplier |
 | `server/src/rooms/systems/movementSystems.ts` | Серверная обвязка |
-| `server/src/rooms/ArenaRoom.ts` | getSurfaceParams, getSurfaceAssistParams |
+| `server/src/rooms/ArenaRoom.ts` | getSurfaceParams, getSurfaceAssistParams, удаление getZoneSpeedMultiplier |
 | `client/src/raceMain.ts` | Клиентская гонка — отдельная физика |
 | `client/src/lab/BonkLab.ts` | BonkLab физика |
 | `client/src/lab/ui/LabToolbar.tsx` | 9 пресетов |
