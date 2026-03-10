@@ -4,11 +4,44 @@
 
 ## Контроль изменений
 
-- **last_checked_commit**: `feat/countdown-and-respawn-overlay` @ 10 марта 2026
-- **Активная ветка**: `feat/countdown-and-respawn-overlay` (PR#12, от main)
+- **last_checked_commit**: `sprint/trails-direction-triangle` merged @ 11 марта 2026
+- **Активная ветка**: `main`
 - **Production:** BonkLab на GitHub Pages, основная игра не задеплоена
-- **Версия:** 0.1.0
+- **Версия:** 0.4.0
 - **GDD версия**: v4.0 (`docs/gdd/GDD-index.md`)
+
+---
+
+## Sprint: Trails + Direction Triangle + Tech Debt (11 марта 2026) — ЗАВЕРШЁН
+
+**PR:** #15 (`sprint/trails-direction-triangle`) — Merged
+**Ревью:** Copilot, GPT-5 Codex, GPT-5.3 Codex, Claude Haiku — все P2 исправлены
+**Тесты:** 21/21
+
+- [x] bonk-race-vyh: Треугольник-стрелка внутри круга персонажа
+- [x] bonk-race-hmg: Следы движения (circular buffer 600 точек, fade, distance thinning)
+- [x] bonk-race-2tp: Баг авто-старта (зоны в spawn area)
+- [x] bonk-race-d9o: replayData Number.isFinite валидация
+- [x] bonk-race-dh0: Hardcoded константы → balance.json
+- [x] bonk-race-gl2: Sand zone не генерируется
+- [x] bonk-race-83p: Зонные SurfaceConfig слайдеры в LabPanel
+- [x] Все замечания PR review (trail cleanup, zone clamping, i18n)
+
+---
+
+## Релиз 0.3.0 — Анизотропное трение (10 марта 2026) — ЗАВЕРШЁН
+
+**PR:** #14 (`tz-lateral-grip`) — Merged
+**Ревью:** 5× APPROVED (Security, Architecture, Code Quality, Gemini, Codex)
+**Тесты:** 15/15 anisotropic-friction + все остальные
+
+- [x] Анизотропный decay exp(-k*dt) вместо force-based drag
+- [x] SurfaceConfig: ISurfaceParams (4 поля) + ISurfaceAssistParams (3 поля)
+- [x] 12 BonkLab пресетов (BonkRace v0.3 по умолчанию)
+- [x] inertiaFactor → "Коэф. формы"
+- [x] clampSurfaceConfig() с NaN guard
+- [x] Зона Sand (ZONE_TYPE_SAND = 6)
+- [x] Серверные зоны через getSurfaceParams()/getSurfaceAssistParams()
 
 ---
 
@@ -22,7 +55,6 @@
 - [x] Анимация punch-in (easeOutQuad, жёлтый glow)
 - [x] Общий `computePunchIn()` в shared
 - [x] CSS-оверлей заменён на canvas-рендер
-- [x] Исправлен `console.log` формат (`%.1f` → template literal)
 - [ ] GhostRecorder: запись кадров во время freeze/respawnGo
 - [ ] Русификация комментариев (англицизмы)
 
@@ -31,97 +63,58 @@
 ## Hotfix: Lab input direction (10 марта 2026) — ЗАВЕРШЁН
 
 **PR:** #11 (`fix/lab-input-direction`) — Merged
-**Ревьюеры:** Copilot ✅, GPT-5 ✅, GPT-5.3-Codex ✅
 
-- [x] Fix: направление мыши от экранной позиции персонажа (не от центра canvas)
-- [x] Извлечена константа `CHAR_SCREEN_Y_RATIO = 0.65`
-- [x] Кэш `getBoundingClientRect()` в LabRenderer
+- [x] Fix: направление мыши от экранной позиции персонажа
+- [x] CHAR_SCREEN_Y_RATIO = 0.65
 - [x] Визуальный тач-джойстик для мобильных
-- [x] Все комментарии на русском (по замечанию Copilot)
 
 ---
 
 ## Sprint 2 (2026-03-09/10) — BonkLab v1.2 — ЗАВЕРШЁН
 
-**Цель:** Орбы, финиш, настраиваемая геометрия, пресет-трекинг, rename slime→mud
 **PR:** #9 (`feat/bonklab-v1.2`) — APPROVED, ready to merge
-**Ревью:** GPT-5 Codex, GPT-5.3-Codex ✅, GPT-5.4, Claude Opus 4.6 ✅ (2 итерации, 11 багфиксов)
 
-- [x] Rename slime → mud (shared types, server, BonkLab, renderer, panel, HUD)
-- [x] Configurable obstacle radii (pillarRadius, spikeRadius, passageRadius, passageGap)
-- [x] Orb generation in arena (spawn exclusion, deterministic from seed)
-- [x] Orb physics (drag, circle-circle, circle-static, wall, spike kill)
-- [x] Orb rendering + death animation (cyan)
-- [x] Orb density auto-sync with player mass/radius
-- [x] Finish detection (circle-vs-AABB)
-- [x] Finish overlay (time, distance, best time)
-- [x] Camera offset (65% from top)
-- [x] Distance + progress HUD
-- [x] Preset tracking (Custom on manual change)
-- [x] Preset «Ультралёгкий»
-- [x] Turbo: speedMultiplier → accelBoost
-- [x] Death: timer reset + «Go!» overlay 0.8s
-- [x] Default map height 10130m, width 800m, baseRadius 20m
-- [x] All P0/P1 from review fixed
+- [x] Rename slime → mud
+- [x] Configurable obstacle radii
+- [x] Orb generation/physics/rendering
+- [x] Finish detection + overlay
+- [x] Camera offset, distance HUD, preset tracking
 
 ---
 
 ## Sprint 1b (2026-03-09) — BonkLab v1.0 — ЗАВЕРШЁН
 
 **PR:** #6 (`feat/bonklab-v1`) — Merged
-**Ревью:** GPT-5.4 ✅, GPT-5.3-Codex ✅, Claude ✅ (14 итераций)
-
-- [x] 60Hz physics simulation (FA, integrator, collisions)
-- [x] Canvas 2D renderer with camera follow, vectors, minimap
-- [x] TelemetryHUD overlay
-- [x] Parameter panel (~45 params, grouped, sliders)
-- [x] Toolbar (restart, seed, density, reset, export/import, presets)
-- [x] Death/respawn (0.8s freeze)
-- [x] Arena generator (shared, deterministic)
-- [x] Export/Import round-trip
 
 ---
 
 ## Sprint 1a (2026-03-07/08) — MVP playable loop — ЗАВЕРШЁН
 
 **PR:** #5 (`feat/vite-proxy-client-connect`) — OPEN, ожидает merge
-**Ревью:** GPT-5.3-Codex ✅, ChatGPT-5.4 ✅, Gemini 3.1 Pro ✅ (4 итерации)
-
-- [x] Guest auth flow
-- [x] POST /api/v1/runs/submit
-- [x] Ghost replays
-- [x] Medal/leaderboard
-- [x] Instant restart
-- [x] Vertical track "First Run"
-- [x] Camera lookahead
-- [x] 41 smoke tests
 
 ---
 
 ## Pre-Sprint (2026-03-07) — Инфраструктура
 
-- [x] PR#1 — Shared package (Merged)
-- [x] PR#2 — Starter Circuit (Merged)
-- [x] PR#3 — UUID миграции (Merged)
-- [x] PR#4 — Ребрендинг (Merged)
+- [x] PR#1–#4 — Shared, tracks, migrations, ребрендинг — all Merged
 
 ---
 
-## Ожидает Sprint 3
+## Ожидает следующий спринт
 
 ### Техдолг
 
 | Приоритет | Beads ID | Проблема |
 |-----------|----------|---------|
-| P2 | bonk-race-sz1 | reverseZoneAngleDeg — не реализован в движке |
+| P1 | bonk-race-b18.1 | raceMain.ts — анизотропное трение (LG-6) |
+| P1 | bonk-race-6nu | Серверная интеграция movementSystems (LG-5) |
+| P2 | bonk-race-sz1 | reverseZoneAngleDeg — не реализован |
 | P2 | bonk-race-qp0 | BonkLab track editor |
 | P2 | bonk-race-hyf | correctionPercent always 1.0 |
 | P2 | bonk-race-ovb | Zone modifier 1-tick lag |
 | P2 | bonk-race-lx2 | runs/submit идемпотентность |
-| P2 | bonk-race-d9o | replayData Number.isFinite |
 | P3 | bonk-race-t7p | Sub-pixel anti-aliasing blur |
 | P3 | bonk-race-col | Guest opponent ghost profiles |
-| P3 | bonk-race-dh0 | Hardcoded физические константы |
 
 ### Приоритетные фичи
 

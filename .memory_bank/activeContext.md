@@ -2,12 +2,12 @@
 
 Текущее состояние проекта и фокус работы.
 
-## Текущее состояние (10 марта 2026)
+## Текущее состояние (11 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `tz-lateral-grip` (PR#14, от main)
+**Активная ветка:** `main` (все спринтовые ветки смержены)
 **GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
-**Версия:** 0.3.0
+**Версия:** 0.4.0
 
 ---
 
@@ -27,44 +27,42 @@
 | #10 | `feat/gdd-v4-ugc` | GDD v4.0: UGC-секция, русификация | Merged |
 | #11 | `fix/lab-input-direction` | Fix: направление мыши в BonkLab (2x angle error) | Merged |
 | #12 | `feat/countdown-and-respawn-overlay` | Countdown 3-2-1-Go! + respawn overlay | **Open — ревью** |
-| #14 | `tz-lateral-grip` | **Анизотропное трение + BonkRace v0.3 пресеты** | **Open — готов к merge** |
+| #14 | `tz-lateral-grip` | Анизотропное трение + BonkRace v0.3 пресеты | **Merged** |
+| #15 | `sprint/trails-direction-triangle` | Следы, треугольник направления, техдолг | **Merged** |
 
 ---
 
-## Релиз 0.3.0 — Анизотропное трение + BonkRace v0.3 (10 марта 2026)
+## Релиз 0.4.0 — Следы, треугольник, техдолг (11 марта 2026)
 
-**PR:** #14 (`tz-lateral-grip`)
-**Ревью:** 3× APPROVED (Security, Architecture, Code Quality) + Gemini + Codex
-**Тесты:** 15/15 anisotropic-friction, все остальные зелёные
+**PR:** #15 (`sprint/trails-direction-triangle`)
+**Ревью:** Copilot, GPT-5 Codex, GPT-5.3 Codex, Claude Haiku — все замечания P2 исправлены
+**Тесты:** 21/21 (determinism, orb-bite, arena-generation, anisotropic-friction)
 
 ### Ключевые изменения
 
 | Фича | Описание |
 |------|---------|
-| **Анизотропный decay** | `exp(-k*dt)` вместо force-based drag. Forward/lateral/angular decay раздельно |
-| **SurfaceConfig** | `ISurfaceParams` (4 поля) + `ISurfaceAssistParams` (3 поля) для 5 зон |
-| **12 BonkLab пресетов** | Ультралёгкий, Slime Arena, BonkRace v0.1, **BonkRace v0.3**, Грузовик, Дрифт, Космос FA-On, Космос FA-Off, Ралли, Бампер-кар, Картинг, Формула |
-| **BonkRace v0.3 (дефолт)** | mass=40, inertia=0.05, thrust=70k, torque=80k, grip=25, стрейфы=25k — казуальное аркадное управление |
-| **inertiaFactor** | Переименован в "Коэф. формы", default 0.10, min 0.01 |
-| **Runtime-валидация** | `clampSurfaceConfig()` с NaN guard |
-| **Зона Sand** | `ZONE_TYPE_SAND = 6` с вязким характером |
-| **Серверные зоны** | `getSurfaceParams()`/`getSurfaceAssistParams()` в ArenaRoom |
+| **Треугольник направления** | Внутренний белый треугольник-стрелка внутри круга персонажа (bonk-race-vyh) |
+| **Следы движения** | Circular buffer 600 точек, distance-based thinning, fade по возрасту (bonk-race-hmg) |
+| **Зона Sand** | Добавлена в генератор арены, цвет #c2a64e, метка "Песок" (bonk-race-gl2) |
+| **Зонные слайдеры** | 4 зоны × 7 SurfaceConfig параметров в LabPanel (bonk-race-83p) |
+| **Авто-старт баг** | Исключение зон из spawn area в генераторе арены (bonk-race-2tp) |
+| **replayData валидация** | Number.isFinite проверка каждого элемента (bonk-race-d9o) |
+| **Константы → config** | INPUT_THRUST_BLEND, CAMERA_LOOKAHEAD_Y, MAX_COINS_PER_RUN → balance.json (bonk-race-dh0) |
+| **Trail UX** | Teleport detection (>500px), cleared on disable, real dt via performance.now() |
+| **i18n** | Все комментарии и тултипы на русском, англицизмы убраны |
 
-### Пресеты по категориям
+### Закрытые задачи (Beads)
 
-**Слаймы/абстрактные** (со стрейфами):
-- Ультралёгкий, Slime Arena, BonkRace v0.1, BonkRace v0.3, Бампер-кар
-
-**Автомобили** (без стрейфов):
-- Грузовик, Дрифт, Ралли, Картинг, Формула
-
-**Космос** (со стрейфами, Elite Dangerous):
-- Космос FA-On (drag=0, FA активен), Космос FA-Off (полный Ньютон)
-
-### Отложено
-
-- LG-5 (bonk-race-6nu): Серверная интеграция movementSystems
-- LG-6 (bonk-race-b18.1): raceMain.ts — анизотропный decay
+| ID | Тип | Описание |
+|----|-----|---------|
+| bonk-race-vyh | feature | Треугольник внутри круга |
+| bonk-race-hmg | feature | Следы движения |
+| bonk-race-2tp | bug | Авто-старт после Go! |
+| bonk-race-d9o | bug | replayData валидация |
+| bonk-race-dh0 | task | Hardcoded константы → config |
+| bonk-race-gl2 | bug | Sand zone не генерируется |
+| bonk-race-83p | bug | Зонные слайдеры отсутствуют |
 
 ---
 
@@ -72,25 +70,14 @@
 
 | Приоритет | Файл | Проблема |
 |-----------|------|---------|
-| P2 | `server/src/meta/routes/runs.ts:57` | replayData: нет проверки `Number.isFinite` |
-| P2 | `server/src/meta/routes/runs.ts:43` | operationId от клиента не используется сервером |
 | P2 | `client/src/lab/BonkLab.ts` | Zone modifier 1-tick application lag |
 | P2 | `client/src/lab/BonkLab.ts` | correctionPercent in static collisions always 1.0 |
 | P2 | `client/src/lab/BonkLab.ts` | reverseZoneAngleDeg — не реализован |
-| P2 | `shared/src/physics/arenaGenerator.ts` | ZONE_PARAMS legacy — заменён SurfaceConfig |
+| P2 | `server/src/meta/routes/runs.ts:43` | operationId от клиента не используется сервером |
 | P3 | `client/src/raceMain.ts` | Isotropic drag (TODO LG-6) |
-| P3 | `client/src/raceMain.ts:208` | `INPUT_THRUST_BLEND = 0.3` hardcoded |
+| P3 | `shared/src/config.ts` | race.* секция не типизирована в resolveBalanceConfig() |
 | P3 | `server/src/meta/routes/ghosts.ts:78` | Guest без profiles — нет opponent ghost |
 | P3 | `client/src/lab/LabRenderer.ts` | Sub-pixel anti-aliasing blur |
-
----
-
-## Новые задачи (Beads)
-
-| ID | Тип | Описание |
-|----|-----|---------|
-| bonk-race-vyh | P2 feature | Перерисовать персонажа: треугольник внутри круга |
-| bonk-race-hmg | P2 feature | Следы движения (motion trails) |
 
 ---
 
