@@ -571,7 +571,13 @@ export class BonkLab {
         // Стартовый обратный отсчёт — физика заморожена
         if (this.startCountdown > 0) {
             this.startCountdown -= dt;
-            if (this.startCountdown <= 0) this.startCountdown = 0;
+            if (this.startCountdown <= 0) {
+                this.startCountdown = 0;
+                // Сбросить stale input чтобы персонаж не двигался после Go!
+                this.inputX = 0;
+                this.inputY = 0;
+                this.inputMagnitude = 0;
+            }
             return;
         }
 
@@ -609,6 +615,10 @@ export class BonkLab {
             this.respawnCountdown -= dt;
             if (this.respawnCountdown <= 0) {
                 this.respawnCountdown = 0;
+                // Сбросить stale input чтобы персонаж не двигался после Go!
+                this.inputX = 0;
+                this.inputY = 0;
+                this.inputMagnitude = 0;
             }
             return;
         }

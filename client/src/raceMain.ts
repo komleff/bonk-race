@@ -565,6 +565,9 @@ export class RaceGame {
                     this.startTimeMs = performance.now();
                     this.recorder.start();
                     this.accumulator = 0;
+                    // Сбросить stale input чтобы персонаж не двигался после Go!
+                    input.moveX = 0;
+                    input.moveY = 0;
                     break;
                 }
                 this.accumulator -= fixedDt;

@@ -49,6 +49,9 @@ const STARTUP_PRESET: Record<string, number | boolean> = {
     "worldPhysics.lateralGripMultiplier": 25.0,
     "worldPhysics.angularDragK": 0.15,
     "worldPhysics.restitution": 0.80,
+    "trail.enabled": true,
+    "trail.maxAge": 0.8,
+    "trail.baseAlpha": 0.6,
 };
 for (const [key, val] of Object.entries(STARTUP_PRESET)) {
     lab.updateParams(key, val);
