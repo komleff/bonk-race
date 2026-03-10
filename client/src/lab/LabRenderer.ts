@@ -54,9 +54,9 @@ const ARROW_HEAD_ANGLE = Math.PI / 6;
 const DEFAULT_VIEW_RANGE = 400;
 
 /**
- * Vertical screen ratio where the character is rendered.
- * 0.65 = 65% from top → character in lower part, more view ahead (upward race).
- * Exported so LabInput can use the same value for mouse direction origin.
+ * Вертикальная доля экрана, на которой рендерится персонаж.
+ * 0.65 = 65% от верха — персонаж в нижней части, больше обзора вперёд (гонка вверх).
+ * Экспортируется, чтобы LabInput использовал то же значение для origin направления мыши.
  */
 export const CHAR_SCREEN_Y_RATIO = 0.65;
 
@@ -83,7 +83,7 @@ export class LabRenderer {
     private normSpeedLimit = 260;
     private normMaxThrust = 27000;
 
-    /** Cached canvas bounding rect (updated on resize). */
+    /** Кэшированный прямоугольник canvas (обновляется при resize). */
     private cachedRect: DOMRect;
 
     // Pre-allocated reusable objects to avoid GC in render loop
@@ -92,7 +92,7 @@ export class LabRenderer {
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d")!;
-        this.cachedRect = canvas.getBoundingClientRect();
+        this.cachedRect = null!; // инициализируется в resize()
         this.resize();
     }
 
@@ -115,7 +115,7 @@ export class LabRenderer {
         this.scale = Math.min(this.canvas.width, this.canvas.height) / (this.viewRange * 2);
     }
 
-    /** Returns cached canvas bounding rect (updated on resize). */
+    /** Возвращает кэшированный прямоугольник canvas (обновляется при resize). */
     getCanvasRect(): DOMRect {
         return this.cachedRect;
     }
@@ -157,7 +157,7 @@ export class LabRenderer {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.drawMinimap(ctx, state, w, h);
 
-        // ── Touch joystick overlay (screen-space) ──
+        // ── Оверлей сенсорного джойстика (экранные координаты) ──
         if (input.isTouch && input.active) {
             this.drawTouchJoystick(ctx, input);
         }
@@ -492,7 +492,7 @@ export class LabRenderer {
         ctx.restore();
     }
 
-    // ── Layer: Touch Joystick (screen-space) ───────────────────────────────
+    // ── Слой: Сенсорный джойстик (экранные координаты) ─────────────────────
 
     private drawTouchJoystick(
         ctx: CanvasRenderingContext2D,
@@ -500,7 +500,7 @@ export class LabRenderer {
     ): void {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.cachedRect;
-        // Convert CSS client coordinates to canvas pixel coordinates
+        // Конвертируем CSS-координаты клиента в пиксели canvas
         const baseX = (input.baseScreenX - rect.left) * dpr;
         const baseY = (input.baseScreenY - rect.top) * dpr;
         const knobX = (input.screenX - rect.left) * dpr;
@@ -508,7 +508,7 @@ export class LabRenderer {
         const baseRadius = 50 * dpr;
         const knobRadius = 22 * dpr;
 
-        // Base circle
+        // Базовый круг
         ctx.beginPath();
         ctx.arc(baseX, baseY, baseRadius, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
@@ -517,7 +517,7 @@ export class LabRenderer {
         ctx.lineWidth = 2 * dpr;
         ctx.stroke();
 
-        // Knob circle
+        // Ручка джойстика
         ctx.beginPath();
         ctx.arc(knobX, knobY, knobRadius, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255, 255, 255, 0.3)";

@@ -104,7 +104,7 @@ renderPanel();
 let rafId: number | null = null;
 
 function frame(): void {
-    // Update character screen position for correct mouse direction calculation
+    // Обновляем экранную позицию персонажа для корректного расчёта направления мыши
     const canvasRect = renderer.getCanvasRect();
     input.setCharacterScreenPos(
         canvasRect.left + canvasRect.width / 2,

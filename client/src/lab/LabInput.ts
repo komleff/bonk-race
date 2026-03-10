@@ -1,7 +1,7 @@
 /**
  * LabInput — lightweight input handler for BonkLab
  *
- * Desktop: mouse click-drag from character screen position to cursor → direction vector.
+ * Desktop: направление от экранной позиции персонажа к курсору мыши.
  * Mobile:  virtual joystick — touch start sets origin, drag gives direction.
  *
  * Self-contained, no dependencies on the game InputManager.
@@ -22,11 +22,11 @@ export interface LabInputState {
     screenX: number;
     /** Screen Y of current touch/click point (for visualization) */
     screenY: number;
-    /** Whether this input comes from touch (vs mouse) */
+    /** Ввод через тач (true) или мышь (false) */
     isTouch: boolean;
-    /** Touch joystick base screen X (only meaningful when isTouch=true) */
+    /** Экранная X базы тач-джойстика (актуально только при isTouch=true) */
     baseScreenX: number;
-    /** Touch joystick base screen Y (only meaningful when isTouch=true) */
+    /** Экранная Y базы тач-джойстика (актуально только при isTouch=true) */
     baseScreenY: number;
 }
 
@@ -60,7 +60,7 @@ export class LabInput {
     private touchCurrentX = 0;
     private touchCurrentY = 0;
 
-    // --- Character screen position (updated externally each frame) ---
+    // --- Экранная позиция персонажа (обновляется извне каждый кадр) ---
     private charScreenX = 0;
     private charScreenY = 0;
     private charScreenPosSet = false;
@@ -116,15 +116,15 @@ export class LabInput {
     }
 
     /**
-     * Set the character's screen position (CSS pixels).
-     * Mouse direction is calculated from this point to the cursor.
-     * Call once per frame before getState().
+     * Задаёт экранную позицию персонажа (CSS-пиксели).
+     * Направление мыши вычисляется от этой точки к курсору.
+     * Вызывать один раз за кадр перед getState().
      */
     setCharacterScreenPos(x: number, y: number): void {
         this.charScreenX = x;
         this.charScreenY = y;
         this.charScreenPosSet = true;
-        // Recalculate mouse direction if mouse is held
+        // Пересчитать направление мыши, если кнопка зажата
         if (this.mouseDown) {
             this.updateMouseState();
         }
@@ -171,8 +171,8 @@ export class LabInput {
     }
 
     private updateMouseState(): void {
-        // Direction from character screen position to cursor.
-        // Falls back to canvas center if setCharacterScreenPos() was never called.
+        // Направление от экранной позиции персонажа к курсору.
+        // Если setCharacterScreenPos() не вызывался — fallback на центр canvas.
         const rect = this.canvas.getBoundingClientRect();
         const centerX = this.charScreenPosSet
             ? this.charScreenX
@@ -189,7 +189,7 @@ export class LabInput {
         const maxDist = Math.min(rect.width, rect.height) / 2;
 
         if (dist < 1) {
-            // Cursor essentially at character position
+            // Курсор практически на позиции персонажа
             this.applyState(0, 0, 0, this.mouseScreenX, this.mouseScreenY, false, 0, 0);
             return;
         }
