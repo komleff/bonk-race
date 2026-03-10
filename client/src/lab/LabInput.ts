@@ -1,7 +1,7 @@
 /**
  * LabInput — lightweight input handler for BonkLab
  *
- * Desktop: mouse click-drag from canvas center to cursor → direction vector.
+ * Desktop: направление от экранной позиции персонажа к курсору мыши.
  * Mobile:  virtual joystick — touch start sets origin, drag gives direction.
  *
  * Self-contained, no dependencies on the game InputManager.
@@ -22,6 +22,12 @@ export interface LabInputState {
     screenX: number;
     /** Screen Y of current touch/click point (for visualization) */
     screenY: number;
+    /** Ввод через тач (true) или мышь (false) */
+    isTouch: boolean;
+    /** Экранная X базы тач-джойстика (актуально только при isTouch=true) */
+    baseScreenX: number;
+    /** Экранная Y базы тач-джойстика (актуально только при isTouch=true) */
+    baseScreenY: number;
 }
 
 export interface LabInputConfig {
@@ -54,6 +60,11 @@ export class LabInput {
     private touchCurrentX = 0;
     private touchCurrentY = 0;
 
+    // --- Экранная позиция персонажа (обновляется извне каждый кадр) ---
+    private charScreenX = 0;
+    private charScreenY = 0;
+    private charScreenPosSet = false;
+
     // --- Computed state (updated on every input event) ---
     private state: LabInputState = {
         x: 0,
@@ -62,6 +73,9 @@ export class LabInput {
         active: false,
         screenX: 0,
         screenY: 0,
+        isTouch: false,
+        baseScreenX: 0,
+        baseScreenY: 0,
     };
 
     // --- Bound handlers ---
@@ -99,6 +113,21 @@ export class LabInput {
     /** Returns the current input state (read-only snapshot). */
     getState(): Readonly<LabInputState> {
         return this.state;
+    }
+
+    /**
+     * Задаёт экранную позицию персонажа (CSS-пиксели).
+     * Направление мыши вычисляется от этой точки к курсору.
+     * Вызывать один раз за кадр перед getState().
+     */
+    setCharacterScreenPos(x: number, y: number): void {
+        this.charScreenX = x;
+        this.charScreenY = y;
+        this.charScreenPosSet = true;
+        // Пересчитать направление мыши, если кнопка зажата
+        if (this.mouseDown) {
+            this.updateMouseState();
+        }
     }
 
     /** Remove all event listeners. Call when done with this input handler. */
@@ -142,10 +171,15 @@ export class LabInput {
     }
 
     private updateMouseState(): void {
-        // Direction from canvas center to cursor
+        // Направление от экранной позиции персонажа к курсору.
+        // Если setCharacterScreenPos() не вызывался — fallback на центр canvas.
         const rect = this.canvas.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
+        const centerX = this.charScreenPosSet
+            ? this.charScreenX
+            : rect.left + rect.width / 2;
+        const centerY = this.charScreenPosSet
+            ? this.charScreenY
+            : rect.top + rect.height / 2;
 
         const dx = this.mouseScreenX - centerX;
         const dy = this.mouseScreenY - centerY;
@@ -155,13 +189,8 @@ export class LabInput {
         const maxDist = Math.min(rect.width, rect.height) / 2;
 
         if (dist < 1) {
-            // Cursor essentially at center
-            this.state.x = 0;
-            this.state.y = 0;
-            this.state.magnitude = 0;
-            this.state.active = true;
-            this.state.screenX = this.mouseScreenX;
-            this.state.screenY = this.mouseScreenY;
+            // Курсор практически на позиции персонажа
+            this.applyState(0, 0, 0, this.mouseScreenX, this.mouseScreenY, false, 0, 0);
             return;
         }
 
@@ -169,7 +198,7 @@ export class LabInput {
         const ny = dy / dist;
         const rawMagnitude = Math.min(dist / maxDist, 1);
 
-        this.applyState(nx, ny, rawMagnitude, this.mouseScreenX, this.mouseScreenY);
+        this.applyState(nx, ny, rawMagnitude, this.mouseScreenX, this.mouseScreenY, false, 0, 0);
     }
 
     // ========== Touch handlers ==========
@@ -190,7 +219,7 @@ export class LabInput {
         this.touchCurrentY = touch.clientY;
 
         // At start, magnitude is 0 (finger hasn't moved yet)
-        this.applyState(0, 0, 0, touch.clientX, touch.clientY);
+        this.applyState(0, 0, 0, touch.clientX, touch.clientY, true, this.touchBaseX, this.touchBaseY);
     }
 
     private onTouchMove(e: TouchEvent): void {
@@ -234,7 +263,7 @@ export class LabInput {
         const dist = Math.hypot(dx, dy);
 
         if (dist < 1) {
-            this.applyState(0, 0, 0, this.touchCurrentX, this.touchCurrentY);
+            this.applyState(0, 0, 0, this.touchCurrentX, this.touchCurrentY, true, this.touchBaseX, this.touchBaseY);
             return;
         }
 
@@ -242,7 +271,7 @@ export class LabInput {
         const ny = dy / dist;
         const rawMagnitude = Math.min(dist / this.config.maxRadius, 1);
 
-        this.applyState(nx, ny, rawMagnitude, this.touchCurrentX, this.touchCurrentY);
+        this.applyState(nx, ny, rawMagnitude, this.touchCurrentX, this.touchCurrentY, true, this.touchBaseX, this.touchBaseY);
     }
 
     // ========== Shared ==========
@@ -253,6 +282,9 @@ export class LabInput {
         rawMagnitude: number,
         screenX: number,
         screenY: number,
+        isTouch: boolean,
+        baseScreenX: number,
+        baseScreenY: number,
     ): void {
         if (rawMagnitude < this.config.deadZone) {
             this.state.x = 0;
@@ -266,6 +298,9 @@ export class LabInput {
         this.state.active = true;
         this.state.screenX = screenX;
         this.state.screenY = screenY;
+        this.state.isTouch = isTouch;
+        this.state.baseScreenX = baseScreenX;
+        this.state.baseScreenY = baseScreenY;
     }
 
     private clearState(): void {
@@ -275,5 +310,8 @@ export class LabInput {
         this.state.active = false;
         this.state.screenX = 0;
         this.state.screenY = 0;
+        this.state.isTouch = false;
+        this.state.baseScreenX = 0;
+        this.state.baseScreenY = 0;
     }
 }
