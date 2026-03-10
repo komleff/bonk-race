@@ -439,7 +439,6 @@ export class BonkLab {
             return;
         }
 
-
         // All other keys map to slimeConfig
         setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
     }
@@ -468,7 +467,6 @@ export class BonkLab {
             }
         }
     }
-
 
     getState(): SandboxState {
         return {
