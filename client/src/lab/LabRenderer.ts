@@ -80,9 +80,10 @@ interface TrailPoint {
     x: number;
     y: number;
     age: number;
+    drift: boolean;
 }
 
-const TRAIL_MAX_POINTS = 120;
+const TRAIL_MAX_POINTS = 600;
 
 // ─── LabRenderer ─────────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ export class LabRenderer {
     private trailHead = 0;
     private trailCount = 0;
     private trailEnabled = false;
-    private trailMaxAge = 0.8;
+    private trailMaxAge = 3.5;
     private trailBaseAlpha = 0.6;
     private trailPrevX = NaN;
     private trailPrevY = NaN;
@@ -190,7 +191,7 @@ export class LabRenderer {
 
         // Trail: записываем точку и рисуем
         if (this.trailEnabled && state.deathTimer <= 0) {
-            this.pushTrailPoint(state.x, state.y, 1 / 60);
+            this.pushTrailPoint(state.x, state.y, state.faState === "drift-correction", 1 / 60);
             this.drawTrail(ctx, state.radius);
         }
 
@@ -382,7 +383,7 @@ export class LabRenderer {
 
     // ── Trail system ──────────────────────────────────────────────────────────
 
-    private pushTrailPoint(x: number, y: number, dt: number): void {
+    private pushTrailPoint(x: number, y: number, drift: boolean, dt: number): void {
         // Не записывать дубликаты (персонаж стоит на месте)
         if (x === this.trailPrevX && y === this.trailPrevY) {
             this.ageTrail(dt);
@@ -393,11 +394,12 @@ export class LabRenderer {
 
         // Инициализация буфера при первом использовании
         if (this.trailBuffer.length < TRAIL_MAX_POINTS) {
-            this.trailBuffer.push({ x, y, age: 0 });
+            this.trailBuffer.push({ x, y, age: 0, drift });
             this.trailCount = this.trailBuffer.length;
             this.trailHead = this.trailCount % TRAIL_MAX_POINTS;
         } else {
-            this.trailBuffer[this.trailHead] = { x, y, age: 0 };
+            const pt = this.trailBuffer[this.trailHead];
+            pt.x = x; pt.y = y; pt.age = 0; pt.drift = drift;
             this.trailHead = (this.trailHead + 1) % TRAIL_MAX_POINTS;
             if (this.trailCount < TRAIL_MAX_POINTS) this.trailCount++;
         }
@@ -421,12 +423,22 @@ export class LabRenderer {
 
             const t = pt.age / maxAge; // 0→1
             const alpha = baseAlpha * (1 - t);
-            const r = charRadius * (1 - t * 0.6); // уменьшается до 40% от оригинала
 
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(68, 170, 255, ${alpha.toFixed(2)})`;
-            ctx.fill();
+            if (pt.drift) {
+                // Дрифт — оранжевые точки, крупнее
+                const r = charRadius * (1.1 - t * 0.5);
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 170, 68, ${alpha.toFixed(2)})`;
+                ctx.fill();
+            } else {
+                // Обычное движение — голубые точки
+                const r = charRadius * (1 - t * 0.6);
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(68, 170, 255, ${alpha.toFixed(2)})`;
+                ctx.fill();
+            }
         }
     }
 
