@@ -101,7 +101,7 @@ export interface SandboxState {
     deathX: number;
     deathY: number;
     deathDistanceM: number;  // distance at moment of death (for death message)
-    respawnCountdown: number; // post-respawn Go!-Go! freeze timer
+    respawnCountdown: number; // таймер заморозки Go!-Go! после респауна
     startCountdown: number;   // pre-race 3-2-1-Go! countdown timer
 
     // Finish state
@@ -233,7 +233,7 @@ export class BonkLab {
     private deathX = 0;
     private deathY = 0;
     private deathDistanceM = 0;
-    /** Post-respawn Go!-Go! countdown (2×0.4с freeze after respawn) */
+    /** Обратный отсчёт Go!-Go! после респауна (2×0.4с заморозка) */
     private respawnCountdown = 0;
     /** Стартовый обратный отсчёт 3-2-1-Go! */
     private startCountdown = 0;
@@ -611,13 +611,13 @@ export class BonkLab {
                 this.correctionFx = 0;
                 this.correctionFy = 0;
                 this.currentZone = null;
-                // Go!-Go! countdown (2×0.4с freeze after respawn)
+                // Go!-Go! отсчёт (2×0.4с заморозка после респауна)
                 this.respawnCountdown = RESPAWN_GO_TOTAL_S;
             }
             return;
         }
 
-        // Post-respawn "Go!" freeze — wait before allowing input
+        // Заморозка Go!-Go! после респауна — ввод запрещён
         if (this.respawnCountdown > 0) {
             this.respawnCountdown -= dt;
             if (this.respawnCountdown <= 0) {

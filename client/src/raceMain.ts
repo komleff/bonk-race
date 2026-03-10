@@ -585,7 +585,7 @@ export class RaceGame {
         // Go!-Go! freeze после респауна — ввод заморожен
         if (this.respawnGoTicks > 0) {
             this.respawnGoTicks--;
-            // Гостей обновляем даже во время freeze
+            this.recorder.record(this.tick, this.player.x, this.player.y, this.player.angle);
         } else if (!this.player.isDead) {
             // Нормальная физика
             flightAssistSystem(this.player, input, this.config, dt);
@@ -612,12 +612,14 @@ export class RaceGame {
             // Record ghost frame
             this.recorder.record(this.tick, this.player.x, this.player.y, this.player.angle);
         } else {
-            // Death freeze фаза (0.8с)
+            // Заморозка после смерти (0.8с)
             if (this.deathFreezeTicks > 0) {
                 this.deathFreezeTicks--;
                 if (this.deathFreezeTicks <= 0) {
                     this.respawn();
                     this.respawnGoTicks = Math.ceil(RESPAWN_GO_TOTAL_S * this.config.physics.tickRate);
+                    // Записать кадр после респауна (позиция чекпоинта)
+                    this.recorder.record(this.tick, this.player.x, this.player.y, this.player.angle);
                 }
             }
         }
@@ -758,7 +760,7 @@ export class RaceGame {
             ctx.textAlign = "right";
             ctx.fillText(config.name, W - margin, margin);
 
-            // Go!-Go! при респауне (punch-in)
+            // Go!-Go! при респауне (масштабный всплеск)
             if (this.respawnGoTicks > 0) {
                 const tickRate = this.config.physics.tickRate;
                 const totalTicks = Math.ceil(RESPAWN_GO_TOTAL_S * tickRate);

@@ -4,17 +4,33 @@
 
 ## Контроль изменений
 
-- **last_checked_commit**: `fix/lab-input-direction` @ 10 марта 2026
-- **Активная ветка**: `fix/lab-input-direction` (PR#11, от main)
+- **last_checked_commit**: `feat/countdown-and-respawn-overlay` @ 10 марта 2026
+- **Активная ветка**: `feat/countdown-and-respawn-overlay` (PR#12, от main)
 - **Production:** BonkLab на GitHub Pages, основная игра не задеплоена
 - **Версия:** 0.1.0
 - **GDD версия**: v4.0 (`docs/gdd/GDD-index.md`)
 
 ---
 
+## Countdown и респаун-оверлей (10 марта 2026) — В РАБОТЕ
+
+**PR:** #12 (`feat/countdown-and-respawn-overlay`)
+**Ревьюеры:** Copilot, GPT-5 Codex (CHANGES_REQUESTED), GPT-5.3 Codex ✅
+
+- [x] Countdown 3→2→1→Go! при старте/рестарте (0.7с × 4 = 2.8с)
+- [x] Go!→Go! после смерти (2×0.4с = 0.8с)
+- [x] Анимация punch-in (easeOutQuad, жёлтый glow)
+- [x] Общий `computePunchIn()` в shared
+- [x] CSS-оверлей заменён на canvas-рендер
+- [x] Исправлен `console.log` формат (`%.1f` → template literal)
+- [ ] GhostRecorder: запись кадров во время freeze/respawnGo
+- [ ] Русификация комментариев (англицизмы)
+
+---
+
 ## Hotfix: Lab input direction (10 марта 2026) — ЗАВЕРШЁН
 
-**PR:** #11 (`fix/lab-input-direction`) — Open, ревью пройдено (Copilot, GPT-5, GPT-5.3 — APPROVED)
+**PR:** #11 (`fix/lab-input-direction`) — Merged
 **Ревьюеры:** Copilot ✅, GPT-5 ✅, GPT-5.3-Codex ✅
 
 - [x] Fix: направление мыши от экранной позиции персонажа (не от центра canvas)

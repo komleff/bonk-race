@@ -5,7 +5,7 @@
 ## Текущее состояние (10 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `fix/lab-input-direction` (PR#11, от main)
+**Активная ветка:** `feat/countdown-and-respawn-overlay` (PR#12, от main)
 **GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
 **Версия:** 0.1.0 (релиз: BonkLab v1.2)
 
@@ -25,7 +25,8 @@
 | #8 | `fix/lab-pages-base` | Fix: base path for GitHub Pages | Merged |
 | #9 | `feat/bonklab-v1.2` | **BonkLab v1.2: orbs, finish, geometry, presets** | **APPROVED → ready to merge** |
 | #10 | `feat/gdd-v4-ugc` | GDD v4.0: UGC-секция, русификация | Merged |
-| #11 | `fix/lab-input-direction` | **Fix: направление мыши в BonkLab (2x angle error)** | **Open — ревью пройдено** |
+| #11 | `fix/lab-input-direction` | Fix: направление мыши в BonkLab (2x angle error) | Merged |
+| #12 | `feat/countdown-and-respawn-overlay` | **Countdown 3-2-1-Go! + Go!-Go! respawn overlay** | **Open — ревью** |
 
 ---
 
@@ -62,22 +63,19 @@
 
 ---
 
-## Hotfix: Lab input direction (10 марта 2026)
+## Countdown и респаун-оверлей (10 марта 2026)
 
-**PR:** #11 (`fix/lab-input-direction`) — ревью пройдено (Copilot, GPT-5, GPT-5.3 — APPROVED)
-**Ветка:** `fix/lab-input-direction`
+**PR:** #12 (`feat/countdown-and-respawn-overlay`)
+**Ревьюеры:** Copilot, GPT-5 Codex, GPT-5.3 Codex
 
-**Проблема:** В BonkLab жёлтый маяк (beacon) и направление движения не совпадали с позицией курсора мыши. Ошибка угла ~2x при курсоре под 45°.
+**Что реализовано:**
 
-**Причина:** `LabInput.updateMouseState()` вычислял направление от центра canvas (50% высоты), а персонаж рендерился на 65% высоты (`CHAR_SCREEN_Y_RATIO`).
-
-**Что исправлено:**
-
-- `LabInput.ts` — добавлен `setCharacterScreenPos()`, направление от позиции персонажа к курсору
-- `LabRenderer.ts` — извлечена константа `CHAR_SCREEN_Y_RATIO`, кэш `getBoundingClientRect()`, визуальный тач-джойстик
-- `lab/main.ts` — передача экранной позиции персонажа каждый кадр
-
-**Статус:** Ожидает merge в main.
+- Стартовый countdown 3→2→1→Go! (0.7с на шаг, 2.8с итого), физика заморожена
+- Go!→Go! после смерти (2×0.4с = 0.8с), тот же крупный шрифт
+- Анимация punch-in (easeOutQuad масштабирование, жёлтый glow для Go!)
+- Общий `computePunchIn()` в shared — единый расчёт для BonkLab и raceMain
+- Константы таймингов вынесены в `@bonk-race/shared`
+- CSS-оверлей countdown в LabToolbar заменён на canvas-рендер
 
 ---
 

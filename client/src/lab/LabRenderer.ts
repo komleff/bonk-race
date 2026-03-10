@@ -176,7 +176,7 @@ export class LabRenderer {
             this.drawDeathMessage(ctx, state, w, h);
         }
 
-        // ── Countdown / respawn overlay (punch-in) ──
+        // ── Оверлей обратного отсчёта / респауна ──
         this.drawCountdownOverlay(ctx, state, w, h);
 
         // ── Finish overlay (screen-space) ──
@@ -491,12 +491,12 @@ export class LabRenderer {
         ctx.restore();
     }
 
-    // ── Слой: Обратный отсчёт / респаун Go!-Go! (punch-in анимация) ────────
+    // ── Слой: Обратный отсчёт / респаун Go!-Go! ───────────────────────────
 
     /**
      * Рендерит 3-2-1-Go! при старте или Go!-Go! при респауне.
-     * Стиль: Mario Kart punch-in — число появляется крупно и сжимается,
-     * затем резко исчезает без fade-out.
+     * Число появляется крупно и сжимается (масштабный всплеск),
+     * затем резко исчезает без плавного затухания.
      */
     private drawCountdownOverlay(
         ctx: CanvasRenderingContext2D,

@@ -40,7 +40,7 @@ export type RacePhase =
     | typeof RACE_PHASE_RACING
     | typeof RACE_PHASE_RESULTS;
 
-// ─── Countdown / respawn timing ─────────────────────────────────────────────
+// ─── Тайминги обратного отсчёта и респауна ──────────────────────────────────
 export const COUNTDOWN_STEP_S = 0.7;
 export const COUNTDOWN_STEPS = ["3", "2", "1", "Go!"] as const;
 export const COUNTDOWN_TOTAL_S = COUNTDOWN_STEP_S * COUNTDOWN_STEPS.length; // 2.8с
@@ -49,14 +49,14 @@ export const RESPAWN_GO_STEP_S = 0.4;
 export const RESPAWN_GO_STEPS = 2;
 export const RESPAWN_GO_TOTAL_S = RESPAWN_GO_STEP_S * RESPAWN_GO_STEPS; // 0.8с
 
-// ─── Punch-in анимация (параметры countdown overlay) ────────────────────────
+// ─── Анимация масштабного всплеска (параметры оверлея отсчёта) ───────────────
 export interface PunchInResult {
     scale: number;
     alpha: number;
 }
 
 /**
- * Вычислить scale и alpha для punch-in анимации (Mario Kart стиль).
+ * Вычислить scale и alpha для анимации масштабного всплеска (стиль аркадных гонок).
  * @param progress — прогресс внутри шага, 0..1
  * @param isGo — true для «Go!» (более крупный начальный масштаб)
  */
