@@ -14,6 +14,7 @@ import {
     DEATH_FREEZE_S,
     RESPAWN_GO_STEP_S,
     RESPAWN_GO_TOTAL_S,
+    computePunchIn,
 } from "@bonk-race/shared";
 import type { ArenaZone } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
@@ -529,15 +530,7 @@ export class LabRenderer {
         }
 
         const isGo = label === "Go!";
-
-        // Punch-in: scale 2.0→1.0 (2.5 для Go!) за 60% шага, easeOutQuad
-        const punchPhase = Math.min(progress / 0.6, 1);
-        const eased = 1 - (1 - punchPhase) * (1 - punchPhase);
-        const startScale = isGo ? 2.5 : 2.0;
-        const scale = startScale - (startScale - 1.0) * eased;
-
-        // Видимость: полная до 85% шага, затем резкое исчезновение
-        const alpha = progress < 0.85 ? 1.0 : Math.max(0, 1 - (progress - 0.85) / 0.15);
+        const { scale, alpha } = computePunchIn(progress, isGo);
 
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -551,8 +544,10 @@ export class LabRenderer {
         // Glow для Go! (сильнее для второго Go! при респауне)
         if (isGo) {
             const glowSize = isRespawn && stepInSequence === 1 ? 30 : 20;
+            const punchT = Math.min(progress / 0.6, 1);
+            const easedT = 1 - (1 - punchT) * (1 - punchT);
             ctx.shadowColor = "rgba(255, 255, 100, 0.8)";
-            ctx.shadowBlur = glowSize * (1 - eased * 0.5);
+            ctx.shadowBlur = glowSize * (1 - easedT * 0.5);
         }
 
         ctx.fillStyle = isGo ? "#ffff66" : "#ffffff";

@@ -49,5 +49,25 @@ export const RESPAWN_GO_STEP_S = 0.4;
 export const RESPAWN_GO_STEPS = 2;
 export const RESPAWN_GO_TOTAL_S = RESPAWN_GO_STEP_S * RESPAWN_GO_STEPS; // 0.8с
 
+// ─── Punch-in анимация (параметры countdown overlay) ────────────────────────
+export interface PunchInResult {
+    scale: number;
+    alpha: number;
+}
+
+/**
+ * Вычислить scale и alpha для punch-in анимации (Mario Kart стиль).
+ * @param progress — прогресс внутри шага, 0..1
+ * @param isGo — true для «Go!» (более крупный начальный масштаб)
+ */
+export function computePunchIn(progress: number, isGo: boolean): PunchInResult {
+    const punchPhase = Math.min(progress / 0.6, 1);
+    const eased = 1 - (1 - punchPhase) * (1 - punchPhase); // easeOutQuad
+    const startScale = isGo ? 2.5 : 2.0;
+    const scale = startScale - (startScale - 1.0) * eased;
+    const alpha = progress < 0.85 ? 1.0 : Math.max(0, 1 - (progress - 0.85) / 0.15);
+    return { scale, alpha };
+}
+
 // ─── Guest ───────────────────────────────────────────────────────────────────
 export const GUEST_DEFAULT_NICKNAME = 'Гость';

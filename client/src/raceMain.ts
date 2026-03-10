@@ -18,6 +18,7 @@ import {
     RACE_PHASE_LOBBY, RACE_PHASE_COUNTDOWN, RACE_PHASE_RACING, RACE_PHASE_RESULTS,
     COUNTDOWN_STEP_S, COUNTDOWN_STEPS, COUNTDOWN_TOTAL_S,
     DEATH_FREEZE_S, RESPAWN_GO_STEP_S, RESPAWN_GO_TOTAL_S,
+    computePunchIn,
     type RacePhase,
 } from "@bonk-race/shared";
 import { GhostRecorder } from "./game/GhostRecorder";
@@ -731,13 +732,7 @@ export class RaceGame {
             const label = COUNTDOWN_STEPS[stepIdx];
             const progress = (elapsed % stepTicks) / stepTicks;
             const isGo = label === "Go!";
-
-            // Punch-in: scale 2.0→1.0 (2.5 для Go!) за 60% шага, easeOutQuad
-            const punchPhase = Math.min(progress / 0.6, 1);
-            const eased = 1 - (1 - punchPhase) * (1 - punchPhase);
-            const startScale = isGo ? 2.5 : 2.0;
-            const scale = startScale - (startScale - 1.0) * eased;
-            const alpha = progress < 0.85 ? 1.0 : Math.max(0, 1 - (progress - 0.85) / 0.15);
+            const { scale, alpha } = computePunchIn(progress, isGo);
 
             ctx.save();
             ctx.translate(W / 2, H / 2);
@@ -772,10 +767,9 @@ export class RaceGame {
                 const stepInSequence = Math.floor(goElapsed / stepTicks);
                 const goProgress = (goElapsed % stepTicks) / stepTicks;
 
-                const goPunch = Math.min(goProgress / 0.6, 1);
-                const goEased = 1 - (1 - goPunch) * (1 - goPunch);
-                const goScale = 2.5 - 1.5 * goEased;
-                const goAlpha = goProgress < 0.85 ? 1.0 : Math.max(0, 1 - (goProgress - 0.85) / 0.15);
+                const { scale: goScale, alpha: goAlpha } = computePunchIn(goProgress, true);
+                const punchT = Math.min(goProgress / 0.6, 1);
+                const easedT = 1 - (1 - punchT) * (1 - punchT);
                 const glowSize = stepInSequence === 1 ? 30 : 20;
 
                 ctx.save();
@@ -786,7 +780,7 @@ export class RaceGame {
                 ctx.textBaseline = "middle";
                 ctx.globalAlpha = goAlpha;
                 ctx.shadowColor = "rgba(255, 255, 100, 0.8)";
-                ctx.shadowBlur = glowSize * (1 - goEased * 0.5);
+                ctx.shadowBlur = glowSize * (1 - easedT * 0.5);
                 ctx.fillStyle = "#ffff66";
                 ctx.fillText("Go!", 0, 0);
                 ctx.restore();

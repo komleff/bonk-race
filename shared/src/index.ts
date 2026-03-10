@@ -77,10 +77,12 @@ export {
     RESPAWN_GO_STEP_S,
     RESPAWN_GO_STEPS,
     RESPAWN_GO_TOTAL_S,
+    // Punch-in анимация
+    computePunchIn,
     // Guest
     GUEST_DEFAULT_NICKNAME,
 } from "./constants";
-export type { RacePhase } from "./constants";
+export type { RacePhase, PunchInResult } from "./constants";
 
 // ─── Sprites (legacy SlimeArena — kept for ArenaRoom/client compat) ──────────
 export type { SlimeSprite } from "./sprites";

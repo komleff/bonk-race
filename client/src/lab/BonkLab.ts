@@ -299,7 +299,7 @@ export class BonkLab {
         this.lastTimestamp = 0;
         this.accumulator = 0;
         this.rafId = requestAnimationFrame((ts) => this.loop(ts));
-        console.log("[BonkLab] simulation started (countdown %.1fs)", COUNTDOWN_TOTAL_S);
+        console.log(`[BonkLab] simulation started (countdown ${COUNTDOWN_TOTAL_S.toFixed(1)}s)`);
     }
 
     stop(): void {
