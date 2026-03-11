@@ -86,18 +86,34 @@
 
 ---
 
+## Рефакторинг BonkLab (bonk-race-wig, P2 epic)
+
+**Архитектурный анализ 11 марта 2026:** BonkLab.ts — God Object (1168 строк, tick() 340 строк). 3 дублирования данных. 5249 строк TS в модуле.
+
+| Фаза | Beads ID | Задача | P |
+|------|----------|--------|---|
+| 1 | bonk-race-coe | PARAM_GROUPS → paramDefs.ts | P2 |
+| 1 | bonk-race-6th | PRESETS + STARTUP_PRESET → presets.ts | P2 |
+| 1 | bonk-race-9xw | color utils → colorUtils.ts | P3 |
+| 1 | bonk-race-cm1 | formatTime, ZONE_LABELS дедупликация | P3 |
+| 2 | bonk-race-r94 | SandboxState типы → labTypes.ts | P2 |
+| 2 | bonk-race-pk5 | LabParamManager (зависит от r94) | P2 |
+| 2 | bonk-race-6jf | OrbSimulator (зависит от r94) | P3 |
+
+---
+
 ## Известный техдолг
 
-| Приоритет | Файл | Проблема |
-|-----------|------|---------|
-| P2 | `client/src/lab/BonkLab.ts` | Zone modifier 1-tick application lag |
-| P2 | `client/src/lab/BonkLab.ts` | correctionPercent in static collisions always 1.0 |
-| P2 | `client/src/lab/BonkLab.ts` | reverseZoneAngleDeg — не реализован |
-| P2 | `server/src/meta/routes/runs.ts:43` | operationId от клиента не используется сервером |
-| P3 | `client/src/raceMain.ts` | Isotropic drag (TODO LG-6) |
-| P3 | `shared/src/config.ts` | race.* секция не типизирована в resolveBalanceConfig() |
-| P3 | `server/src/meta/routes/ghosts.ts:78` | Guest без profiles — нет opponent ghost |
-| P3 | `client/src/lab/LabRenderer.ts` | Sub-pixel anti-aliasing blur |
+| Приоритет | Файл | Проблема | Beads ID |
+|-----------|------|---------|----------|
+| P2 | `client/src/lab/BonkLab.ts` | Zone modifier 1-tick application lag | bonk-race-ovb |
+| P2 | `client/src/lab/BonkLab.ts` | correctionPercent in static collisions always 1.0 | bonk-race-hyf |
+| P2 | `client/src/lab/BonkLab.ts` | reverseZoneAngleDeg — не реализован | bonk-race-sz1 |
+| P2 | `server/src/meta/routes/runs.ts:43` | operationId от клиента не используется сервером | bonk-race-lx2 |
+| P3 | `client/src/raceMain.ts` | Isotropic drag (TODO LG-6) | — |
+| P3 | `shared/src/config.ts` | race.* секция не типизирована | — |
+| P3 | `server/src/meta/routes/ghosts.ts:78` | Guest без profiles — нет opponent ghost | bonk-race-col |
+| P3 | `client/src/lab/LabRenderer.ts` | Sub-pixel anti-aliasing blur | bonk-race-t7p |
 
 ---
 

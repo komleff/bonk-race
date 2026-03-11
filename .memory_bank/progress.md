@@ -102,6 +102,20 @@
 
 ## Ожидает следующий спринт
 
+### Рефакторинг BonkLab (bonk-race-wig, P2 epic)
+
+Архитектурный анализ 11 марта 2026. BonkLab.ts — God Object (1168 строк).
+
+| Фаза | Beads ID | Задача |
+|------|----------|--------|
+| 1 | bonk-race-coe | PARAM_GROUPS → paramDefs.ts (P2) |
+| 1 | bonk-race-6th | PRESETS → presets.ts + дедупликация (P2) |
+| 1 | bonk-race-9xw | color utils → colorUtils.ts (P3) |
+| 1 | bonk-race-cm1 | formatTime, ZONE_LABELS дедупликация (P3) |
+| 2 | bonk-race-r94 | SandboxState типы → labTypes.ts (P2) |
+| 2 | bonk-race-pk5 | LabParamManager (зависит от r94) (P2) |
+| 2 | bonk-race-6jf | OrbSimulator (зависит от r94) (P3) |
+
 ### Техдолг
 
 | Приоритет | Beads ID | Проблема |
