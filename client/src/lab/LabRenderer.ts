@@ -246,10 +246,23 @@ export class LabRenderer {
         this.trailEnabled = config.enabled;
         this.trailMaxAge = config.maxAge;
         this.trailBaseAlpha = config.baseAlpha;
-        if (config.pattern !== undefined) this.trailPattern = config.pattern;
+
+        // Переключение паттерна: реинициализировать chrono для rainbow
+        const oldPattern = this.trailPattern;
+        if (config.pattern !== undefined) {
+            this.trailPattern = config.pattern;
+            if (config.pattern === "rainbow" && oldPattern !== "rainbow") {
+                this.trailStartTimeMs = performance.now();
+            }
+        }
+
         if (config.primaryColor !== undefined) this.trailPrimaryColor = config.primaryColor;
         if (config.driftColor !== undefined) this.trailDriftColor = config.driftColor;
-        if (config.rainbowPeriodSec !== undefined) this.trailRainbowPeriodSec = config.rainbowPeriodSec;
+
+        // Guard от division by zero: минимум 0.1 сек
+        if (config.rainbowPeriodSec !== undefined) {
+            this.trailRainbowPeriodSec = Math.max(0.1, config.rainbowPeriodSec);
+        }
         // Note: useSpeedBrightness and maxSpeed are reserved for future use
     }
 

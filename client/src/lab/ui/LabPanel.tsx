@@ -685,6 +685,27 @@ function ParamSlider({
     // Color picker
     if (def.isColor) {
         const colorValue = typeof value === "string" ? value : "#44aaff";
+
+        // Validate hex color format
+        const isValidHex = (hex: string): boolean => {
+            const hexPattern = /^#[0-9a-fA-F]{6}$/;
+            return hexPattern.test(hex);
+        };
+
+        const handleColorChange = (newColor: string) => {
+            // HTML5 color input always returns valid #RRGGBB
+            if (!def.locked) onChange(def.key, newColor);
+        };
+
+        const handleHexChange = (e: Event) => {
+            const input = e.target as HTMLInputElement;
+            const newValue = input.value;
+            // Only update if valid, otherwise ignore the change
+            if (isValidHex(newValue) && !def.locked) {
+                onChange(def.key, newValue);
+            }
+        };
+
         return (
             <div class={`lab-param${def.locked ? " locked" : ""}`}>
                 <div class="lab-param-label-row">
@@ -710,13 +731,15 @@ function ParamSlider({
                         type="color"
                         class="lab-param-color"
                         value={colorValue}
-                        onChange={(e) => !def.locked && onChange(def.key, (e.target as HTMLInputElement).value)}
+                        onChange={(e) => handleColorChange((e.target as HTMLInputElement).value)}
                     />
                     <input
                         type="text"
                         class="lab-param-hex"
                         value={colorValue}
-                        onChange={(e) => !def.locked && onChange(def.key, (e.target as HTMLInputElement).value)}
+                        placeholder="#44aaff"
+                        onChange={handleHexChange}
+                        title="Формат: #RRGGBB (например #44aaff)"
                     />
                 </div>
             </div>
