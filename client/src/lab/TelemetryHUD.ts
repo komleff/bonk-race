@@ -5,7 +5,7 @@
  * velocity/heading misalignment, FA state, zone, and elapsed time.
  */
 
-import type { SandboxState } from "./BonkLab";
+import type { SandboxState } from "./labTypes";
 import { formatTime, ZONE_LABELS, FA_LABELS } from "./labConstants";
 
 // ─── Constants ───────────────────────────────────────────────────────────────

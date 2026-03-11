@@ -5,7 +5,7 @@
  * Камера следует за персонажем с трансформацией мир→экран.
  */
 
-import type { SandboxState } from "./BonkLab";
+import type { SandboxState } from "./labTypes";
 import type { LabInputState } from "./LabInput";
 import { ZONE_LABELS } from "./labConstants";
 import {
