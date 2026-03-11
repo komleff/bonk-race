@@ -360,7 +360,7 @@ export class BonkLab {
         this.orbDensityManual = false;
         // Restore destroyed spikes
         for (const obs of this.arena.obstacles) {
-            if (obs.alive === false) obs.alive = undefined;
+            if (obs.alive === false) delete obs.alive;
         }
         // Reset orbs to initial state from arena seed
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
@@ -630,6 +630,10 @@ export class BonkLab {
                 this.correctionFx = 0;
                 this.correctionFy = 0;
                 this.currentZone = null;
+                // Restore destroyed spikes on respawn
+                for (const obs of this.arena.obstacles) {
+                    if (obs.alive === false) delete obs.alive;
+                }
                 // Go!-Go! отсчёт (2×0.4с заморозка после респауна)
                 this.respawnCountdown = RESPAWN_GO_TOTAL_S;
             }
@@ -800,10 +804,9 @@ export class BonkLab {
         };
 
         const iterations = 4;
-        let hitSpike = false;
         let spikeNx = 0;
         let spikeNy = 0;
-        let hitSpikeObj: typeof this.arena.obstacles[0] | null = null;
+        const hitSpikeSet = new Set<typeof this.arena.obstacles[0]>();
         for (let iter = 0; iter < iterations; iter++) {
             // Obstacle collisions first (matching server order)
             for (const obs of this.arena.obstacles) {
@@ -820,15 +823,14 @@ export class BonkLab {
                     ? (this.params["worldPhysics.passageRestitution"] as number ?? this.worldPhysics.restitution * 0.5)
                     : this.worldPhysics.restitution;
                 const collided = resolveCircleStaticCollision(body, staticObs, rest, collisionConfig);
-                if (collided && obs.type === "spike") {
-                    hitSpike = true;
-                    // Compute collision normal (from spike center to player)
+                if (collided && obs.type === "spike" && !hitSpikeSet.has(obs)) {
+                    // Record spike once (avoid re-counting across iterations)
                     const dx = body.x - obs.x;
                     const dy = body.y - obs.y;
                     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                    spikeNx = dx / dist;
-                    spikeNy = dy / dist;
-                    hitSpikeObj = obs;
+                    spikeNx += dx / dist;
+                    spikeNy += dy / dist;
+                    hitSpikeSet.add(obs);
                 }
             }
 
@@ -842,11 +844,16 @@ export class BonkLab {
         this.vx = body.vx;
         this.vy = body.vy;
 
-        // Spike collision response
-        if (hitSpike) {
+        // Spike collision response — knockback is ADDITIVE to post-bounce velocity
+        if (hitSpikeSet.size > 0) {
+            // Normalize accumulated normal
+            const nLen = Math.sqrt(spikeNx * spikeNx + spikeNy * spikeNy) || 1;
+            spikeNx /= nLen;
+            spikeNy /= nLen;
+
             const spikeKillOnHit = this.params["spike.killOnHit"] as boolean ?? false;
             const spikeDestroyOnHit = this.params["spike.destroyOnHit"] as boolean ?? false;
-            const spikeKnockbackSpeed = (this.params["spike.knockbackSpeed"] as number) ?? 250;
+            const spikeKnockbackImpulse = (this.params["spike.knockbackImpulse"] as number) ?? 30_000;
 
             if (spikeKillOnHit) {
                 // Instant death → freeze + respawn (GDD §4.2)
@@ -857,18 +864,24 @@ export class BonkLab {
                 this.vx = 0;
                 this.vy = 0;
                 this.angVel = 0;
-                if (spikeDestroyOnHit && hitSpikeObj) {
-                    hitSpikeObj.alive = false;
+                body.vx = 0;
+                body.vy = 0;
+                if (spikeDestroyOnHit) {
+                    for (const obj of hitSpikeSet) obj.alive = false;
                 }
                 return;
             }
 
-            // Knockback: apply impulse along collision normal
-            this.vx = spikeNx * spikeKnockbackSpeed;
-            this.vy = spikeNy * spikeKnockbackSpeed;
+            // Knockback: dv = impulse / mass (тяжёлый блоб отлетает меньше)
+            const dv = spikeKnockbackImpulse / mass;
+            this.vx += spikeNx * dv;
+            this.vy += spikeNy * dv;
+            // Sync body so tickOrbs (which writes playerBody back) doesn't overwrite knockback
+            body.vx = this.vx;
+            body.vy = this.vy;
 
-            if (spikeDestroyOnHit && hitSpikeObj) {
-                hitSpikeObj.alive = false;
+            if (spikeDestroyOnHit) {
+                for (const obj of hitSpikeSet) obj.alive = false;
             }
         }
 
@@ -1106,7 +1119,7 @@ export class BonkLab {
             // Spike options
             "spike.killOnHit": false,
             "spike.destroyOnHit": false,
-            "spike.knockbackSpeed": 250,
+            "spike.knockbackImpulse": 30_000,
 
             // Trail defaults
             "trail.enabled": true,
