@@ -1,8 +1,8 @@
 /**
- * LabRenderer — Pure Canvas 2D renderer for BonkLab.
+ * LabRenderer — Canvas 2D рендерер для BonkLab.
  *
- * Renders arena, character, vectors, and debug overlays.
- * Camera follows the character with world-to-screen viewport transform.
+ * Рендерит арену, персонажа, векторы и отладочные оверлеи.
+ * Камера следует за персонажем с трансформацией мир→экран.
  */
 
 import type { SandboxState } from "./BonkLab";
@@ -18,11 +18,11 @@ import {
 } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Константы ───────────────────────────────────────────────────────────────
 
 const BG_COLOR = "#1a1a2e";
 const GRID_COLOR = "#2a2a3e";
-const GRID_SPACING = 100; // metres
+const GRID_SPACING = 100; // метры
 
 const ZONE_COLORS: Record<string, string> = {
     ice: "#4488cc",
@@ -59,7 +59,7 @@ const VEC_CORRECTION_COLOR = "#ffaa44";
 const ARROW_HEAD_LEN = 8;
 const ARROW_HEAD_ANGLE = Math.PI / 6;
 
-/** World-metres visible around the character (half-extent). */
+/** Мировые метры видимости вокруг персонажа (полуразмер). */
 const DEFAULT_VIEW_RANGE = 400;
 
 /**
@@ -85,7 +85,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
         r: parseInt(result[1], 16),
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16),
-    } : { r: 68, g: 170, b: 255 }; // fallback to #44aaff
+    } : { r: 68, g: 170, b: 255 }; // запасное значение #44aaff
 }
 
 /**
@@ -174,22 +174,22 @@ export class LabRenderer {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
 
-    /** Pixels-per-metre scale, computed from canvas size and view range. */
+    /** Масштаб пикселей/метр, вычисляется из размера canvas и диапазона обзора. */
     private scale = 1;
-    /** How many metres of world to show around the character. */
+    /** Сколько метров мира показывать вокруг персонажа. */
     private viewRange = DEFAULT_VIEW_RANGE;
 
-    /** User-adjustable multiplier for vector arrow length. */
+    /** Пользовательский множитель длины стрелок векторов. */
     private arrowScale = 1;
 
-    /** Normalization values for vector arrows (updated from params). */
+    /** Значения нормализации для стрелок векторов (обновляются из параметров). */
     private normSpeedLimit = 260;
     private normMaxThrust = 27000;
 
     /** Кэшированный прямоугольник canvas (обновляется при resize). */
     private cachedRect: DOMRect;
 
-    // ── Trail state ──
+    // ── Состояние следов ──
     private trailBuffer: TrailPoint[] = [];
     private trailHead = 0;
     private trailCount = 0;
@@ -200,14 +200,14 @@ export class LabRenderer {
     private trailPrevY = NaN;
     private lastRenderTs = 0;
 
-    // ── Trail pattern configuration ──
+    // ── Конфигурация паттерна следов ──
     private trailPattern: TrailPattern = "off";
     private trailPrimaryColor = "#44aaff";
     private trailDriftColor = "#ff4444";
     private trailRainbowPeriodSec = 2.0;
     private trailStartTimeMs = performance.now();
 
-    // Pre-allocated reusable objects to avoid GC in render loop
+    // Предварительно выделенные объекты для переиспользования, чтобы избежать GC в цикле рендера
     private _gradient: CanvasGradient | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -217,7 +217,7 @@ export class LabRenderer {
         this.resize();
     }
 
-    // ── Public API ───────────────────────────────────────────────────────────
+    // ── Публичный API ─────────────────────────────────────────────────────────
 
     setArrowScale(scale: number): void {
         this.arrowScale = scale;
@@ -257,7 +257,7 @@ export class LabRenderer {
         if (config.primaryColor !== undefined) this.trailPrimaryColor = config.primaryColor;
         if (config.driftColor !== undefined) this.trailDriftColor = config.driftColor;
 
-        // Guard от division by zero: минимум 0.1 сек
+        // Защита от деления на ноль: минимум 0.1 сек
         if (config.rainbowPeriodSec !== undefined) {
             this.trailRainbowPeriodSec = Math.max(0.1, config.rainbowPeriodSec);
         }
@@ -288,20 +288,20 @@ export class LabRenderer {
         const w = this.canvas.width;
         const h = this.canvas.height;
 
-        // ── Clear ──
+        // ── Очистка ──
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = BG_COLOR;
         ctx.fillRect(0, 0, w, h);
 
-        // ── Camera transform (world → screen) ──
-        // Character offset to lower 65% of screen — racing game going upward needs more view ahead.
+        // ── Трансформация камеры (мир → экран) ──
+        // Смещение персонажа к нижним 65% экрана — в гонке вверх нужен больший обзор впереди.
         const cx = w / 2;
         const cy = h * CHAR_SCREEN_Y_RATIO;
         const s = this.scale;
 
         ctx.setTransform(s, 0, 0, s, cx - state.x * s, cy - state.y * s);
 
-        // ── Draw layers back-to-front ──
+        // ── Рисуем слои от заднего к переднему ──
         this.drawGrid(ctx, state);
         this.drawZones(ctx, state);
         this.drawSpawnAndFinish(ctx, state);
@@ -327,7 +327,7 @@ export class LabRenderer {
             this.drawVectors(ctx, state);
         }
 
-        // ── Minimap (screen-space) ──
+        // ── Миникарта (экранные координаты) ──
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.drawMinimap(ctx, state, w, h);
 
@@ -336,7 +336,7 @@ export class LabRenderer {
             this.drawTouchJoystick(ctx, input);
         }
 
-        // ── Death distance message (screen-space) ──
+        // ── Сообщение о дистанции смерти (экранные координаты) ──
         if (state.deathTimer > 0) {
             this.drawDeathMessage(ctx, state, w, h);
         }
@@ -344,13 +344,13 @@ export class LabRenderer {
         // ── Оверлей обратного отсчёта / респауна ──
         this.drawCountdownOverlay(ctx, state, w, h);
 
-        // ── Finish overlay (screen-space) ──
+        // ── Оверлей финиша (экранные координаты) ──
         if (state.finished) {
             this.drawFinishOverlay(ctx, state, w, h);
         }
     }
 
-    // ── Layer: Grid ──────────────────────────────────────────────────────────
+    // ── Слой: Сетка ─────────────────────────────────────────────────────────
 
     private drawGrid(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const halfW = state.arena.width / 2;
@@ -376,7 +376,7 @@ export class LabRenderer {
         ctx.stroke();
     }
 
-    // ── Layer: Zones ─────────────────────────────────────────────────────────
+    // ── Слой: Зоны ──────────────────────────────────────────────────────────
 
     private drawZones(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         for (const zone of state.arena.zones) {
@@ -389,12 +389,12 @@ export class LabRenderer {
             ctx.fill();
             ctx.globalAlpha = 1;
 
-            // Border
+            // Рамка
             ctx.strokeStyle = color;
             ctx.lineWidth = 2 / this.scale;
             ctx.stroke();
 
-            // Label
+            // Подпись
             const fontSize = Math.max(12, 14 / this.scale);
             ctx.font = `${fontSize}px sans-serif`;
             ctx.fillStyle = color;
@@ -405,7 +405,7 @@ export class LabRenderer {
         }
     }
 
-    // ── Layer: Spawn & Finish ────────────────────────────────────────────────
+    // ── Слой: Старт и финиш ─────────────────────────────────────────────────
 
     private drawSpawnAndFinish(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const markerRadius = 20;
@@ -415,7 +415,7 @@ export class LabRenderer {
         ctx.textBaseline = "middle";
         const lw = 2 / this.scale;
 
-        // Spawn — green circle at bottom
+        // Спаун — зелёный круг внизу
         const sp = state.arena.spawnPoint;
         ctx.strokeStyle = "#22cc44";
         ctx.lineWidth = lw;
@@ -427,12 +427,12 @@ export class LabRenderer {
         ctx.fillStyle = "#22cc44";
         ctx.fillText("START", sp.x, sp.y - markerRadius - fontSize * 0.8);
 
-        // Finish — checkered line at top (same style as raceMain)
+        // Финиш — клетчатая линия наверху (тот же стиль что в raceMain)
         const fp = state.arena.finishPoint;
         drawFinishLine(ctx, fp.x, fp.y, state.arena.width * 0.6);
     }
 
-    // ── Layer: Walls ─────────────────────────────────────────────────────────
+    // ── Слой: Стены ──────────────────────────────────────────────────────────
 
     private drawWalls(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const halfW = state.arena.width / 2;
@@ -443,18 +443,18 @@ export class LabRenderer {
         ctx.strokeRect(-halfW, -halfH, state.arena.width, state.arena.height);
     }
 
-    // ── Layer: Obstacles ─────────────────────────────────────────────────────
+    // ── Слой: Препятствия ────────────────────────────────────────────────────
 
     private drawObstacles(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         for (const obs of state.arena.obstacles) {
-            if (obs.alive === false) continue; // Skip destroyed obstacles
+            if (obs.alive === false) continue; // Пропускаем уничтоженные препятствия
             const style = OBSTACLE_STYLES[obs.type] || OBSTACLE_STYLES.pillar;
 
             ctx.beginPath();
             ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
 
             if (obs.type === "passage") {
-                // Dashed outline only
+                // Только пунктирный контур
                 ctx.setLineDash([6 / this.scale, 4 / this.scale]);
                 ctx.strokeStyle = style.stroke;
                 ctx.lineWidth = 2 / this.scale;
@@ -470,12 +470,12 @@ export class LabRenderer {
         }
     }
 
-    // ── Layer: Orbs ─────────────────────────────────────────────────────────
+    // ── Слой: Орбы ──────────────────────────────────────────────────────────
 
     private drawOrbs(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         for (const orb of state.orbs) {
             if (!orb.alive) {
-                // Death animation: expanding cyan ring
+                // Анимация смерти: расширяющееся голубое кольцо
                 if (orb.deathProgress >= 0 && orb.deathProgress < 1) {
                     const progress = orb.deathProgress;
                     const ringRadius = orb.radius * (1 + progress * 3);
@@ -492,7 +492,7 @@ export class LabRenderer {
                 continue;
             }
 
-            // Live orb: filled cyan circle with subtle shadow
+            // Живой орб: залитый голубой круг с лёгкой тенью
             ctx.beginPath();
             ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2);
             ctx.fillStyle = ORB_COLOR;
@@ -505,7 +505,7 @@ export class LabRenderer {
         }
     }
 
-    // ── Trail system ──────────────────────────────────────────────────────────
+    // ── Система следов ─────────────────────────────────────────────────────────
 
     private calculateTrailColor(vx: number, vy: number, angle: number, nowMs: number): string {
         if (this.trailPattern === "off") {
@@ -590,12 +590,12 @@ export class LabRenderer {
         ctx.globalAlpha = 1;
     }
 
-    // ── Layer: Character ─────────────────────────────────────────────────────────
+    // ── Слой: Персонаж ──────────────────────────────────────────────────────────
 
     private drawCharacter(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const { x, y, radius, angle } = state;
 
-        // Gradient fill
+        // Градиентная заливка
         this._gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
         this._gradient.addColorStop(0, CHAR_FILL_OUTER);
         this._gradient.addColorStop(1, CHAR_FILL_INNER);
@@ -626,7 +626,7 @@ export class LabRenderer {
         ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
         ctx.fill();
 
-        // Direction triangle (nose / beak outside circle)
+        // Треугольник направления (нос / клюв за пределами круга)
         const triLen = radius * 0.7;
         const triHalf = radius * 0.3;
         const tipX = x + cosA * (radius + triLen * 0.3);
@@ -645,16 +645,16 @@ export class LabRenderer {
         ctx.fill();
     }
 
-    // ── Layer: Death Effect ─────────────────────────────────────────────────
+    // ── Слой: Эффект смерти ──────────────────────────────────────────────────
 
     private drawDeathEffect(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const { deathX, deathY, deathTimer, radius } = state;
-        // Expanding red ring that fades out
+        // Расширяющееся красное кольцо с затуханием
         const progress = 1 - deathTimer / DEATH_FREEZE_S; // 0→1
         const ringRadius = radius * (1 + progress * 4);
         const alpha = 1 - progress;
 
-        // Red flash circle
+        // Красная вспышка
         ctx.beginPath();
         ctx.arc(deathX, deathY, ringRadius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 50, 50, ${(alpha * 0.4).toFixed(2)})`;
@@ -663,7 +663,7 @@ export class LabRenderer {
         ctx.lineWidth = 3 / this.scale;
         ctx.stroke();
 
-        // "X" marker at death point
+        // Маркер "X" в точке смерти
         if (alpha > 0.3) {
             const sz = radius * 0.6;
             ctx.strokeStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
@@ -677,7 +677,7 @@ export class LabRenderer {
         }
     }
 
-    /** Screen-space death message showing distance traveled */
+    /** Экранное сообщение о смерти с пройденной дистанцией */
     private drawDeathMessage(
         ctx: CanvasRenderingContext2D,
         state: SandboxState,
@@ -691,7 +691,7 @@ export class LabRenderer {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Distance text
+        // Текст дистанции
         const dist = Math.round(state.deathDistanceM);
         const pct = Math.round(state.progressPct * 100);
         ctx.font = "bold 28px monospace";
@@ -701,7 +701,7 @@ export class LabRenderer {
         ctx.restore();
     }
 
-    /** Screen-space finish overlay with time and record */
+    /** Экранный оверлей финиша с временем и рекордом */
     private drawFinishOverlay(
         ctx: CanvasRenderingContext2D,
         state: SandboxState,
@@ -710,7 +710,7 @@ export class LabRenderer {
     ): void {
         ctx.save();
 
-        // Semi-transparent backdrop
+        // Полупрозрачный фон
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, w, h);
 
@@ -720,13 +720,13 @@ export class LabRenderer {
         const centerX = w / 2;
         let y = h * 0.35;
 
-        // Title
+        // Заголовок
         ctx.font = "bold 36px monospace";
         ctx.fillStyle = "#ffcc00";
         ctx.fillText(state.isNewRecord ? "Финиш! Новый рекорд!" : "Финиш!", centerX, y);
         y += 50;
 
-        // Time
+        // Время
         const mins = Math.floor(state.finishTime / 60);
         const secs = state.finishTime % 60;
         const timeStr = `${String(mins).padStart(2, "0")}:${secs.toFixed(2).padStart(5, "0")}`;
@@ -735,7 +735,7 @@ export class LabRenderer {
         ctx.fillText(timeStr, centerX, y);
         y += 50;
 
-        // Best time (if different from current)
+        // Лучшее время (если отличается от текущего)
         if (state.bestTime > 0 && !state.isNewRecord) {
             const bMins = Math.floor(state.bestTime / 60);
             const bSecs = state.bestTime % 60;
@@ -746,13 +746,13 @@ export class LabRenderer {
             y += 35;
         }
 
-        // Distance
+        // Дистанция
         ctx.font = "20px monospace";
         ctx.fillStyle = "#aaaaaa";
         ctx.fillText(`${Math.round(state.distanceM)} м`, centerX, y);
         y += 50;
 
-        // Restart hint
+        // Подсказка перезапуска
         ctx.font = "18px monospace";
         ctx.fillStyle = "#ffcc00";
         ctx.fillText("Нажмите Restart для перезапуска", centerX, y);
@@ -859,7 +859,7 @@ export class LabRenderer {
         ctx.stroke();
     }
 
-    // ── Layer: Beacon ────────────────────────────────────────────────────────
+    // ── Слой: Маяк ──────────────────────────────────────────────────────────
 
     private drawBeacon(
         ctx: CanvasRenderingContext2D,
@@ -868,14 +868,14 @@ export class LabRenderer {
     ): void {
         if (!input.active || input.magnitude < 0.01) return;
 
-        // The beacon is a point in world space. We interpret the input direction
-        // as originating from the character and project it some distance away
-        // to show where the player is aiming.
+        // Маяк — точка в мировых координатах. Интерпретируем направление ввода
+        // как исходящее от персонажа и проецируем на некоторое расстояние,
+        // чтобы показать куда целится игрок.
         const beaconDist = state.radius * 6;
         const bx = state.x + input.x * beaconDist;
         const by = state.y + input.y * beaconDist;
 
-        // Dashed line from character to beacon
+        // Пунктирная линия от персонажа к маяку
         ctx.setLineDash([6 / this.scale, 4 / this.scale]);
         ctx.strokeStyle = BEACON_COLOR;
         ctx.lineWidth = 1.5 / this.scale;
@@ -885,19 +885,19 @@ export class LabRenderer {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Beacon dot
+        // Точка маяка
         ctx.beginPath();
         ctx.arc(bx, by, BEACON_RADIUS / this.scale, 0, Math.PI * 2);
         ctx.fillStyle = BEACON_COLOR;
         ctx.fill();
     }
 
-    // ── Layer: Vectors ───────────────────────────────────────────────────────
+    // ── Слой: Векторы ────────────────────────────────────────────────────────
 
     private drawVectors(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const baseLen = state.radius * 3 * this.arrowScale;
 
-        // 1. Velocity arrow (blue, solid)
+        // 1. Стрелка скорости (синяя, сплошная)
         const speedLimit = this.normSpeedLimit;
         const speed = Math.hypot(state.vx, state.vy);
         if (speed > 0.5) {
@@ -914,7 +914,7 @@ export class LabRenderer {
             );
         }
 
-        // 2. FA force arrow (green, solid)
+        // 2. Стрелка силы FA (зелёная, сплошная)
         const maxThrust = this.normMaxThrust;
         const forceMag = Math.hypot(state.assistFx, state.assistFy);
         if (forceMag > 1) {
@@ -931,7 +931,7 @@ export class LabRenderer {
             );
         }
 
-        // 3. Correction arrow (orange, dashed)
+        // 3. Стрелка коррекции (оранжевая, пунктирная)
         const corrMag = Math.hypot(state.correctionFx, state.correctionFy);
         if (corrMag > 1) {
             const normCorr = Math.min(corrMag / maxThrust, 1);
@@ -948,7 +948,7 @@ export class LabRenderer {
         }
     }
 
-    // ── Arrow helper ─────────────────────────────────────────────────────────
+    // ── Вспомогательная функция стрелки ───────────────────────────────────────
 
     private drawArrow(
         ctx: CanvasRenderingContext2D,
@@ -976,7 +976,7 @@ export class LabRenderer {
             ctx.setLineDash([5 / this.scale, 3 / this.scale]);
         }
 
-        // Shaft
+        // Стержень
         ctx.beginPath();
         ctx.moveTo(fromX, fromY);
         ctx.lineTo(toX, toY);
@@ -986,7 +986,7 @@ export class LabRenderer {
             ctx.setLineDash([]);
         }
 
-        // Arrowhead
+        // Наконечник стрелки
         ctx.beginPath();
         ctx.moveTo(toX, toY);
         ctx.lineTo(
@@ -1001,7 +1001,7 @@ export class LabRenderer {
         ctx.fill();
     }
 
-    // ── Minimap ──────────────────────────────────────────────────────────────
+    // ── Миникарта ─────────────────────────────────────────────────────────────
 
     private drawMinimap(
         ctx: CanvasRenderingContext2D,
@@ -1013,32 +1013,32 @@ export class LabRenderer {
         const mx = canvasW - size - MINIMAP_MARGIN;
         const my = canvasH - size - MINIMAP_MARGIN;
 
-        // Background
+        // Фон
         ctx.fillStyle = MINIMAP_BG;
         ctx.fillRect(mx, my, size, size);
         ctx.strokeStyle = MINIMAP_BORDER;
         ctx.lineWidth = 1;
         ctx.strokeRect(mx, my, size, size);
 
-        // Scale: fit arena into minimap
+        // Масштаб: вписать арену в миникарту
         const arenaW = state.arena.width;
         const arenaH = state.arena.height;
         const ms = Math.min(size / arenaW, size / arenaH) * 0.9;
         const ocx = mx + size / 2;
         const ocy = my + size / 2;
 
-        // Helper: world → minimap screen
+        // Конвертер: мир → экран миникарты
         const toMX = (wx: number) => ocx + wx * ms;
         const toMY = (wy: number) => ocy + wy * ms;
 
-        // Arena boundary
+        // Граница арены
         const halfW = arenaW / 2;
         const halfH = arenaH / 2;
         ctx.strokeStyle = "rgba(255,255,255,0.4)";
         ctx.lineWidth = 1;
         ctx.strokeRect(toMX(-halfW), toMY(-halfH), arenaW * ms, arenaH * ms);
 
-        // Zones (small dots)
+        // Зоны (маленькие точки)
         for (const zone of state.arena.zones) {
             ctx.beginPath();
             ctx.arc(toMX(zone.x), toMY(zone.y), Math.max(zone.radius * ms, 2), 0, Math.PI * 2);
@@ -1048,7 +1048,7 @@ export class LabRenderer {
             ctx.globalAlpha = 1;
         }
 
-        // Obstacles
+        // Препятствия
         for (const obs of state.arena.obstacles) {
             if (obs.alive === false) continue;
             ctx.beginPath();
@@ -1059,7 +1059,7 @@ export class LabRenderer {
             ctx.globalAlpha = 1;
         }
 
-        // Orbs (small cyan dots)
+        // Орбы (маленькие голубые точки)
         for (const orb of state.orbs) {
             if (!orb.alive) continue;
             ctx.beginPath();
@@ -1070,25 +1070,25 @@ export class LabRenderer {
             ctx.globalAlpha = 1;
         }
 
-        // Spawn marker (green)
+        // Маркер спауна (зелёный)
         ctx.beginPath();
         ctx.arc(toMX(state.arena.spawnPoint.x), toMY(state.arena.spawnPoint.y), 3, 0, Math.PI * 2);
         ctx.fillStyle = "#22cc44";
         ctx.fill();
 
-        // Finish marker (yellow)
+        // Маркер финиша (жёлтый)
         ctx.beginPath();
         ctx.arc(toMX(state.arena.finishPoint.x), toMY(state.arena.finishPoint.y), 3, 0, Math.PI * 2);
         ctx.fillStyle = "#ffcc00";
         ctx.fill();
 
-        // Character dot
+        // Точка персонажа
         ctx.beginPath();
         ctx.arc(toMX(state.x), toMY(state.y), 3, 0, Math.PI * 2);
         ctx.fillStyle = "#44aaff";
         ctx.fill();
 
-        // Viewport rectangle (asymmetric: camera places character at 65% from top)
+        // Прямоугольник обзора (асимметричный: камера помещает персонажа на 65% от верха)
         const vpHalfW = canvasW / (2 * this.scale);
         const vpFullH = canvasH / this.scale;
         const vpTop = state.y - vpFullH * CHAR_SCREEN_Y_RATIO;

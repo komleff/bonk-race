@@ -1151,9 +1151,6 @@ export class BonkLab {
             "trail.primaryColor": "#44aaff",
             "trail.driftColor": "#ffff00",
             "trail.rainbowPeriodSec": 2.0,
-            "trail.useSpeedBrightness": false,
-            "trail.maxSpeed": 350,
-
             // Zone surface overrides (from SURFACE_PRESETS defaults)
             ...this.buildZoneParams(),
         };

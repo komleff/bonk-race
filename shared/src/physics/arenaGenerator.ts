@@ -1,17 +1,17 @@
 /**
- * Simplified arena generator for BonkLab sandbox.
- * Deterministic via Rng seed. No Colyseus dependencies.
+ * Упрощённый генератор арены для песочницы BonkLab.
+ * Детерминированный через Rng seed. Без зависимостей от Colyseus.
  */
 
 import { Rng } from "../rng";
 
-// ─── Interfaces ──────────────────────────────────────────────────────────────
+// ─── Интерфейсы ──────────────────────────────────────────────────────────────
 
 export interface ArenaConfig {
     seed: number;
     widthM: number;
     heightM: number;
-    /** Object count multiplier (0.1 – 25.0) */
+    /** Множитель количества объектов (0.1 – 25.0) */
     objectDensity: number;
     /** Configurable obstacle radii (optional, defaults to constants) */
     pillarRadius?: number;
@@ -32,9 +32,9 @@ export interface ArenaObject {
     x: number;
     y: number;
     radius: number;
-    width?: number;   // for walls / passages
+    width?: number;   // для стен / проходов
     height?: number;
-    alive?: boolean;  // false = destroyed after collision (spike)
+    alive?: boolean;  // false = шип уничтожен после столкновения
 }
 
 export interface ArenaZone {
@@ -66,7 +66,7 @@ export interface Arena {
     finishPoint: { x: number; y: number };
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Константы ───────────────────────────────────────────────────────────────
 
 const BASE_PILLAR_COUNT = 6;
 const BASE_SPIKE_COUNT = 4;
@@ -89,9 +89,9 @@ const SPAWN_EXCLUSION_RADIUS = 60;
 
 const ZONE_TYPES: ArenaZone["type"][] = ["ice", "mud", "turbo", "sand"];
 
-// DEPRECATED: Legacy zone params — physics now uses SurfaceConfig presets from surfaceConfig.ts.
-// These values are still written to ArenaZone.params for backward compatibility with Colyseus schema.
-// TODO(LG-5): Remove once server-side zone migration is complete.
+// DEPRECATED: Устаревшие параметры зон — физика теперь использует пресеты SurfaceConfig из surfaceConfig.ts.
+// Эти значения по-прежнему записываются в ArenaZone.params для обратной совместимости со схемой Colyseus.
+// TODO(LG-5): Удалить после завершения серверной миграции зон.
 const ZONE_PARAMS: Record<ArenaZone["type"], Record<string, number>> = {
     ice:   { frictionMultiplier: 0.1 },
     mud: { speedMultiplier: 0.5, frictionMultiplier: 500 },
@@ -99,7 +99,7 @@ const ZONE_PARAMS: Record<ArenaZone["type"], Record<string, number>> = {
     sand:  { frictionMultiplier: 1.5 },
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Вспомогательные функции ──────────────────────────────────────────────────
 
 function clampDensity(d: number): number {
     return Math.max(0.1, Math.min(25.0, d));
@@ -124,11 +124,11 @@ function canPlace(
     halfH: number,
     exclusionPoints?: { x: number; y: number }[],
 ): boolean {
-    // Must be inside arena bounds (with margin)
+    // Должен быть внутри границ арены (с отступом)
     if (Math.abs(x) + radius > halfW - WALL_THICKNESS) return false;
     if (Math.abs(y) + radius > halfH - WALL_THICKNESS) return false;
 
-    // Keep clear of spawn/finish points
+    // Не размещать вблизи точек спауна/финиша
     if (exclusionPoints) {
         for (const ep of exclusionPoints) {
             const minDist = radius + SPAWN_EXCLUSION_RADIUS;
@@ -154,36 +154,36 @@ function randomPoint(rng: Rng, halfW: number, halfH: number, margin: number) {
     };
 }
 
-// ─── Generator ───────────────────────────────────────────────────────────────
+// ─── Генератор ───────────────────────────────────────────────────────────────
 
 export function generateArena(config: ArenaConfig, rng: Rng): Arena {
     const { widthM, heightM, objectDensity } = config;
     const halfW = widthM / 2;
     const halfH = heightM / 2;
 
-    // Configurable radii (fall back to constants)
+    // Настраиваемые радиусы (fallback на константы)
     const pillarR = config.pillarRadius ?? PILLAR_RADIUS;
     const spikeR = config.spikeRadius ?? SPIKE_RADIUS;
     const passageR = config.passageRadius ?? PASSAGE_PILLAR_RADIUS;
     const passageGap = config.passageGap ?? PASSAGE_GAP_WIDTH;
 
-    // Spawn/finish computed early for obstacle exclusion
+    // Спаун/финиш вычисляются раньше для исключения зоны размещения
     const spawnMargin = 50;
     const spawnPoint = { x: 0, y: halfH - spawnMargin };
     const finishPoint = { x: 0, y: -(halfH - spawnMargin) };
     const exclusionPoints = [spawnPoint, finishPoint];
 
-    // 1. Boundary walls (4 sides)
+    // 1. Граничные стены (4 стороны)
     const walls: ArenaObject[] = [
-        { type: "wall", x: 0, y: -halfH, radius: 0, width: widthM, height: WALL_THICKNESS },  // top
-        { type: "wall", x: 0, y: halfH,  radius: 0, width: widthM, height: WALL_THICKNESS },  // bottom
-        { type: "wall", x: -halfW, y: 0, radius: 0, width: WALL_THICKNESS, height: heightM }, // left
-        { type: "wall", x: halfW,  y: 0, radius: 0, width: WALL_THICKNESS, height: heightM }, // right
+        { type: "wall", x: 0, y: -halfH, radius: 0, width: widthM, height: WALL_THICKNESS },  // верх
+        { type: "wall", x: 0, y: halfH,  radius: 0, width: widthM, height: WALL_THICKNESS },  // низ
+        { type: "wall", x: -halfW, y: 0, radius: 0, width: WALL_THICKNESS, height: heightM }, // лево
+        { type: "wall", x: halfW,  y: 0, radius: 0, width: WALL_THICKNESS, height: heightM }, // право
     ];
 
     const obstacles: ArenaObject[] = [];
 
-    // 2. Passages (two pillars forming a narrow gap)
+    // 2. Проходы (два столба, образующие узкий зазор)
     const passageCount = scaledCount(BASE_PASSAGE_COUNT, objectDensity);
     const halfPassageDist = passageGap / 2 + passageR;
 
@@ -213,7 +213,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
         }
     }
 
-    // 3. Pillars
+    // 3. Столбы
     const pillarCount = scaledCount(BASE_PILLAR_COUNT, objectDensity);
     for (let i = 0; i < pillarCount; i++) {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
@@ -225,7 +225,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
         }
     }
 
-    // 4. Spikes (damaging obstacles)
+    // 4. Шипы (повреждающие препятствия)
     const spikeCount = scaledCount(BASE_SPIKE_COUNT, objectDensity);
     for (let i = 0; i < spikeCount; i++) {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
@@ -237,7 +237,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
         }
     }
 
-    // 5. Zones
+    // 5. Зоны
     const zones: ArenaZone[] = [];
     const zoneCount = scaledCount(BASE_ZONE_COUNT, objectDensity);
 
@@ -247,7 +247,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
             const margin = zoneRadius + OBSTACLE_SPACING;
             const pt = randomPoint(rng, halfW, halfH, margin);
 
-            // Keep zones clear of spawn/finish points
+            // Зоны не должны перекрывать точки спауна/финиша
             let tooClose = false;
             for (const ep of exclusionPoints) {
                 const minDist = zoneRadius + SPAWN_EXCLUSION_RADIUS;
@@ -258,7 +258,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
             }
             if (tooClose) continue;
 
-            // Check distance to other zones
+            // Проверка расстояния до других зон
             for (const z of zones) {
                 const minDist = zoneRadius + z.radius + OBSTACLE_SPACING * 2;
                 if (distSq(pt.x, pt.y, z.x, z.y) < minDist * minDist) {
@@ -281,7 +281,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
         }
     }
 
-    // 6. Orbs (dynamic bodies)
+    // 6. Орбы (динамические тела)
     const orbs: ArenaOrb[] = [];
     const orbCount = config.orbCount ?? 0;
     const orbMinR = config.orbMinRadius ?? 5;

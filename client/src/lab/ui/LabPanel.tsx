@@ -1,8 +1,8 @@
 /**
- * LabPanel — Preact sidebar component for BonkLab parameter tuning.
+ * LabPanel — Preact-компонент боковой панели для настройки параметров BonkLab.
  *
- * Renders all physics/FA parameters from TZ sections 3.1-3.11 as grouped
- * sliders with live two-way binding to BonkLab.updateParams().
+ * Рендерит все физические/FA параметры из ТЗ разделов 3.1–3.11 в виде группированных
+ * слайдеров с двусторонней привязкой к BonkLab.updateParams().
  */
 
 import { Fragment } from "preact";
@@ -11,7 +11,7 @@ import { injectStyles } from "../../ui/utils/injectStyles";
 import type { BonkLab } from "../BonkLab";
 import panelCss from "./lab-panel.css?raw";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Типы ────────────────────────────────────────────────────────────────────
 
 interface ParamDef {
     label: string;
@@ -34,10 +34,10 @@ interface GroupDef {
     params: ParamDef[];
 }
 
-// ─── Parameter definitions (TZ 3.1–3.11) ────────────────────────────────────
+// ─── Определения параметров (ТЗ 3.1–3.11) ────────────────────────────────────
 
 const PARAM_GROUPS: GroupDef[] = [
-    // 3.1 Geometry & Mass
+    // 3.1 Геометрия и масса
     {
         title: "Геометрия и масса",
         params: [
@@ -69,7 +69,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.2 Propulsion
+    // 3.2 Тяга
     {
         title: "Тяга (двигатели)",
         params: [
@@ -111,7 +111,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.3 Speed limits
+    // 3.3 Лимиты скорости
     {
         title: "Лимиты скорости",
         params: [
@@ -150,7 +150,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.4 FA — Linear control
+    // 3.4 FA — Линейное управление
     {
         title: "FA — Линейное управление",
         params: [
@@ -198,7 +198,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.5 FA — Angular control
+    // 3.5 FA — Угловое управление
     {
         title: "FA — Угловое управление",
         params: [
@@ -256,7 +256,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.6 FA — Reverse zone (LOCKED)
+    // 3.6 FA — Задний ход (ЗАБЛОКИРОВАНО)
     {
         title: "FA — Задний ход",
         params: [
@@ -274,7 +274,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.7 FA — Drift compensation
+    // 3.7 FA — Компенсация дрейфа
     {
         title: "FA — Компенсация дрейфа",
         params: [
@@ -316,7 +316,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.8 FA — Damping
+    // 3.8 FA — Демпфирование
     {
         title: "FA — Демпфирование",
         params: [
@@ -357,7 +357,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.9 Environment (world physics)
+    // 3.9 Окружение (мировая физика)
     {
         title: "Окружение",
         params: [
@@ -423,7 +423,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // Track geometry
+    // Геометрия трассы
     {
         title: "Геометрия трассы",
         params: [
@@ -457,7 +457,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // Orbs
+    // Орбы
     {
         title: "Орбы",
         params: [
@@ -512,7 +512,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // Spike options
+    // Настройки шипов
     {
         title: "Шипы",
         params: [
@@ -540,7 +540,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // 3.11 Mass scaling
+    // 3.11 Масштабирование по массе
     {
         title: "Масштабирование по массе",
         params: [
@@ -586,7 +586,7 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
-    // Zone surface configs
+    // Настройки поверхностей зон
     ...["ice", "mud", "turbo", "sand"].map((zone): GroupDef => ({
         title: `Зона: ${zone}`,
         params: [
@@ -657,15 +657,15 @@ const PARAM_GROUPS: GroupDef[] = [
     },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Вспомогательные функции ──────────────────────────────────────────────────
 
 /**
- * Calculate step based on range. Integer ranges get step=1,
- * small floating ranges get 0.01 or 0.001.
+ * Вычисляет шаг на основе диапазона. Целочисленные диапазоны получают step=1,
+ * малые дробные — 0.01 или 0.001.
  */
 function autoStep(min: number, max: number): number {
     const range = max - min;
-    // If min is very small, use step that can represent it
+    // Если min очень маленький, используем шаг, способный его представить
     if (min > 0 && min < 0.01) return 0.001;
     if (min > 0 && min < 0.1) return 0.01;
     if (range <= 0.2) return 0.001;
@@ -676,7 +676,7 @@ function autoStep(min: number, max: number): number {
 }
 
 /**
- * Format a number for display. Avoids floating point ugliness.
+ * Форматирует число для отображения. Избегает артефактов плавающей точки.
  */
 function formatValue(v: number, step: number): string {
     if (step >= 1) return String(Math.round(v));
@@ -684,7 +684,7 @@ function formatValue(v: number, step: number): string {
     return v.toFixed(decimals);
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Подкомпоненты ───────────────────────────────────────────────────────────
 
 function ParamSlider({
     def,
@@ -697,27 +697,49 @@ function ParamSlider({
 }) {
     const [tooltipOpen, setTooltipOpen] = useState(false);
 
-    // Color picker
+    // Выбор цвета
     if (def.isColor) {
         const colorValue = typeof value === "string" ? value : "#44aaff";
 
-        // Validate hex color format
-        const isValidHex = (hex: string): boolean => {
-            const hexPattern = /^#[0-9a-fA-F]{6}$/;
-            return hexPattern.test(hex);
-        };
+        // Локальный state для текстового ввода hex — позволяет печатать промежуточные значения
+        const [hexInput, setHexInput] = useState(colorValue);
+        const [hexFocused, setHexFocused] = useState(false);
+
+        // Синхронизация при внешнем изменении (color picker, reset, import)
+        useEffect(() => {
+            if (!hexFocused) setHexInput(colorValue);
+        }, [colorValue, hexFocused]);
+
+        // Валидация формата hex-цвета
+        const isValidHex = (hex: string): boolean => /^#[0-9a-fA-F]{6}$/.test(hex);
 
         const handleColorChange = (newColor: string) => {
-            // HTML5 color input always returns valid #RRGGBB
+            // HTML5 color input всегда возвращает валидный #RRGGBB
             if (!def.locked) onChange(def.key, newColor);
         };
 
-        const handleHexChange = (e: Event) => {
-            const input = e.target as HTMLInputElement;
-            const newValue = input.value;
-            // Only update if valid, otherwise ignore the change
-            if (isValidHex(newValue) && !def.locked) {
-                onChange(def.key, newValue);
+        const applyHexValue = (raw: string) => {
+            if (isValidHex(raw) && !def.locked) {
+                onChange(def.key, raw);
+            } else {
+                // Откатить к текущему валидному значению
+                setHexInput(colorValue);
+            }
+        };
+
+        const handleHexInput = (e: Event) => {
+            setHexInput((e.target as HTMLInputElement).value);
+        };
+
+        const handleHexBlur = () => {
+            setHexFocused(false);
+            applyHexValue(hexInput);
+        };
+
+        const handleHexKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Enter") {
+                applyHexValue(hexInput);
+                (e.target as HTMLInputElement).blur();
             }
         };
 
@@ -751,9 +773,12 @@ function ParamSlider({
                     <input
                         type="text"
                         class="lab-param-hex"
-                        value={colorValue}
+                        value={hexInput}
                         placeholder="#44aaff"
-                        onChange={handleHexChange}
+                        onInput={handleHexInput}
+                        onFocus={() => setHexFocused(true)}
+                        onBlur={handleHexBlur}
+                        onKeyDown={handleHexKeyDown}
                         title="Формат: #RRGGBB (например #44aaff)"
                     />
                 </div>
@@ -761,7 +786,7 @@ function ParamSlider({
         );
     }
 
-    // Select/dropdown
+    // Выпадающий список
     if (def.isSelect) {
         const selectValue = typeof value === "string" ? value : "drift";
         const options = def.options || [];
@@ -802,7 +827,7 @@ function ParamSlider({
         );
     }
 
-    // Boolean toggle
+    // Булевый переключатель
     if (def.isBoolean) {
         const checked = Boolean(value);
         return (
@@ -835,7 +860,7 @@ function ParamSlider({
         );
     }
 
-    // Numeric slider
+    // Числовой слайдер
     const numValue = typeof value === "number" ? value : 0;
     const step = def.step ?? autoStep(def.min ?? 0, def.max ?? 100);
 
@@ -847,7 +872,7 @@ function ParamSlider({
     const handleNumber = (e: Event) => {
         const v = parseFloat((e.target as HTMLInputElement).value);
         if (!isNaN(v)) {
-            // Clamp to range if min/max are defined
+            // Ограничить диапазоном если min/max определены
             const min = def.min ?? Number.NEGATIVE_INFINITY;
             const max = def.max ?? Number.POSITIVE_INFINITY;
             const clamped = Math.min(max, Math.max(min, v));
@@ -866,7 +891,7 @@ function ParamSlider({
                     <button
                         class="lab-param-info"
                         onClick={() => setTooltipOpen(!tooltipOpen)}
-                        title="Info"
+                        title="Подсказка"
                     >
                         i
                     </button>
@@ -949,26 +974,26 @@ function PanelGroup({
     );
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// ─── Главный компонент ───────────────────────────────────────────────────────
 
 export interface LabPanelProps {
     lab: BonkLab;
-    /** Incremented externally (reset/import/preset) to trigger values sync */
+    /** Инкрементируется извне (reset/import/preset) для синхронизации значений */
     syncTrigger?: number;
-    /** Called when user manually changes a parameter via slider */
+    /** Вызывается при ручном изменении параметра через слайдер */
     onParamChanged?: () => void;
 }
 
 export function LabPanel({ lab, syncTrigger, onParamChanged }: LabPanelProps) {
-    // Inject styles once
+    // Инжектируем стили один раз
     useEffect(() => {
         injectStyles("lab-panel-styles", panelCss);
     }, []);
 
-    // Panel open/closed state
+    // Состояние открытия/закрытия панели
     const [panelOpen, setPanelOpen] = useState(true);
 
-    // Expanded groups — first 2 expanded by default
+    // Раскрытые группы — первые 2 раскрыты по умолчанию
     const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>(() => {
         const map: Record<number, boolean> = {};
         PARAM_GROUPS.forEach((_, i) => {
@@ -977,12 +1002,12 @@ export function LabPanel({ lab, syncTrigger, onParamChanged }: LabPanelProps) {
         return map;
     });
 
-    // Local copy of values for reactivity
+    // Локальная копия значений для реактивности
     const [values, setValues] = useState<Record<string, number | boolean | string>>(
         () => ({ ...lab.params }),
     );
 
-    // Re-sync values when toolbar changes params externally (reset/import/preset)
+    // Повторная синхронизация при внешнем изменении параметров (reset/import/preset)
     useEffect(() => {
         if (syncTrigger !== undefined && syncTrigger > 0) {
             setValues({ ...lab.params });
@@ -999,15 +1024,15 @@ export function LabPanel({ lab, syncTrigger, onParamChanged }: LabPanelProps) {
     const handleChange = useCallback(
         (key: string, val: number | boolean | string) => {
             lab.updateParams(key, val);
-            // After updateParams, some keys trigger side-effects (e.g. mass → auto-sync orb density).
-            // Re-read all params that may have changed.
+            // После updateParams некоторые ключи вызывают побочные эффекты (напр. mass → авто-синхронизация плотности орбов).
+            // Перечитываем все параметры, которые могли измениться.
             setValues({ ...lab.params });
             onParamChanged?.();
         },
         [lab, onParamChanged],
     );
 
-    // On mobile, default panel hidden
+    // На мобильных панель скрыта по умолчанию
     const [isMobile, setIsMobile] = useState(
         () => typeof window !== "undefined" && window.innerWidth < 768,
     );
@@ -1020,12 +1045,12 @@ export function LabPanel({ lab, syncTrigger, onParamChanged }: LabPanelProps) {
         return () => window.removeEventListener("resize", onResize);
     }, []);
 
-    // On mobile, panel hidden by default
+    // На мобильных скрываем панель при инициализации
     useEffect(() => {
         if (isMobile) setPanelOpen(false);
     }, [isMobile]);
 
-    // Toggle button
+    // Кнопка переключения панели
     const toggleButton = (
         <button
             class="lab-panel-toggle"
