@@ -29,6 +29,26 @@
 | #12 | `feat/countdown-and-respawn-overlay` | Countdown 3-2-1-Go! + respawn overlay | **Open — ревью** |
 | #14 | `tz-lateral-grip` | Анизотропное трение + BonkRace v0.3 пресеты | **Merged** |
 | #15 | `sprint/trails-direction-triangle` | Следы, треугольник направления, техдолг | **Merged** |
+| #17 | `feat/trail-coloring` | Trail coloring + spike knockback/destroy | **6/6 APPROVED → awaiting merge** |
+
+---
+
+## PR #17 — Trail Coloring + Spike Knockback (11 марта 2026)
+
+**Ветка:** `feat/trail-coloring`
+**Ревью:** 6/6 APPROVED (Opus, GPT-5.3-Codex, GPT-5 Codex, Security/Quality/Architecture Agents)
+**Итерации:** 2 (Iter 1: 3P1+7P2 → Developer fix → Iter 2: 6/6 APPROVED)
+**Тесты:** 15/15 (determinism, orb-bite, arena-generation, anisotropic-friction)
+
+### Ключевые изменения
+
+| Фича | Описание |
+|------|---------|
+| **Trail coloring** | 3 паттерна: Моноцвет, По дрифту, Радуга. Color picker + HEX input |
+| **Spike knockback** | Импульсный knockback (dv = impulse / mass), velocity cap 2000 м/с |
+| **Spike destroy** | Шипы уничтожаются/остаются при столкновении, восстанавливаются при reset |
+| **Reset → BonkRace v0.3** | Кнопка Reset применяет пресет BonkRace v0.3 (не raw defaults) |
+| **Import/Export** | Поддержка строковых параметров (trail colors, pattern) |
 
 ---
 
@@ -38,7 +58,7 @@
 **Ревью:** Copilot, GPT-5 Codex, GPT-5.3 Codex, Claude Haiku — все замечания P2 исправлены
 **Тесты:** 21/21 (determinism, orb-bite, arena-generation, anisotropic-friction)
 
-### Ключевые изменения
+### Ключевые изменения v0.4.0
 
 | Фича | Описание |
 |------|---------|

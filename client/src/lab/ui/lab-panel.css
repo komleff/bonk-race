@@ -1,4 +1,4 @@
-/* ─── BonkLab Parameter Panel ─────────────────────────────────────────────── */
+/* ─── Панель параметров BonkLab ───────────────────────────────────────────── */
 
 .lab-panel-toggle {
   position: fixed;
@@ -81,7 +81,7 @@
   padding: 4px 0;
 }
 
-/* ─── Panel Group ─────────────────────────────────────────────────────────── */
+/* ─── Группа панели ───────────────────────────────────────────────────────── */
 
 .lab-group {
   border-bottom: 1px solid #2a2a3a;
@@ -134,7 +134,7 @@
   padding: 4px 12px 8px;
 }
 
-/* ─── Param Slider ────────────────────────────────────────────────────────── */
+/* ─── Слайдер параметров ──────────────────────────────────────────────────── */
 
 .lab-param {
   margin-bottom: 8px;
@@ -254,7 +254,7 @@
   margin-top: 1px;
 }
 
-/* ─── Locked param ────────────────────────────────────────────────────────── */
+/* ─── Заблокированный параметр ─────────────────────────────────────────────── */
 
 .lab-param.locked {
   opacity: 0.45;
@@ -275,7 +275,60 @@
   color: #888;
 }
 
-/* ─── Toggle switch (boolean) ─────────────────────────────────────────────── */
+/* ─── Выбор цвета ─────────────────────────────────────────────────────────── */
+
+.lab-param-color {
+  flex-shrink: 0;
+  width: 32px;
+  height: 20px;
+  border: 1px solid #444;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+.lab-param-color:focus {
+  border-color: #44aaff;
+}
+
+.lab-param-hex {
+  flex: 1;
+  background: #1a1a2a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 4px;
+  text-align: center;
+  outline: none;
+}
+.lab-param-hex:focus {
+  border-color: #44aaff;
+}
+
+/* ─── Выпадающий список ───────────────────────────────────────────────────── */
+
+.lab-param-select {
+  flex: 1;
+  background: #1a1a2a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 4px;
+  outline: none;
+  cursor: pointer;
+}
+.lab-param-select:focus {
+  border-color: #44aaff;
+}
+.lab-param-select option {
+  background: #1e1e2e;
+  color: #e0e0e0;
+}
+
+/* ─── Переключатель (булевый) ──────────────────────────────────────────────── */
 
 .lab-toggle-row {
   display: flex;
@@ -313,7 +366,7 @@
   transform: translateX(16px);
 }
 
-/* ─── Mobile ──────────────────────────────────────────────────────────────── */
+/* ─── Мобильная версия ────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
   .lab-panel {

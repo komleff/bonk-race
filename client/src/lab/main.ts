@@ -3,7 +3,7 @@
 import { render, h } from "preact";
 import { BonkLab } from "./BonkLab";
 import { LabInput } from "./LabInput";
-import { LabRenderer, CHAR_SCREEN_Y_RATIO } from "./LabRenderer";
+import { LabRenderer, CHAR_SCREEN_Y_RATIO, type TrailPattern } from "./LabRenderer";
 import { TelemetryHUD } from "./TelemetryHUD";
 import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
@@ -37,7 +37,7 @@ root.appendChild(uiContainer);
 const lab = new BonkLab(canvas);
 
 // Apply "BonkRace v0.3" preset on startup — casual arcade racing
-const STARTUP_PRESET: Record<string, number | boolean> = {
+const STARTUP_PRESET: Record<string, number | boolean | string> = {
     "mass": 40,
     "geometry.inertiaFactor": 0.05,
     "propulsion.thrustForwardN": 70000,
@@ -50,8 +50,12 @@ const STARTUP_PRESET: Record<string, number | boolean> = {
     "worldPhysics.angularDragK": 0.15,
     "worldPhysics.restitution": 0.80,
     "trail.enabled": true,
-    "trail.maxAge": 3.5,
+    "trail.maxAge": 1.2,
     "trail.baseAlpha": 0.6,
+    "trail.pattern": "drift",
+    "trail.primaryColor": "#44aaff",
+    "trail.driftColor": "#ffff00",
+    "trail.rainbowPeriodSec": 2.0,
 };
 for (const [key, val] of Object.entries(STARTUP_PRESET)) {
     lab.updateParams(key, val);
@@ -129,11 +133,20 @@ function frame(): void {
     );
 
     // Trail config
-    renderer.setTrailConfig(
-        Boolean(lab.params["trail.enabled"]),
-        (lab.params["trail.maxAge"] as number) ?? 3.5,
-        (lab.params["trail.baseAlpha"] as number) ?? 0.6,
-    );
+    const VALID_TRAIL_PATTERNS: TrailPattern[] = ["off", "drift", "rainbow"];
+    const rawPattern = (lab.params["trail.pattern"] as unknown as string) ?? "drift";
+    const trailPattern: TrailPattern = VALID_TRAIL_PATTERNS.includes(rawPattern as TrailPattern)
+        ? rawPattern as TrailPattern
+        : "drift";
+    renderer.setTrailConfig({
+        enabled: Boolean(lab.params["trail.enabled"]),
+        maxAge: (lab.params["trail.maxAge"] as number) ?? 3.5,
+        baseAlpha: (lab.params["trail.baseAlpha"] as number) ?? 0.6,
+        pattern: trailPattern,
+        primaryColor: (lab.params["trail.primaryColor"] as unknown as string) ?? "#44aaff",
+        driftColor: (lab.params["trail.driftColor"] as unknown as string) ?? "#ff4444",
+        rainbowPeriodSec: (lab.params["trail.rainbowPeriodSec"] as number) ?? 2.0,
+    });
 
     // Get simulation state and render
     const state = lab.getState();

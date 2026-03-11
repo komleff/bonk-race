@@ -12,7 +12,7 @@ import toolbarCss from "./lab-toolbar.css?raw";
 
 interface Preset {
     label: string;
-    values: Record<string, number | boolean>;
+    values: Record<string, number | boolean | string>;
 }
 
 const PRESETS: Preset[] = [
@@ -65,6 +65,13 @@ const PRESETS: Preset[] = [
             "worldPhysics.lateralGripMultiplier": 25.0,
             "worldPhysics.angularDragK": 0.15,
             "worldPhysics.restitution": 0.80,
+            "trail.enabled": true,
+            "trail.maxAge": 1.2,
+            "trail.baseAlpha": 0.6,
+            "trail.pattern": "drift",
+            "trail.primaryColor": "#44aaff",
+            "trail.driftColor": "#ffff00",
+            "trail.rainbowPeriodSec": 2.0,
         },
     },
     {
@@ -255,7 +262,7 @@ function ImportModal({
     onApply,
     onClose,
 }: {
-    onApply: (data: Record<string, number | boolean>) => void;
+    onApply: (data: Record<string, number | boolean | string>) => void;
     onClose: () => void;
 }) {
     const [text, setText] = useState("");
@@ -268,7 +275,7 @@ function ImportModal({
                 setError("JSON должен быть объектом { ключ: значение }");
                 return;
             }
-            onApply(parsed as Record<string, number | boolean>);
+            onApply(parsed as Record<string, number | boolean | string>);
             onClose();
         } catch {
             setError("Невалидный JSON");
@@ -318,7 +325,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
     }, []);
 
     // True defaults (balance.json + BonkLab overrides, before startup preset)
-    const [defaults] = useState<Record<string, number | boolean>>(() => lab.getDefaults());
+    const [defaults] = useState<Record<string, number | boolean | string>>(() => lab.getDefaults());
 
     // Active preset tracking (-1 = Custom, index = preset)
     const [activePreset, setActivePreset] = useState(3); // BonkRace v0.3
@@ -387,17 +394,24 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
         [lab, onParamsChanged],
     );
 
-    // ── Reset params to defaults ──
+    // ── Reset params to defaults + BonkRace v0.3 preset ──
     const handleResetParams = useCallback(() => {
-        // Reset orbDensityManual before applying defaults
+        const DEFAULT_PRESET_IDX = 3; // "BonkRace v0.3"
+        const preset = PRESETS[DEFAULT_PRESET_IDX];
+        // Сброс orbDensityManual перед пакетным применением
         lab.resetOrbDensityManual();
+        // Сначала вернуть все параметры к базовым дефолтам (balance.json)
         for (const [key, val] of Object.entries(defaults)) {
             lab.updateParams(key, val);
         }
-        // Sync toolbar density from restored defaults
-        const restoredDensity = (defaults["arena.objectDensity"] as number) ?? 5.0;
+        // Затем применить пресет поверх
+        for (const [key, val] of Object.entries(preset.values)) {
+            lab.updateParams(key, val);
+        }
+        // Синхронизировать toolbar density
+        const restoredDensity = (lab.params["arena.objectDensity"] as number) ?? 5.0;
         setDensity(restoredDensity);
-        setActivePreset(1); // "Slime Arena" = true defaults
+        setActivePreset(DEFAULT_PRESET_IDX);
         lab.reset();
         onParamsChanged?.();
     }, [lab, defaults, onParamsChanged]);
@@ -409,7 +423,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
 
     // ── Import (full config — applies all params from JSON) ──
     const handleImport = useCallback(
-        (data: Record<string, number | boolean>) => {
+        (data: Record<string, number | boolean | string>) => {
             // Reset orbDensityManual before batch-applying imported params
             lab.resetOrbDensityManual();
             // First reset all params to defaults (handles keys missing from old exports)
@@ -419,7 +433,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
             // Then apply imported values on top
             for (const [key, val] of Object.entries(data)) {
                 // Only apply keys that exist in current params (ignore unknown keys)
-                if (key in lab.params && (typeof val === "number" || typeof val === "boolean")) {
+                if (key in lab.params && (typeof val === "number" || typeof val === "boolean" || typeof val === "string")) {
                     lab.updateParams(key, val);
                 }
             }

@@ -39,11 +39,18 @@ import type {
     IStaticObstacle,
     IWallBounds,
     Arena,
+    ArenaObject,
     SurfaceConfig,
 } from "@bonk-race/shared";
 import { generateArena } from "@bonk-race/shared";
 
 import balanceJson from "../../../config/balance.json";
+
+/**
+ * Максимальная скорость после knockback (м/с).
+ * Выбрано чтобы блоб не телепортировался через стены при extreme impulse.
+ */
+const MAX_KNOCKBACK_SPEED = 2000;
 
 // ─── Zone name → SurfaceConfig mapping for ArenaZone.type strings ───────────
 // Mutable at runtime so LabPanel zone sliders can override presets.
@@ -199,7 +206,7 @@ function deepClone<T>(obj: T): T {
 
 export class BonkLab {
     /** All tunable parameters, initialized from balance.json defaults */
-    params: Record<string, number | boolean>;
+    params: Record<string, number | boolean | string>;
 
     // Stored for future LabRenderer use
     readonly canvas: HTMLCanvasElement;
@@ -268,7 +275,7 @@ export class BonkLab {
     private orbDensityManual = false;
 
     /** True defaults (balance.json + BonkLab overrides, before any startup preset) */
-    private readonly trueDefaults: Record<string, number | boolean>;
+    private readonly trueDefaults: Record<string, number | boolean | string>;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -358,9 +365,17 @@ export class BonkLab {
         // bestTime persists across resets (record tracking)
         // Reset orb density auto-sync (user didn't manually set it via reset)
         this.orbDensityManual = false;
+        this.restoreDestroyedObstacles();
         // Reset orbs to initial state from arena seed
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
         console.log("[BonkLab] state reset");
+    }
+
+    /** Восстанавливает уничтоженные шипы (после reset/respawn) */
+    private restoreDestroyedObstacles(): void {
+        for (const obs of this.arena.obstacles) {
+            if (obs.alive === false) obs.alive = true;
+        }
     }
 
     /** Build an Arena from seed+density+current params */
@@ -388,7 +403,7 @@ export class BonkLab {
         );
     }
 
-    updateParams(key: string, value: number | boolean): void {
+    updateParams(key: string, value: number | boolean | string): void {
         this.params[key] = value;
 
         // Handle special keys
@@ -536,7 +551,7 @@ export class BonkLab {
     }
 
     /** Returns true defaults (balance.json + BonkLab overrides, before startup preset) */
-    getDefaults(): Record<string, number | boolean> {
+    getDefaults(): Record<string, number | boolean | string> {
         return this.trueDefaults;
     }
 
@@ -626,6 +641,7 @@ export class BonkLab {
                 this.correctionFx = 0;
                 this.correctionFy = 0;
                 this.currentZone = null;
+                this.restoreDestroyedObstacles();
                 // Go!-Go! отсчёт (2×0.4с заморозка после респауна)
                 this.respawnCountdown = RESPAWN_GO_TOTAL_S;
             }
@@ -796,10 +812,15 @@ export class BonkLab {
         };
 
         const iterations = 4;
-        let hitSpike = false;
+        let spikeNx = 0;
+        let spikeNy = 0;
+        const hitSpikeSet = new Set<ArenaObject>();
         for (let iter = 0; iter < iterations; iter++) {
             // Obstacle collisions first (matching server order)
             for (const obs of this.arena.obstacles) {
+                // Skip destroyed spikes
+                if (obs.alive === false) continue;
+
                 const staticObs: IStaticObstacle = {
                     x: obs.x,
                     y: obs.y,
@@ -810,8 +831,14 @@ export class BonkLab {
                     ? (this.params["worldPhysics.passageRestitution"] as number ?? this.worldPhysics.restitution * 0.5)
                     : this.worldPhysics.restitution;
                 const collided = resolveCircleStaticCollision(body, staticObs, rest, collisionConfig);
-                if (collided && obs.type === "spike") {
-                    hitSpike = true;
+                if (collided && obs.type === "spike" && !hitSpikeSet.has(obs)) {
+                    // Record spike once (avoid re-counting across iterations)
+                    const dx = body.x - obs.x;
+                    const dy = body.y - obs.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    spikeNx += dx / dist;
+                    spikeNy += dy / dist;
+                    hitSpikeSet.add(obs);
                 }
             }
 
@@ -825,16 +852,59 @@ export class BonkLab {
         this.vx = body.vx;
         this.vy = body.vy;
 
-        // Spike = instant death → freeze + respawn (GDD §4.2)
-        if (hitSpike) {
-            this.deathTimer = DEATH_FREEZE_S;
-            this.deathX = this.x;
-            this.deathY = this.y;
-            this.deathDistanceM = this.computeDistance();
-            this.vx = 0;
-            this.vy = 0;
-            this.angVel = 0;
-            return;
+        // Spike collision response — knockback is ADDITIVE to post-bounce velocity
+        if (hitSpikeSet.size > 0) {
+            // Normalize accumulated normal (fallback to (1,0) if degenerate)
+            const nLen = Math.sqrt(spikeNx * spikeNx + spikeNy * spikeNy);
+            if (nLen > 1e-6) {
+                spikeNx /= nLen;
+                spikeNy /= nLen;
+            } else {
+                spikeNx = 1;
+                spikeNy = 0;
+            }
+
+            const spikeKillOnHit = this.params["spike.killOnHit"] as boolean ?? false;
+            const spikeDestroyOnHit = this.params["spike.destroyOnHit"] as boolean ?? false;
+            const spikeKnockbackImpulse = (this.params["spike.knockbackImpulse"] as number) ?? 30_000;
+
+            if (spikeKillOnHit) {
+                this.deathTimer = DEATH_FREEZE_S;
+                this.deathX = this.x;
+                this.deathY = this.y;
+                this.deathDistanceM = this.computeDistance();
+                this.vx = 0;
+                this.vy = 0;
+                this.angVel = 0;
+                body.vx = 0;
+                body.vy = 0;
+                if (spikeDestroyOnHit) {
+                    for (const obj of hitSpikeSet) obj.alive = false;
+                }
+                return;
+            }
+
+            // Knockback: dv = impulse / mass (тяжёлый блоб отлетает меньше)
+            const safeMass = Math.max(mass, 0.01);
+            const dv = spikeKnockbackImpulse / safeMass;
+            this.vx += spikeNx * dv;
+            this.vy += spikeNy * dv;
+
+            // Ограничение скорости после knockback
+            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            if (speed > MAX_KNOCKBACK_SPEED) {
+                const scale = MAX_KNOCKBACK_SPEED / speed;
+                this.vx *= scale;
+                this.vy *= scale;
+            }
+
+            // Sync body so tickOrbs doesn't overwrite knockback
+            body.vx = this.vx;
+            body.vy = this.vy;
+
+            if (spikeDestroyOnHit) {
+                for (const obj of hitSpikeSet) obj.alive = false;
+            }
         }
 
         // ── 5. Zone detection (point-in-circle) ──
@@ -930,6 +1000,7 @@ export class BonkLab {
 
                 // Orb-obstacle collisions
                 for (const obs of this.arena.obstacles) {
+                    if (obs.alive === false) continue; // Skip destroyed obstacles
                     const staticObs: IStaticObstacle = {
                         x: obs.x, y: obs.y, radius: obs.radius,
                         type: obs.type === "passage" ? "pillar" : (obs.type as "pillar" | "spike" | "wall"),
@@ -977,10 +1048,10 @@ export class BonkLab {
     // ── Parameter Mapping ────────────────────────────────────────────────────
 
     /**
-     * Builds a flat Record<string, number|boolean> from the resolved balance config
+     * Builds a flat Record<string, number|boolean|string> from the resolved balance config
      * for use by the UI panel. Keys use dotted paths matching the SlimeConfig structure.
      */
-    private buildFlatParams(): Record<string, number | boolean> {
+    private buildFlatParams(): Record<string, number | boolean | string> {
         const sc = this.slimeConfig;
         const wp = this.worldPhysics;
 
@@ -1067,11 +1138,19 @@ export class BonkLab {
             "worldPhysics.restitution": wp.restitution,
             "worldPhysics.passageRestitution": wp.restitution * 0.5,
 
+            // Spike options
+            "spike.killOnHit": false,
+            "spike.destroyOnHit": false,
+            "spike.knockbackImpulse": 30_000,
+
             // Trail defaults
             "trail.enabled": true,
-            "trail.maxAge": 3.5,
+            "trail.maxAge": 1.2,
             "trail.baseAlpha": 0.6,
-
+            "trail.pattern": "drift",
+            "trail.primaryColor": "#44aaff",
+            "trail.driftColor": "#ffff00",
+            "trail.rainbowPeriodSec": 2.0,
             // Zone surface overrides (from SURFACE_PRESETS defaults)
             ...this.buildZoneParams(),
         };
