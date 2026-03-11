@@ -612,20 +612,6 @@ const PARAM_GROUPS: GroupDef[] = [
                 tooltip: "Период полного цикла радуги в секундах.",
             },
             {
-                label: "Яркость от скорости",
-                key: "trail.useSpeedBrightness",
-                min: 0, max: 1,
-                isBoolean: true,
-                tooltip: "Изменять яркость в зависимости от скорости.",
-            },
-            {
-                label: "Макс. скорость",
-                key: "trail.maxSpeed",
-                min: 100, max: 500,
-                unit: "м/с",
-                tooltip: "Опорная скорость для яркости (если включено).",
-            },
-            {
                 label: "Длина",
                 key: "trail.maxAge",
                 min: 0.1, max: 5.0,

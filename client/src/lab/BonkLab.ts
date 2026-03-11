@@ -1069,11 +1069,11 @@ export class BonkLab {
 
             // Trail defaults
             "trail.enabled": true,
-            "trail.maxAge": 3.5,
+            "trail.maxAge": 1.2,
             "trail.baseAlpha": 0.6,
             "trail.pattern": "drift",
             "trail.primaryColor": "#44aaff",
-            "trail.driftColor": "#ff4444",
+            "trail.driftColor": "#ffff00",
             "trail.rainbowPeriodSec": 2.0,
             "trail.useSpeedBrightness": false,
             "trail.maxSpeed": 350,
