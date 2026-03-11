@@ -615,7 +615,7 @@ const PARAM_GROUPS: GroupDef[] = [
                 key: "trail.pattern",
                 isSelect: true,
                 options: [
-                    { label: "Без окраски", value: "off" },
+                    { label: "Моноцвет", value: "off" },
                     { label: "По дрифту", value: "drift" },
                     { label: "Радуга", value: "rainbow" },
                 ],

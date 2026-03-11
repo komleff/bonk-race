@@ -12,7 +12,7 @@ import toolbarCss from "./lab-toolbar.css?raw";
 
 interface Preset {
     label: string;
-    values: Record<string, number | boolean>;
+    values: Record<string, number | boolean | string>;
 }
 
 const PRESETS: Preset[] = [
@@ -65,6 +65,13 @@ const PRESETS: Preset[] = [
             "worldPhysics.lateralGripMultiplier": 25.0,
             "worldPhysics.angularDragK": 0.15,
             "worldPhysics.restitution": 0.80,
+            "trail.enabled": true,
+            "trail.maxAge": 1.2,
+            "trail.baseAlpha": 0.6,
+            "trail.pattern": "drift",
+            "trail.primaryColor": "#44aaff",
+            "trail.driftColor": "#ffff00",
+            "trail.rainbowPeriodSec": 2.0,
         },
     },
     {
@@ -387,17 +394,24 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
         [lab, onParamsChanged],
     );
 
-    // ── Reset params to defaults ──
+    // ── Reset params to defaults + BonkRace v0.3 preset ──
     const handleResetParams = useCallback(() => {
-        // Reset orbDensityManual before applying defaults
+        const DEFAULT_PRESET_IDX = 3; // "BonkRace v0.3"
+        const preset = PRESETS[DEFAULT_PRESET_IDX];
+        // Сброс orbDensityManual перед пакетным применением
         lab.resetOrbDensityManual();
+        // Сначала вернуть все параметры к базовым дефолтам (balance.json)
         for (const [key, val] of Object.entries(defaults)) {
             lab.updateParams(key, val);
         }
-        // Sync toolbar density from restored defaults
-        const restoredDensity = (defaults["arena.objectDensity"] as number) ?? 5.0;
+        // Затем применить пресет поверх
+        for (const [key, val] of Object.entries(preset.values)) {
+            lab.updateParams(key, val);
+        }
+        // Синхронизировать toolbar density
+        const restoredDensity = (lab.params["arena.objectDensity"] as number) ?? 5.0;
         setDensity(restoredDensity);
-        setActivePreset(1); // "Slime Arena" = true defaults
+        setActivePreset(DEFAULT_PRESET_IDX);
         lab.reset();
         onParamsChanged?.();
     }, [lab, defaults, onParamsChanged]);
