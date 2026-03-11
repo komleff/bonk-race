@@ -64,8 +64,6 @@ function buildZoneSurfaces(): Record<string, SurfaceConfig> {
     };
 }
 
-// ─── Re-export types so existing consumers aren't broken ─────────────────────
-export type { SandboxOrb, SandboxState } from "./labTypes";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

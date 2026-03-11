@@ -1,7 +1,7 @@
 /**
  * Парсит hex-цвет (#RRGGBB) в { r, g, b }
  */
-export function hexToRgb(hex: string): { r: number; g: number; b: number } {
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
         r: parseInt(result[1], 16),
@@ -13,7 +13,7 @@ export function hexToRgb(hex: string): { r: number; g: number; b: number } {
 /**
  * Конвертирует { r, g, b } в hex-строку цвета
  */
-export function rgbToHex(r: number, g: number, b: number): string {
+function rgbToHex(r: number, g: number, b: number): string {
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
 

@@ -26,7 +26,7 @@ export interface UpdateEffect {
  */
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
-export function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
+function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
     const keys = path.split(".");
     let current: Record<string, unknown> = obj;
     for (let i = 0; i < keys.length - 1; i++) {
