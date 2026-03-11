@@ -34,6 +34,7 @@ export interface ArenaObject {
     radius: number;
     width?: number;   // for walls / passages
     height?: number;
+    alive?: boolean;  // false = destroyed after collision (spike)
 }
 
 export interface ArenaZone {

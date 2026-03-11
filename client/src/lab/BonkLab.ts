@@ -358,6 +358,10 @@ export class BonkLab {
         // bestTime persists across resets (record tracking)
         // Reset orb density auto-sync (user didn't manually set it via reset)
         this.orbDensityManual = false;
+        // Restore destroyed spikes
+        for (const obs of this.arena.obstacles) {
+            if (obs.alive === false) obs.alive = undefined;
+        }
         // Reset orbs to initial state from arena seed
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
         console.log("[BonkLab] state reset");
@@ -797,9 +801,15 @@ export class BonkLab {
 
         const iterations = 4;
         let hitSpike = false;
+        let spikeNx = 0;
+        let spikeNy = 0;
+        let hitSpikeObj: typeof this.arena.obstacles[0] | null = null;
         for (let iter = 0; iter < iterations; iter++) {
             // Obstacle collisions first (matching server order)
             for (const obs of this.arena.obstacles) {
+                // Skip destroyed spikes
+                if (obs.alive === false) continue;
+
                 const staticObs: IStaticObstacle = {
                     x: obs.x,
                     y: obs.y,
@@ -812,6 +822,13 @@ export class BonkLab {
                 const collided = resolveCircleStaticCollision(body, staticObs, rest, collisionConfig);
                 if (collided && obs.type === "spike") {
                     hitSpike = true;
+                    // Compute collision normal (from spike center to player)
+                    const dx = body.x - obs.x;
+                    const dy = body.y - obs.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    spikeNx = dx / dist;
+                    spikeNy = dy / dist;
+                    hitSpikeObj = obs;
                 }
             }
 
@@ -825,16 +842,34 @@ export class BonkLab {
         this.vx = body.vx;
         this.vy = body.vy;
 
-        // Spike = instant death → freeze + respawn (GDD §4.2)
+        // Spike collision response
         if (hitSpike) {
-            this.deathTimer = DEATH_FREEZE_S;
-            this.deathX = this.x;
-            this.deathY = this.y;
-            this.deathDistanceM = this.computeDistance();
-            this.vx = 0;
-            this.vy = 0;
-            this.angVel = 0;
-            return;
+            const spikeKillOnHit = this.params["spike.killOnHit"] as boolean ?? false;
+            const spikeDestroyOnHit = this.params["spike.destroyOnHit"] as boolean ?? false;
+            const spikeKnockbackSpeed = (this.params["spike.knockbackSpeed"] as number) ?? 250;
+
+            if (spikeKillOnHit) {
+                // Instant death → freeze + respawn (GDD §4.2)
+                this.deathTimer = DEATH_FREEZE_S;
+                this.deathX = this.x;
+                this.deathY = this.y;
+                this.deathDistanceM = this.computeDistance();
+                this.vx = 0;
+                this.vy = 0;
+                this.angVel = 0;
+                if (spikeDestroyOnHit && hitSpikeObj) {
+                    hitSpikeObj.alive = false;
+                }
+                return;
+            }
+
+            // Knockback: apply impulse along collision normal
+            this.vx = spikeNx * spikeKnockbackSpeed;
+            this.vy = spikeNy * spikeKnockbackSpeed;
+
+            if (spikeDestroyOnHit && hitSpikeObj) {
+                hitSpikeObj.alive = false;
+            }
         }
 
         // ── 5. Zone detection (point-in-circle) ──
@@ -930,6 +965,7 @@ export class BonkLab {
 
                 // Orb-obstacle collisions
                 for (const obs of this.arena.obstacles) {
+                    if (obs.alive === false) continue; // Skip destroyed obstacles
                     const staticObs: IStaticObstacle = {
                         x: obs.x, y: obs.y, radius: obs.radius,
                         type: obs.type === "passage" ? "pillar" : (obs.type as "pillar" | "spike" | "wall"),
@@ -1066,6 +1102,11 @@ export class BonkLab {
             "worldPhysics.angularDragK": wp.angularDragK,
             "worldPhysics.restitution": wp.restitution,
             "worldPhysics.passageRestitution": wp.restitution * 0.5,
+
+            // Spike options
+            "spike.killOnHit": false,
+            "spike.destroyOnHit": false,
+            "spike.knockbackSpeed": 250,
 
             // Trail defaults
             "trail.enabled": true,

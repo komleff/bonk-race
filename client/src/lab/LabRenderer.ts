@@ -450,6 +450,7 @@ export class LabRenderer {
 
     private drawObstacles(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         for (const obs of state.arena.obstacles) {
+            if (obs.alive === false) continue; // Skip destroyed obstacles
             const style = OBSTACLE_STYLES[obs.type] || OBSTACLE_STYLES.pillar;
 
             ctx.beginPath();
@@ -1052,6 +1053,7 @@ export class LabRenderer {
 
         // Obstacles
         for (const obs of state.arena.obstacles) {
+            if (obs.alive === false) continue;
             ctx.beginPath();
             ctx.arc(toMX(obs.x), toMY(obs.y), Math.max(obs.radius * ms, 1.5), 0, Math.PI * 2);
             ctx.fillStyle = obs.type === "spike" ? "#cc3333" : "#888888";

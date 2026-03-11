@@ -511,6 +511,33 @@ const PARAM_GROUPS: GroupDef[] = [
             },
         ],
     },
+    // Spike options
+    {
+        title: "Шипы (Spike)",
+        params: [
+            {
+                label: "Убивает",
+                key: "spike.killOnHit",
+                min: 0, max: 1,
+                isBoolean: true,
+                tooltip: "Вкл = мгновенная смерть (как раньше). Выкл = отбрасывание.",
+            },
+            {
+                label: "Уничтожается",
+                key: "spike.destroyOnHit",
+                min: 0, max: 1,
+                isBoolean: true,
+                tooltip: "Spike исчезает после столкновения.",
+            },
+            {
+                label: "Сила отбрасывания",
+                key: "spike.knockbackSpeed",
+                min: 50, max: 800,
+                unit: "м/с",
+                tooltip: "Скорость импульса при отбрасывании (если не убивает).",
+            },
+        ],
+    },
     // 3.11 Mass scaling
     {
         title: "Масштабирование по массе",
