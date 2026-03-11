@@ -18,6 +18,7 @@ interface ParamDef {
     key: string;
     min?: number;
     max?: number;
+    step?: number;
     unit?: string;
     tooltip?: string;
     locked?: boolean;
@@ -533,6 +534,7 @@ const PARAM_GROUPS: GroupDef[] = [
                 label: "Импульс отбрасывания",
                 key: "spike.knockbackImpulse",
                 min: 5_000, max: 200_000,
+                step: 1_000,
                 unit: "Н·с",
                 tooltip: "Импульс при столкновении. dv = импульс / масса. Тяжёлый блоб отлетает меньше.",
             },
@@ -835,7 +837,7 @@ function ParamSlider({
 
     // Numeric slider
     const numValue = typeof value === "number" ? value : 0;
-    const step = autoStep(def.min ?? 0, def.max ?? 100);
+    const step = def.step ?? autoStep(def.min ?? 0, def.max ?? 100);
 
     const handleSlider = (e: Event) => {
         const v = parseFloat((e.target as HTMLInputElement).value);

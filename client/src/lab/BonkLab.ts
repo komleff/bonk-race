@@ -846,17 +846,21 @@ export class BonkLab {
 
         // Spike collision response — knockback is ADDITIVE to post-bounce velocity
         if (hitSpikeSet.size > 0) {
-            // Normalize accumulated normal
-            const nLen = Math.sqrt(spikeNx * spikeNx + spikeNy * spikeNy) || 1;
-            spikeNx /= nLen;
-            spikeNy /= nLen;
+            // Normalize accumulated normal (fallback to (1,0) if degenerate)
+            const nLen = Math.sqrt(spikeNx * spikeNx + spikeNy * spikeNy);
+            if (nLen > 1e-6) {
+                spikeNx /= nLen;
+                spikeNy /= nLen;
+            } else {
+                spikeNx = 1;
+                spikeNy = 0;
+            }
 
             const spikeKillOnHit = this.params["spike.killOnHit"] as boolean ?? false;
             const spikeDestroyOnHit = this.params["spike.destroyOnHit"] as boolean ?? false;
             const spikeKnockbackImpulse = (this.params["spike.knockbackImpulse"] as number) ?? 30_000;
 
             if (spikeKillOnHit) {
-                // Instant death → freeze + respawn (GDD §4.2)
                 this.deathTimer = DEATH_FREEZE_S;
                 this.deathX = this.x;
                 this.deathY = this.y;
@@ -873,10 +877,21 @@ export class BonkLab {
             }
 
             // Knockback: dv = impulse / mass (тяжёлый блоб отлетает меньше)
-            const dv = spikeKnockbackImpulse / mass;
+            const safeMass = Math.max(mass, 0.01);
+            const dv = spikeKnockbackImpulse / safeMass;
             this.vx += spikeNx * dv;
             this.vy += spikeNy * dv;
-            // Sync body so tickOrbs (which writes playerBody back) doesn't overwrite knockback
+
+            // Clamp post-knockback speed to prevent teleporting through walls
+            const MAX_KNOCKBACK_SPEED = 2000;
+            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            if (speed > MAX_KNOCKBACK_SPEED) {
+                const scale = MAX_KNOCKBACK_SPEED / speed;
+                this.vx *= scale;
+                this.vy *= scale;
+            }
+
+            // Sync body so tickOrbs doesn't overwrite knockback
             body.vx = this.vx;
             body.vy = this.vy;
 
