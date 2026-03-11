@@ -39,11 +39,18 @@ import type {
     IStaticObstacle,
     IWallBounds,
     Arena,
+    ArenaObject,
     SurfaceConfig,
 } from "@bonk-race/shared";
 import { generateArena } from "@bonk-race/shared";
 
 import balanceJson from "../../../config/balance.json";
+
+/**
+ * Максимальная скорость после knockback (м/с).
+ * Выбрано чтобы блоб не телепортировался через стены при extreme impulse.
+ */
+const MAX_KNOCKBACK_SPEED = 2000;
 
 // ─── Zone name → SurfaceConfig mapping for ArenaZone.type strings ───────────
 // Mutable at runtime so LabPanel zone sliders can override presets.
@@ -358,13 +365,17 @@ export class BonkLab {
         // bestTime persists across resets (record tracking)
         // Reset orb density auto-sync (user didn't manually set it via reset)
         this.orbDensityManual = false;
-        // Restore destroyed spikes
-        for (const obs of this.arena.obstacles) {
-            if (obs.alive === false) delete obs.alive;
-        }
+        this.restoreDestroyedObstacles();
         // Reset orbs to initial state from arena seed
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
         console.log("[BonkLab] state reset");
+    }
+
+    /** Восстанавливает уничтоженные шипы (после reset/respawn) */
+    private restoreDestroyedObstacles(): void {
+        for (const obs of this.arena.obstacles) {
+            if (obs.alive === false) obs.alive = true;
+        }
     }
 
     /** Build an Arena from seed+density+current params */
@@ -630,10 +641,7 @@ export class BonkLab {
                 this.correctionFx = 0;
                 this.correctionFy = 0;
                 this.currentZone = null;
-                // Restore destroyed spikes on respawn
-                for (const obs of this.arena.obstacles) {
-                    if (obs.alive === false) delete obs.alive;
-                }
+                this.restoreDestroyedObstacles();
                 // Go!-Go! отсчёт (2×0.4с заморозка после респауна)
                 this.respawnCountdown = RESPAWN_GO_TOTAL_S;
             }
@@ -806,7 +814,7 @@ export class BonkLab {
         const iterations = 4;
         let spikeNx = 0;
         let spikeNy = 0;
-        const hitSpikeSet = new Set<typeof this.arena.obstacles[0]>();
+        const hitSpikeSet = new Set<ArenaObject>();
         for (let iter = 0; iter < iterations; iter++) {
             // Obstacle collisions first (matching server order)
             for (const obs of this.arena.obstacles) {
@@ -882,8 +890,7 @@ export class BonkLab {
             this.vx += spikeNx * dv;
             this.vy += spikeNy * dv;
 
-            // Clamp post-knockback speed to prevent teleporting through walls
-            const MAX_KNOCKBACK_SPEED = 2000;
+            // Ограничение скорости после knockback
             const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
             if (speed > MAX_KNOCKBACK_SPEED) {
                 const scale = MAX_KNOCKBACK_SPEED / speed;

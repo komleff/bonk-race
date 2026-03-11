@@ -255,7 +255,7 @@ function ImportModal({
     onApply,
     onClose,
 }: {
-    onApply: (data: Record<string, number | boolean>) => void;
+    onApply: (data: Record<string, number | boolean | string>) => void;
     onClose: () => void;
 }) {
     const [text, setText] = useState("");
@@ -268,7 +268,7 @@ function ImportModal({
                 setError("JSON должен быть объектом { ключ: значение }");
                 return;
             }
-            onApply(parsed as Record<string, number | boolean>);
+            onApply(parsed as Record<string, number | boolean | string>);
             onClose();
         } catch {
             setError("Невалидный JSON");
@@ -409,7 +409,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
 
     // ── Import (full config — applies all params from JSON) ──
     const handleImport = useCallback(
-        (data: Record<string, number | boolean>) => {
+        (data: Record<string, number | boolean | string>) => {
             // Reset orbDensityManual before batch-applying imported params
             lab.resetOrbDensityManual();
             // First reset all params to defaults (handles keys missing from old exports)
@@ -419,7 +419,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
             // Then apply imported values on top
             for (const [key, val] of Object.entries(data)) {
                 // Only apply keys that exist in current params (ignore unknown keys)
-                if (key in lab.params && (typeof val === "number" || typeof val === "boolean")) {
+                if (key in lab.params && (typeof val === "number" || typeof val === "boolean" || typeof val === "string")) {
                     lab.updateParams(key, val);
                 }
             }

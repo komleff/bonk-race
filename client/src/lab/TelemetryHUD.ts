@@ -87,7 +87,7 @@ export class TelemetryHUD {
 
         // ── Compute values ──
         const speed = Math.hypot(state.vx, state.vy);
-        const speedLimit = (params["limits.speedLimitForwardMps"] as number) || 260;
+        const speedLimit = (params["limits.speedLimitForwardMps"] as number) ?? 260;
         const angVelDeg = Math.abs(state.angularVelocity) * RAD2DEG;
         const angLimitDeg = ((params["limits.angularSpeedLimitRadps"] as number) || Math.PI) * RAD2DEG;
 

@@ -514,7 +514,7 @@ const PARAM_GROUPS: GroupDef[] = [
     },
     // Spike options
     {
-        title: "Шипы (Spike)",
+        title: "Шипы",
         params: [
             {
                 label: "Убивает",
@@ -528,7 +528,7 @@ const PARAM_GROUPS: GroupDef[] = [
                 key: "spike.destroyOnHit",
                 min: 0, max: 1,
                 isBoolean: true,
-                tooltip: "Spike исчезает после столкновения.",
+                tooltip: "Шип исчезает после столкновения.",
             },
             {
                 label: "Импульс отбрасывания",
@@ -615,11 +615,11 @@ const PARAM_GROUPS: GroupDef[] = [
                 key: "trail.pattern",
                 isSelect: true,
                 options: [
-                    { label: "Без следа", value: "off" },
+                    { label: "Без окраски", value: "off" },
                     { label: "По дрифту", value: "drift" },
                     { label: "Радуга", value: "rainbow" },
                 ],
-                tooltip: "Способ раскраски следов: по умолчанию, по углу дрифта или радуга.",
+                tooltip: "Способ раскраски следов: один цвет, по углу дрифта или радуга.",
             },
             {
                 label: "Основной цвет",
@@ -732,7 +732,7 @@ function ParamSlider({
                         <button
                             class="lab-param-info"
                             onClick={() => setTooltipOpen(!tooltipOpen)}
-                            title="Info"
+                            title="Подсказка"
                         >
                             i
                         </button>
@@ -776,7 +776,7 @@ function ParamSlider({
                         <button
                             class="lab-param-info"
                             onClick={() => setTooltipOpen(!tooltipOpen)}
-                            title="Info"
+                            title="Подсказка"
                         >
                             i
                         </button>
@@ -817,7 +817,7 @@ function ParamSlider({
                             <button
                                 class="lab-param-info"
                                 onClick={() => setTooltipOpen(!tooltipOpen)}
-                                title="Info"
+                                title="Подсказка"
                             >
                                 i
                             </button>

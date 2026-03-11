@@ -74,10 +74,10 @@ const MINIMAP_MARGIN = 12;
 const MINIMAP_BG = "rgba(0,0,0,0.55)";
 const MINIMAP_BORDER = "rgba(255,255,255,0.25)";
 
-// ─── Utility functions for trail coloring ────────────────────────────────────
+// ─── Утилиты для окраски следов ──────────────────────────────────────────────
 
 /**
- * Parse hex color (#RRGGBB) to { r, g, b }
+ * Парсит hex-цвет (#RRGGBB) в { r, g, b }
  */
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -89,14 +89,14 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
 }
 
 /**
- * Convert { r, g, b } to hex color string
+ * Конвертирует { r, g, b } в hex-строку цвета
  */
 function rgbToHex(r: number, g: number, b: number): string {
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
 
 /**
- * Interpolate between two hex colors: c1 * (1 - t) + c2 * t
+ * Интерполяция между двумя hex-цветами: c1 * (1 - t) + c2 * t
  */
 function lerpColor(c1: string, c2: string, t: number): string {
     const rgb1 = hexToRgb(c1);
@@ -112,7 +112,7 @@ function lerpColor(c1: string, c2: string, t: number): string {
 }
 
 /**
- * Convert HSL to RGB, returns hex color
+ * Конвертирует HSL в RGB, возвращает hex-цвет
  */
 function hslToHex(h: number, s: number, l: number): string {
     h = ((h % 360) + 360) % 360;
@@ -136,7 +136,7 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 /**
- * Normalize angle to [-π, π]
+ * Нормализация угла в диапазон [-π, π]
  */
 function normalizeAngle(angle: number): number {
     let a = angle;
@@ -146,7 +146,7 @@ function normalizeAngle(angle: number): number {
 }
 
 /**
- * Calculate drift angle between velocity and heading
+ * Угол дрифта между вектором скорости и направлением
  */
 function getDriftAngle(vx: number, vy: number, heading: number): number {
     if (vx === 0 && vy === 0) return 0;
@@ -165,8 +165,8 @@ interface TrailPoint {
 
 const TRAIL_MAX_POINTS = 600;
 
-// ─── Trail pattern types ─────────────────────────────────────────────────────
-type TrailPattern = "off" | "drift" | "rainbow";
+// ─── Типы паттернов следа ────────────────────────────────────────────────────
+export type TrailPattern = "off" | "drift" | "rainbow";
 
 // ─── LabRenderer ─────────────────────────────────────────────────────────────
 
@@ -236,8 +236,6 @@ export class LabRenderer {
         primaryColor?: string;
         driftColor?: string;
         rainbowPeriodSec?: number;
-        useSpeedBrightness?: boolean;
-        maxSpeed?: number;
     }): void {
         // Очистить буфер при выключении следов
         if (!config.enabled && this.trailEnabled) {
@@ -263,7 +261,6 @@ export class LabRenderer {
         if (config.rainbowPeriodSec !== undefined) {
             this.trailRainbowPeriodSec = Math.max(0.1, config.rainbowPeriodSec);
         }
-        // Note: useSpeedBrightness and maxSpeed are reserved for future use
     }
 
     clearTrail(): void {

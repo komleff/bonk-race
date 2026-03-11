@@ -3,7 +3,7 @@
 import { render, h } from "preact";
 import { BonkLab } from "./BonkLab";
 import { LabInput } from "./LabInput";
-import { LabRenderer, CHAR_SCREEN_Y_RATIO } from "./LabRenderer";
+import { LabRenderer, CHAR_SCREEN_Y_RATIO, type TrailPattern } from "./LabRenderer";
 import { TelemetryHUD } from "./TelemetryHUD";
 import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
@@ -56,8 +56,6 @@ const STARTUP_PRESET: Record<string, number | boolean | string> = {
     "trail.primaryColor": "#44aaff",
     "trail.driftColor": "#ffff00",
     "trail.rainbowPeriodSec": 2.0,
-    "trail.useSpeedBrightness": false,
-    "trail.maxSpeed": 350,
 };
 for (const [key, val] of Object.entries(STARTUP_PRESET)) {
     lab.updateParams(key, val);
@@ -135,17 +133,19 @@ function frame(): void {
     );
 
     // Trail config
-    const trailPattern = (lab.params["trail.pattern"] as unknown as string) ?? "drift";
+    const VALID_TRAIL_PATTERNS: TrailPattern[] = ["off", "drift", "rainbow"];
+    const rawPattern = (lab.params["trail.pattern"] as unknown as string) ?? "drift";
+    const trailPattern: TrailPattern = VALID_TRAIL_PATTERNS.includes(rawPattern as TrailPattern)
+        ? rawPattern as TrailPattern
+        : "drift";
     renderer.setTrailConfig({
         enabled: Boolean(lab.params["trail.enabled"]),
         maxAge: (lab.params["trail.maxAge"] as number) ?? 3.5,
         baseAlpha: (lab.params["trail.baseAlpha"] as number) ?? 0.6,
-        pattern: (trailPattern as any),
+        pattern: trailPattern,
         primaryColor: (lab.params["trail.primaryColor"] as unknown as string) ?? "#44aaff",
         driftColor: (lab.params["trail.driftColor"] as unknown as string) ?? "#ff4444",
         rainbowPeriodSec: (lab.params["trail.rainbowPeriodSec"] as number) ?? 2.0,
-        useSpeedBrightness: Boolean(lab.params["trail.useSpeedBrightness"]),
-        maxSpeed: (lab.params["trail.maxSpeed"] as number) ?? 350,
     });
 
     // Get simulation state and render
