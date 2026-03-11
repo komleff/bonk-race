@@ -74,15 +74,99 @@ const MINIMAP_MARGIN = 12;
 const MINIMAP_BG = "rgba(0,0,0,0.55)";
 const MINIMAP_BORDER = "rgba(255,255,255,0.25)";
 
+// ─── Utility functions for trail coloring ────────────────────────────────────
+
+/**
+ * Parse hex color (#RRGGBB) to { r, g, b }
+ */
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+    } : { r: 68, g: 170, b: 255 }; // fallback to #44aaff
+}
+
+/**
+ * Convert { r, g, b } to hex color string
+ */
+function rgbToHex(r: number, g: number, b: number): string {
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}
+
+/**
+ * Interpolate between two hex colors: c1 * (1 - t) + c2 * t
+ */
+function lerpColor(c1: string, c2: string, t: number): string {
+    const rgb1 = hexToRgb(c1);
+    const rgb2 = hexToRgb(c2);
+    const r = Math.round(rgb1.r * (1 - t) + rgb2.r * t);
+    const g = Math.round(rgb1.g * (1 - t) + rgb2.g * t);
+    const b = Math.round(rgb1.b * (1 - t) + rgb2.b * t);
+    return rgbToHex(
+        Math.max(0, Math.min(255, r)),
+        Math.max(0, Math.min(255, g)),
+        Math.max(0, Math.min(255, b)),
+    );
+}
+
+/**
+ * Convert HSL to RGB, returns hex color
+ */
+function hslToHex(h: number, s: number, l: number): string {
+    h = ((h % 360) + 360) % 360;
+    s = Math.max(0, Math.min(1, s));
+    l = Math.max(0, Math.min(1, l));
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = l - c / 2;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) { r = c; g = x; }
+    else if (h < 120) { r = x; g = c; }
+    else if (h < 180) { g = c; b = x; }
+    else if (h < 240) { g = x; b = c; }
+    else if (h < 300) { r = x; b = c; }
+    else { r = c; b = x; }
+    return rgbToHex(
+        Math.round((r + m) * 255),
+        Math.round((g + m) * 255),
+        Math.round((b + m) * 255),
+    );
+}
+
+/**
+ * Normalize angle to [-π, π]
+ */
+function normalizeAngle(angle: number): number {
+    let a = angle;
+    while (a > Math.PI) a -= 2 * Math.PI;
+    while (a < -Math.PI) a += 2 * Math.PI;
+    return a;
+}
+
+/**
+ * Calculate drift angle between velocity and heading
+ */
+function getDriftAngle(vx: number, vy: number, heading: number): number {
+    if (vx === 0 && vy === 0) return 0;
+    const velAngle = Math.atan2(vy, vx);
+    return normalizeAngle(velAngle - heading);
+}
+
 // ─── Типы следов ─────────────────────────────────────────────────────────────
 
 interface TrailPoint {
     x: number;
     y: number;
     age: number;
+    color: string;
 }
 
 const TRAIL_MAX_POINTS = 600;
+
+// ─── Trail pattern types ─────────────────────────────────────────────────────
+type TrailPattern = "off" | "drift" | "rainbow";
 
 // ─── LabRenderer ─────────────────────────────────────────────────────────────
 
@@ -116,6 +200,13 @@ export class LabRenderer {
     private trailPrevY = NaN;
     private lastRenderTs = 0;
 
+    // ── Trail pattern configuration ──
+    private trailPattern: TrailPattern = "off";
+    private trailPrimaryColor = "#44aaff";
+    private trailDriftColor = "#ff4444";
+    private trailRainbowPeriodSec = 2.0;
+    private trailStartTimeMs = performance.now();
+
     // Pre-allocated reusable objects to avoid GC in render loop
     private _gradient: CanvasGradient | null = null;
 
@@ -137,14 +228,29 @@ export class LabRenderer {
         this.normMaxThrust = maxThrust || 27000;
     }
 
-    setTrailConfig(enabled: boolean, maxAge: number, baseAlpha: number): void {
+    setTrailConfig(config: {
+        enabled: boolean;
+        maxAge: number;
+        baseAlpha: number;
+        pattern?: TrailPattern;
+        primaryColor?: string;
+        driftColor?: string;
+        rainbowPeriodSec?: number;
+        useSpeedBrightness?: boolean;
+        maxSpeed?: number;
+    }): void {
         // Очистить буфер при выключении следов
-        if (!enabled && this.trailEnabled) {
+        if (!config.enabled && this.trailEnabled) {
             this.clearTrail();
         }
-        this.trailEnabled = enabled;
-        this.trailMaxAge = maxAge;
-        this.trailBaseAlpha = baseAlpha;
+        this.trailEnabled = config.enabled;
+        this.trailMaxAge = config.maxAge;
+        this.trailBaseAlpha = config.baseAlpha;
+        if (config.pattern !== undefined) this.trailPattern = config.pattern;
+        if (config.primaryColor !== undefined) this.trailPrimaryColor = config.primaryColor;
+        if (config.driftColor !== undefined) this.trailDriftColor = config.driftColor;
+        if (config.rainbowPeriodSec !== undefined) this.trailRainbowPeriodSec = config.rainbowPeriodSec;
+        // Note: useSpeedBrightness and maxSpeed are reserved for future use
     }
 
     clearTrail(): void {
@@ -198,7 +304,7 @@ export class LabRenderer {
         const trailDt = this.lastRenderTs > 0 ? Math.min((now - this.lastRenderTs) / 1000, 0.1) : 1 / 60;
         this.lastRenderTs = now;
         if (this.trailEnabled && state.deathTimer <= 0) {
-            this.pushTrailPoint(state.x, state.y, trailDt);
+            this.pushTrailPoint(state.x, state.y, state.vx, state.vy, state.angle, trailDt, now);
             this.drawTrail(ctx, state.radius);
         }
 
@@ -390,7 +496,28 @@ export class LabRenderer {
 
     // ── Trail system ──────────────────────────────────────────────────────────
 
-    private pushTrailPoint(x: number, y: number, dt: number): void {
+    private calculateTrailColor(vx: number, vy: number, angle: number, nowMs: number): string {
+        if (this.trailPattern === "off") {
+            return this.trailPrimaryColor;
+        }
+
+        if (this.trailPattern === "drift") {
+            const driftAngle = getDriftAngle(vx, vy, angle);
+            const driftIntensity = Math.abs(Math.sin(driftAngle));
+            return lerpColor(this.trailPrimaryColor, this.trailDriftColor, driftIntensity);
+        }
+
+        if (this.trailPattern === "rainbow") {
+            const elapsedSec = (nowMs - this.trailStartTimeMs) / 1000;
+            const periodSec = Math.max(0.1, this.trailRainbowPeriodSec);
+            const hue = ((elapsedSec % periodSec) / periodSec) * 360;
+            return hslToHex(hue, 1.0, 0.5);
+        }
+
+        return this.trailPrimaryColor;
+    }
+
+    private pushTrailPoint(x: number, y: number, vx: number, vy: number, angle: number, dt: number, nowMs: number): void {
         // Телепорт: если расстояние слишком большое — очистить буфер (restart/respawn)
         const dx = x - this.trailPrevX;
         const dy = y - this.trailPrevY;
@@ -410,14 +537,16 @@ export class LabRenderer {
         this.trailPrevX = x;
         this.trailPrevY = y;
 
+        const color = this.calculateTrailColor(vx, vy, angle, nowMs);
+
         // Инициализация буфера при первом использовании
         if (this.trailBuffer.length < TRAIL_MAX_POINTS) {
-            this.trailBuffer.push({ x, y, age: 0 });
+            this.trailBuffer.push({ x, y, age: 0, color });
             this.trailCount = this.trailBuffer.length;
             this.trailHead = this.trailCount % TRAIL_MAX_POINTS;
         } else {
             const pt = this.trailBuffer[this.trailHead];
-            pt.x = x; pt.y = y; pt.age = 0;
+            pt.x = x; pt.y = y; pt.age = 0; pt.color = color;
             this.trailHead = (this.trailHead + 1) % TRAIL_MAX_POINTS;
             if (this.trailCount < TRAIL_MAX_POINTS) this.trailCount++;
         }
@@ -435,13 +564,13 @@ export class LabRenderer {
         const maxAge = this.trailMaxAge;
         const baseAlpha = this.trailBaseAlpha;
 
-        ctx.fillStyle = CHAR_FILL_OUTER;
         for (let i = 0; i < this.trailCount; i++) {
             const pt = this.trailBuffer[i];
             if (pt.age >= maxAge) continue;
 
             const t = pt.age / maxAge; // 0→1
             ctx.globalAlpha = baseAlpha * (1 - t);
+            ctx.fillStyle = pt.color;
             const r = charRadius * (1 - t * 0.6);
             ctx.beginPath();
             ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);

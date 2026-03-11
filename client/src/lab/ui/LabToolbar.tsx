@@ -318,7 +318,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
     }, []);
 
     // True defaults (balance.json + BonkLab overrides, before startup preset)
-    const [defaults] = useState<Record<string, number | boolean>>(() => lab.getDefaults());
+    const [defaults] = useState<Record<string, number | boolean | string>>(() => lab.getDefaults());
 
     // Active preset tracking (-1 = Custom, index = preset)
     const [activePreset, setActivePreset] = useState(3); // BonkRace v0.3

@@ -199,7 +199,7 @@ function deepClone<T>(obj: T): T {
 
 export class BonkLab {
     /** All tunable parameters, initialized from balance.json defaults */
-    params: Record<string, number | boolean>;
+    params: Record<string, number | boolean | string>;
 
     // Stored for future LabRenderer use
     readonly canvas: HTMLCanvasElement;
@@ -268,7 +268,7 @@ export class BonkLab {
     private orbDensityManual = false;
 
     /** True defaults (balance.json + BonkLab overrides, before any startup preset) */
-    private readonly trueDefaults: Record<string, number | boolean>;
+    private readonly trueDefaults: Record<string, number | boolean | string>;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -388,7 +388,7 @@ export class BonkLab {
         );
     }
 
-    updateParams(key: string, value: number | boolean): void {
+    updateParams(key: string, value: number | boolean | string): void {
         this.params[key] = value;
 
         // Handle special keys
@@ -536,7 +536,7 @@ export class BonkLab {
     }
 
     /** Returns true defaults (balance.json + BonkLab overrides, before startup preset) */
-    getDefaults(): Record<string, number | boolean> {
+    getDefaults(): Record<string, number | boolean | string> {
         return this.trueDefaults;
     }
 
@@ -977,10 +977,10 @@ export class BonkLab {
     // ── Parameter Mapping ────────────────────────────────────────────────────
 
     /**
-     * Builds a flat Record<string, number|boolean> from the resolved balance config
+     * Builds a flat Record<string, number|boolean|string> from the resolved balance config
      * for use by the UI panel. Keys use dotted paths matching the SlimeConfig structure.
      */
-    private buildFlatParams(): Record<string, number | boolean> {
+    private buildFlatParams(): Record<string, number | boolean | string> {
         const sc = this.slimeConfig;
         const wp = this.worldPhysics;
 
@@ -1071,6 +1071,12 @@ export class BonkLab {
             "trail.enabled": true,
             "trail.maxAge": 3.5,
             "trail.baseAlpha": 0.6,
+            "trail.pattern": "drift",
+            "trail.primaryColor": "#44aaff",
+            "trail.driftColor": "#ff4444",
+            "trail.rainbowPeriodSec": 2.0,
+            "trail.useSpeedBrightness": false,
+            "trail.maxSpeed": 350,
 
             // Zone surface overrides (from SURFACE_PRESETS defaults)
             ...this.buildZoneParams(),

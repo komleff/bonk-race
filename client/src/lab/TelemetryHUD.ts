@@ -70,7 +70,7 @@ export class TelemetryHUD {
     render(
         ctx: CanvasRenderingContext2D,
         state: SandboxState,
-        params: Record<string, number | boolean>,
+        params: Record<string, number | boolean | string>,
     ): void {
         const x0 = PAD;
         const y0 = PAD;

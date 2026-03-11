@@ -37,7 +37,7 @@ root.appendChild(uiContainer);
 const lab = new BonkLab(canvas);
 
 // Apply "BonkRace v0.3" preset on startup — casual arcade racing
-const STARTUP_PRESET: Record<string, number | boolean> = {
+const STARTUP_PRESET: Record<string, number | boolean | string> = {
     "mass": 40,
     "geometry.inertiaFactor": 0.05,
     "propulsion.thrustForwardN": 70000,
@@ -52,6 +52,12 @@ const STARTUP_PRESET: Record<string, number | boolean> = {
     "trail.enabled": true,
     "trail.maxAge": 3.5,
     "trail.baseAlpha": 0.6,
+    "trail.pattern": "drift",
+    "trail.primaryColor": "#44aaff",
+    "trail.driftColor": "#ff4444",
+    "trail.rainbowPeriodSec": 2.0,
+    "trail.useSpeedBrightness": false,
+    "trail.maxSpeed": 350,
 };
 for (const [key, val] of Object.entries(STARTUP_PRESET)) {
     lab.updateParams(key, val);
@@ -129,11 +135,18 @@ function frame(): void {
     );
 
     // Trail config
-    renderer.setTrailConfig(
-        Boolean(lab.params["trail.enabled"]),
-        (lab.params["trail.maxAge"] as number) ?? 3.5,
-        (lab.params["trail.baseAlpha"] as number) ?? 0.6,
-    );
+    const trailPattern = (lab.params["trail.pattern"] as unknown as string) ?? "drift";
+    renderer.setTrailConfig({
+        enabled: Boolean(lab.params["trail.enabled"]),
+        maxAge: (lab.params["trail.maxAge"] as number) ?? 3.5,
+        baseAlpha: (lab.params["trail.baseAlpha"] as number) ?? 0.6,
+        pattern: (trailPattern as any),
+        primaryColor: (lab.params["trail.primaryColor"] as unknown as string) ?? "#44aaff",
+        driftColor: (lab.params["trail.driftColor"] as unknown as string) ?? "#ff4444",
+        rainbowPeriodSec: (lab.params["trail.rainbowPeriodSec"] as number) ?? 2.0,
+        useSpeedBrightness: Boolean(lab.params["trail.useSpeedBrightness"]),
+        maxSpeed: (lab.params["trail.maxSpeed"] as number) ?? 350,
+    });
 
     // Get simulation state and render
     const state = lab.getState();

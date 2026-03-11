@@ -16,13 +16,16 @@ import panelCss from "./lab-panel.css?raw";
 interface ParamDef {
     label: string;
     key: string;
-    min: number;
-    max: number;
+    min?: number;
+    max?: number;
     unit?: string;
     tooltip?: string;
     locked?: boolean;
     lockTooltip?: string;
     isBoolean?: boolean;
+    isColor?: boolean;
+    isSelect?: boolean;
+    options?: Array<{ label: string; value: string | number }>;
 }
 
 interface GroupDef {
@@ -579,6 +582,50 @@ const PARAM_GROUPS: GroupDef[] = [
                 tooltip: "Показывать следы движения персонажа.",
             },
             {
+                label: "Паттерн",
+                key: "trail.pattern",
+                isSelect: true,
+                options: [
+                    { label: "Без следа", value: "off" },
+                    { label: "По дрифту", value: "drift" },
+                    { label: "Радуга", value: "rainbow" },
+                ],
+                tooltip: "Способ раскраски следов: по умолчанию, по углу дрифта или радуга.",
+            },
+            {
+                label: "Основной цвет",
+                key: "trail.primaryColor",
+                isColor: true,
+                tooltip: "Цвет следа при движении прямо.",
+            },
+            {
+                label: "Цвет дрифта",
+                key: "trail.driftColor",
+                isColor: true,
+                tooltip: "Цвет следа при боковом движении (дрифте).",
+            },
+            {
+                label: "Период радуги",
+                key: "trail.rainbowPeriodSec",
+                min: 0.5, max: 10.0,
+                unit: "с",
+                tooltip: "Период полного цикла радуги в секундах.",
+            },
+            {
+                label: "Яркость от скорости",
+                key: "trail.useSpeedBrightness",
+                min: 0, max: 1,
+                isBoolean: true,
+                tooltip: "Изменять яркость в зависимости от скорости.",
+            },
+            {
+                label: "Макс. скорость",
+                key: "trail.maxSpeed",
+                min: 100, max: 500,
+                unit: "м/с",
+                tooltip: "Опорная скорость для яркости (если включено).",
+            },
+            {
                 label: "Длина",
                 key: "trail.maxAge",
                 min: 0.1, max: 5.0,
@@ -630,10 +677,92 @@ function ParamSlider({
     onChange,
 }: {
     def: ParamDef;
-    value: number | boolean;
-    onChange: (key: string, val: number | boolean) => void;
+    value: number | boolean | string;
+    onChange: (key: string, val: number | boolean | string) => void;
 }) {
     const [tooltipOpen, setTooltipOpen] = useState(false);
+
+    // Color picker
+    if (def.isColor) {
+        const colorValue = typeof value === "string" ? value : "#44aaff";
+        return (
+            <div class={`lab-param${def.locked ? " locked" : ""}`}>
+                <div class="lab-param-label-row">
+                    <span class="lab-param-label">
+                        {def.locked && <span class="lab-lock-icon">&#x1F512;</span>}
+                        {def.label}
+                    </span>
+                    {def.tooltip && (
+                        <button
+                            class="lab-param-info"
+                            onClick={() => setTooltipOpen(!tooltipOpen)}
+                            title="Info"
+                        >
+                            i
+                        </button>
+                    )}
+                </div>
+                {tooltipOpen && def.tooltip && (
+                    <div class="lab-param-tooltip">{def.lockTooltip || def.tooltip}</div>
+                )}
+                <div class="lab-param-controls">
+                    <input
+                        type="color"
+                        class="lab-param-color"
+                        value={colorValue}
+                        onChange={(e) => !def.locked && onChange(def.key, (e.target as HTMLInputElement).value)}
+                    />
+                    <input
+                        type="text"
+                        class="lab-param-hex"
+                        value={colorValue}
+                        onChange={(e) => !def.locked && onChange(def.key, (e.target as HTMLInputElement).value)}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    // Select/dropdown
+    if (def.isSelect) {
+        const selectValue = typeof value === "string" ? value : "drift";
+        const options = def.options || [];
+        return (
+            <div class={`lab-param${def.locked ? " locked" : ""}`}>
+                <div class="lab-param-label-row">
+                    <span class="lab-param-label">
+                        {def.locked && <span class="lab-lock-icon">&#x1F512;</span>}
+                        {def.label}
+                    </span>
+                    {def.tooltip && (
+                        <button
+                            class="lab-param-info"
+                            onClick={() => setTooltipOpen(!tooltipOpen)}
+                            title="Info"
+                        >
+                            i
+                        </button>
+                    )}
+                </div>
+                {tooltipOpen && def.tooltip && (
+                    <div class="lab-param-tooltip">{def.lockTooltip || def.tooltip}</div>
+                )}
+                <div class="lab-param-controls">
+                    <select
+                        class="lab-param-select"
+                        value={selectValue}
+                        onChange={(e) => !def.locked && onChange(def.key, (e.target as HTMLSelectElement).value)}
+                    >
+                        {options.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+        );
+    }
 
     // Boolean toggle
     if (def.isBoolean) {
@@ -670,7 +799,7 @@ function ParamSlider({
 
     // Numeric slider
     const numValue = typeof value === "number" ? value : 0;
-    const step = autoStep(def.min, def.max);
+    const step = autoStep(def.min ?? 0, def.max ?? 100);
 
     const handleSlider = (e: Event) => {
         const v = parseFloat((e.target as HTMLInputElement).value);
@@ -680,8 +809,10 @@ function ParamSlider({
     const handleNumber = (e: Event) => {
         const v = parseFloat((e.target as HTMLInputElement).value);
         if (!isNaN(v)) {
-            // Clamp to range
-            const clamped = Math.min(def.max, Math.max(def.min, v));
+            // Clamp to range if min/max are defined
+            const min = def.min ?? Number.NEGATIVE_INFINITY;
+            const max = def.max ?? Number.POSITIVE_INFINITY;
+            const clamped = Math.min(max, Math.max(min, v));
             onChange(def.key, clamped);
         }
     };
@@ -712,8 +843,8 @@ function ParamSlider({
                 <input
                     type="range"
                     class="lab-param-slider"
-                    min={def.min}
-                    max={def.max}
+                    min={def.min ?? 0}
+                    max={def.max ?? 100}
                     step={step}
                     value={numValue}
                     onInput={handleSlider}
@@ -731,9 +862,11 @@ function ParamSlider({
                 />
                 {def.unit && <span class="lab-param-unit">{def.unit}</span>}
             </div>
-            <div class="lab-param-range">
-                [{formatValue(def.min, step)} ... {formatValue(def.max, step)}]
-            </div>
+            {def.min !== undefined && def.max !== undefined && (
+                <div class="lab-param-range">
+                    [{formatValue(def.min, step)} ... {formatValue(def.max, step)}]
+                </div>
+            )}
         </div>
     );
 }
@@ -748,8 +881,8 @@ function PanelGroup({
     group: GroupDef;
     expanded: boolean;
     onToggle: () => void;
-    values: Record<string, number | boolean>;
-    onChange: (key: string, val: number | boolean) => void;
+    values: Record<string, number | boolean | string>;
+    onChange: (key: string, val: number | boolean | string) => void;
 }) {
     return (
         <div class="lab-group">
@@ -807,7 +940,7 @@ export function LabPanel({ lab, syncTrigger, onParamChanged }: LabPanelProps) {
     });
 
     // Local copy of values for reactivity
-    const [values, setValues] = useState<Record<string, number | boolean>>(
+    const [values, setValues] = useState<Record<string, number | boolean | string>>(
         () => ({ ...lab.params }),
     );
 
@@ -826,7 +959,7 @@ export function LabPanel({ lab, syncTrigger, onParamChanged }: LabPanelProps) {
     }, []);
 
     const handleChange = useCallback(
-        (key: string, val: number | boolean) => {
+        (key: string, val: number | boolean | string) => {
             lab.updateParams(key, val);
             // After updateParams, some keys trigger side-effects (e.g. mass → auto-sync orb density).
             // Re-read all params that may have changed.
