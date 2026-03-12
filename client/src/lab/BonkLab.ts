@@ -43,6 +43,7 @@ import type {
 import type { SandboxOrb, SandboxState } from "./labTypes";
 export type { SandboxOrb, SandboxState } from "./labTypes";
 import { tickOrbs } from "./orbSimulator";
+import { resolveSpikeCollision } from "./spikeResolver";
 import { generateArena } from "@bonk-race/shared";
 import { LabParamManager } from "./LabParamManager";
 
@@ -210,11 +211,10 @@ export class BonkLab {
             this.worldPhysics,
             this.zoneSurfaces,
             this.mass,
-            this.lastDensity,
         );
 
         // Построить плоские параметры из значений по умолчанию balance.json + переопределения
-        this.paramManager.params = this.paramManager.buildFlatParams();
+        this.paramManager.params = this.paramManager.buildFlatParams(this.lastDensity);
         // Сохранить снимок истинных значений по умолчанию до применения стартового пресета
         this.trueDefaults = { ...this.params };
 
@@ -334,8 +334,9 @@ export class BonkLab {
         if (effect.massChanged) {
             this.mass = this.paramManager.mass;
         }
-        // Синхронизировать lastDensity (paramManager владеет им для ключа "arena.objectDensity")
-        this.lastDensity = this.paramManager.lastDensity;
+        if (effect.newDensity !== undefined) {
+            this.lastDensity = effect.newDensity;
+        }
         if (effect.regenerateArena) {
             this.regenerateArena(this.lastSeed, this.lastDensity);
         }
@@ -514,7 +515,20 @@ export class BonkLab {
         const radius = slimeConfig.geometry.baseRadiusM;
         const inertia = slimeConfig.geometry.inertiaFactor * mass * radius * radius;
 
-        // ── 1. Построить входное состояние FA ──
+        // ── 1. Определение зоны (точка в окружности) ──
+        this.currentZone = null;
+        this.currentSurface = DEFAULT_SURFACE_CONFIG;
+        for (const zone of this.arena.zones) {
+            const dx = this.x - zone.x;
+            const dy = this.y - zone.y;
+            if (dx * dx + dy * dy <= zone.radius * zone.radius) {
+                this.currentZone = zone.type;
+                this.currentSurface = this.zoneSurfaces[zone.type] ?? DEFAULT_SURFACE_CONFIG;
+                break;
+            }
+        }
+
+        // ── 2. Построить входное состояние FA ──
         const faState: ISlimePhysicsState = {
             x: this.x,
             y: this.y,
@@ -550,7 +564,7 @@ export class BonkLab {
             angularDragK: this.worldPhysics.angularDragK,
         };
 
-        // ── 2. Вычислить Flight Assist (с множителями зоны поверхности) ──
+        // ── 3. Вычислить Flight Assist (с множителями зоны поверхности) ──
         const surfaceAssist = toSurfaceAssistParams(this.currentSurface);
         const faOutput = computeFlightAssist(
             faState,
@@ -596,7 +610,7 @@ export class BonkLab {
             this.correctionFx, this.correctionFy,
         );
 
-        // ── 3. Интегрировать физику ──
+        // ── 4. Интегрировать физику ──
         const dragParams: IWorldDragParams = {
             forwardDragK: this.worldPhysics.forwardDragK,
             lateralGripMultiplier: this.worldPhysics.lateralGripMultiplier,
@@ -633,7 +647,7 @@ export class BonkLab {
         this.angle = result.angle;
         this.angVel = result.angVel;
 
-        // ── 4. Разрешение столкновений (4 итерации, как на сервере) ──
+        // ── 5. Разрешение столкновений (4 итерации, как на сервере) ──
         const body: ICircleBody = {
             x: this.x,
             y: this.y,
@@ -700,23 +714,20 @@ export class BonkLab {
         this.vx = body.vx;
         this.vy = body.vy;
 
-        // Реакция на столкновение с шипом — отталкивание АДДИТИВНО к скорости после отскока
+        // Реакция на столкновение с шипом — гибель или knockback
         if (hitSpikeSet.size > 0) {
-            // Нормализовать накопленную нормаль (запасной вариант (1,0) при вырождении)
-            const nLen = Math.sqrt(spikeNx * spikeNx + spikeNy * spikeNy);
-            if (nLen > 1e-6) {
-                spikeNx /= nLen;
-                spikeNy /= nLen;
-            } else {
-                spikeNx = 1;
-                spikeNy = 0;
-            }
+            const spikeResult = resolveSpikeCollision(
+                hitSpikeSet, spikeNx, spikeNy,
+                this.vx, this.vy, mass,
+                {
+                    killOnHit: this.params["spike.killOnHit"] as boolean ?? false,
+                    destroyOnHit: this.params["spike.destroyOnHit"] as boolean ?? false,
+                    knockbackImpulse: (this.params["spike.knockbackImpulse"] as number) ?? 30_000,
+                },
+                MAX_KNOCKBACK_SPEED,
+            );
 
-            const spikeKillOnHit = this.params["spike.killOnHit"] as boolean ?? false;
-            const spikeDestroyOnHit = this.params["spike.destroyOnHit"] as boolean ?? false;
-            const spikeKnockbackImpulse = (this.params["spike.knockbackImpulse"] as number) ?? 30_000;
-
-            if (spikeKillOnHit) {
+            if (spikeResult.died) {
                 this.deathTimer = DEATH_FREEZE_S;
                 this.deathX = this.x;
                 this.deathY = this.y;
@@ -726,46 +737,13 @@ export class BonkLab {
                 this.angVel = 0;
                 body.vx = 0;
                 body.vy = 0;
-                if (spikeDestroyOnHit) {
-                    for (const obj of hitSpikeSet) obj.alive = false;
-                }
                 return;
             }
 
-            // Отталкивание: dv = импульс / масса (тяжёлый блоб отлетает меньше)
-            const safeMass = Math.max(mass, 0.01);
-            const dv = spikeKnockbackImpulse / safeMass;
-            this.vx += spikeNx * dv;
-            this.vy += spikeNy * dv;
-
-            // Ограничение скорости после отталкивания
-            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (speed > MAX_KNOCKBACK_SPEED) {
-                const scale = MAX_KNOCKBACK_SPEED / speed;
-                this.vx *= scale;
-                this.vy *= scale;
-            }
-
-            // Синхронизировать тело, чтобы tickOrbs не перезаписал отталкивание
+            this.vx = spikeResult.vx;
+            this.vy = spikeResult.vy;
             body.vx = this.vx;
             body.vy = this.vy;
-
-            if (spikeDestroyOnHit) {
-                for (const obj of hitSpikeSet) obj.alive = false;
-            }
-        }
-
-        // ── 5. Определение зоны (точка в окружности) ──
-        this.currentZone = null;
-        this.currentSurface = DEFAULT_SURFACE_CONFIG;
-        for (const zone of this.arena.zones) {
-            const dx = this.x - zone.x;
-            const dy = this.y - zone.y;
-            if (dx * dx + dy * dy <= zone.radius * zone.radius) {
-                this.currentZone = zone.type;
-                this.currentSurface = this.zoneSurfaces[zone.type] ?? DEFAULT_SURFACE_CONFIG;
-                break;
-            }
         }
 
         // ── 6. Физика орбов ──
@@ -775,11 +753,13 @@ export class BonkLab {
             body,
             this.arena.obstacles,
             wallBounds,
-            collisionConfig,
-            this.worldPhysics.forwardDragK,
-            this.worldPhysics.restitution,
-            (this.params["worldPhysics.passageRestitution"] as number) ?? this.worldPhysics.restitution * 0.5,
-            Boolean(this.params["orbs.spikeKill"] ?? true),
+            {
+                collisionConfig,
+                dragK: this.worldPhysics.forwardDragK,
+                restitution: this.worldPhysics.restitution,
+                passageRestitution: (this.params["worldPhysics.passageRestitution"] as number) ?? this.worldPhysics.restitution * 0.5,
+                spikeKill: Boolean(this.params["orbs.spikeKill"] ?? true),
+            },
         );
         // Записать тело игрока обратно (столкновение орб-игрок могло его изменить)
         this.x = body.x;
@@ -787,10 +767,10 @@ export class BonkLab {
         this.vx = body.vx;
         this.vy = body.vy;
 
-        // ── 7. Обновить прошедшее время (до проверки финиша, чтобы finishTime включал этот тик) ──
+        // ── 7. Время ──
         this.elapsedTime += dt;
 
-        // ── 8. Определение пересечения финишной черты (окружность-против-прямоугольника с клетчатой полосой) ──
+        // ── 8. Финиш ──
         // Полоса: по центру finishPoint, ширина = arena.width * 0.6, высота = ROWS * CELL = 24
         const FINISH_STRIP_HALF_H = 12; // 2 ряда × 12px ячейка / 2
         const finishHalfW = this.arena.width * 0.3;

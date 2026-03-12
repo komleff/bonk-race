@@ -132,7 +132,7 @@ export function resolveCircleStaticCollision(
     const penetration = minDist - (dist || 0);
 
     // Positional correction — obstacle has infinite mass, so full correction goes to body
-    const corrRaw = Math.max(penetration - config.slop, 0);
+    const corrRaw = Math.max(penetration - config.slop, 0) * config.correctionPercent;
     const corrMag = Math.min(corrRaw, config.maxCorrection);
     body.x += nx * corrMag;
     body.y += ny * corrMag;

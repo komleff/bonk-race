@@ -40,7 +40,7 @@ const WALL_LINE_WIDTH = 4;
 const OBSTACLE_STYLES: Record<string, { fill: string; stroke: string }> = {
     pillar: { fill: "#555555", stroke: "#888888" },
     spike: { fill: "#cc3333", stroke: "#991111" },
-    passage: { fill: "transparent", stroke: "#666666" },
+    passage: { fill: "rgba(180, 175, 160, 0.12)", stroke: "#b0a898" },
 };
 
 const CHAR_FILL_OUTER = "#44aaff";

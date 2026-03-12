@@ -299,8 +299,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
 
                 {/* Density */}
                 <div class="lab-tb-seed-group">
-                    <span class="lab-tb-seed-label" title="Плотность объектов на карте (0.1 – 25.0)">
-                        Плотность:
+                    <span class="lab-tb-seed-label" title="Количество объектов на карте (0.1 – 25.0)">
+                        Насыщенность:
                     </span>
                     <input
                         type="range"

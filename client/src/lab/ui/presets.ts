@@ -56,7 +56,7 @@ export const PRESETS: Preset[] = [
             "worldPhysics.angularDragK": 0.15,
             "worldPhysics.restitution": 0.80,
             "trail.enabled": true,
-            "trail.maxAge": 1.2,
+            "trail.maxAge": 1.0,
             "trail.baseAlpha": 0.6,
             "trail.pattern": "drift",
             "trail.primaryColor": "#44aaff",

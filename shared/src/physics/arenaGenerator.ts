@@ -189,9 +189,14 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
 
     for (let i = 0; i < passageCount; i++) {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
-            const margin = passageR + OBSTACLE_SPACING + halfPassageDist;
+            // Цепочка из 2-4 шаров с каждой стороны прохода
+            const chainLength = 2 + Math.floor(rng.range(0, 3));
+            const chainSpacing = passageR * 2.2;
+            const totalChainExtent = halfPassageDist + (chainLength - 1) * chainSpacing;
+            const margin = passageR + OBSTACLE_SPACING + totalChainExtent;
             const center = randomPoint(rng, halfW, halfH, margin);
-            const angle = rng.range(0, Math.PI * 2);
+            // Горизонтальные ворота (перпендикулярно направлению движения)
+            const angle = Math.PI / 2;
             const ox = Math.cos(angle) * halfPassageDist;
             const oy = Math.sin(angle) * halfPassageDist;
 
@@ -200,14 +205,26 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
             const bx = center.x + ox;
             const by = center.y + oy;
 
+            // Проверить размещение крайних шаров цепочки
+            const farExtent = (chainLength - 1) * chainSpacing;
+            const farAx = ax - Math.cos(angle) * farExtent;
+            const farAy = ay - Math.sin(angle) * farExtent;
+            const farBx = bx + Math.cos(angle) * farExtent;
+            const farBy = by + Math.sin(angle) * farExtent;
+
             if (
                 canPlace(ax, ay, passageR, obstacles, halfW, halfH, exclusionPoints) &&
-                canPlace(bx, by, passageR, obstacles, halfW, halfH, exclusionPoints)
+                canPlace(bx, by, passageR, obstacles, halfW, halfH, exclusionPoints) &&
+                canPlace(farAx, farAy, passageR, obstacles, halfW, halfH, exclusionPoints) &&
+                canPlace(farBx, farBy, passageR, obstacles, halfW, halfH, exclusionPoints)
             ) {
-                obstacles.push(
-                    { type: "passage", x: ax, y: ay, radius: passageR },
-                    { type: "passage", x: bx, y: by, radius: passageR },
-                );
+                for (let c = 0; c < chainLength; c++) {
+                    const offset = c * chainSpacing;
+                    obstacles.push(
+                        { type: "passage", x: ax - Math.cos(angle) * offset, y: ay - Math.sin(angle) * offset, radius: passageR },
+                        { type: "passage", x: bx + Math.cos(angle) * offset, y: by + Math.sin(angle) * offset, radius: passageR },
+                    );
+                }
                 break;
             }
         }

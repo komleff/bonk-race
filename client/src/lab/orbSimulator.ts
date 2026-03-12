@@ -12,6 +12,15 @@ import type { SandboxOrb } from "./labTypes";
 /** Длительность анимации сжатия орба при гибели (секунды). */
 const ORB_DEATH_DURATION = 0.5;
 
+/** Конфиг для tickOrbs — группирует параметры физики орбов */
+export interface OrbTickConfig {
+    collisionConfig: { correctionPercent: number; slop: number; maxCorrection: number };
+    dragK: number;
+    restitution: number;
+    passageRestitution: number;
+    spikeKill: boolean;
+}
+
 /**
  * Тик всех орбов: торможение, интеграция, столкновения со стенами/препятствиями/игроком, анимация гибели.
  * Мутирует массив `orbs` и `playerBody` на месте.
@@ -22,12 +31,9 @@ export function tickOrbs(
     playerBody: ICircleBody,
     obstacles: ArenaObject[],
     wallBounds: IWallBounds,
-    collisionConfig: { correctionPercent: number; slop: number; maxCorrection: number },
-    dragK: number,
-    restitution: number,
-    passageRestitution: number,
-    spikeKill: boolean,
+    config: OrbTickConfig,
 ): void {
+    const { collisionConfig, dragK, restitution, passageRestitution, spikeKill } = config;
     // 1. Торможение + интеграция позиции для живых орбов
     for (const orb of orbs) {
         if (!orb.alive) {

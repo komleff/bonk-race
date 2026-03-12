@@ -580,7 +580,7 @@ export const PARAM_GROUPS: GroupDef[] = [
             { label: "Трение (продольное)", key: `zone.${zone}.forwardDragMultiplier`, min: 0.01, max: 10.0, tooltip: "Множитель продольного трения в зоне." },
             { label: "Сцепление (боковое)", key: `zone.${zone}.lateralGripMultiplier`, min: 0.01, max: 10.0, tooltip: "Множитель бокового сцепления в зоне." },
             { label: "Угл. трение", key: `zone.${zone}.angularDragMultiplier`, min: 0.01, max: 10.0, tooltip: "Множитель углового трения в зоне." },
-            { label: "Зонная тяга", key: `zone.${zone}.zoneThrustN`, min: 0, max: 50000, unit: "Н", tooltip: "Постоянная сила по направлению в зоне (турбо-эффект)." },
+            { label: "Зонная тяга", key: `zone.${zone}.zoneThrustN`, min: 0, max: 100000, unit: "Н", tooltip: "Постоянная сила по направлению в зоне (турбо-эффект)." },
             { label: "Мн. тяги", key: `zone.${zone}.thrustMultiplier`, min: 0, max: 5.0, tooltip: "Множитель тяги двигателей в зоне." },
             { label: "Мн. поворота", key: `zone.${zone}.turnTorqueMultiplier`, min: 0, max: 5.0, tooltip: "Множитель крутящего момента в зоне." },
             { label: "Мн. лимита скорости", key: `zone.${zone}.speedLimitMultiplier`, min: 0.1, max: 3.0, tooltip: "Множитель лимита скорости в зоне." },
