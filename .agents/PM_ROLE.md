@@ -127,8 +127,8 @@ PM делегирует задачи разработчикам с эскала�
 1. PM создаёт задачу в Beads для Developer
 2. Developer берёт задачу (`bd update <id> --status=in_progress`)
 3. Developer реализует и создаёт PR
-4. PM запускает автоматический review
-5. PM публикует Developer-отчёт в PR через `gh pr comment` (формат ниже)
+4. PM публикует Developer-отчёт в PR через `gh pr comment` (формат ниже)
+5. PM запускает автоматический review
 6. При неудаче — эскалация на следующий уровень
 
 **Формат Developer-отчёта в PR:**
