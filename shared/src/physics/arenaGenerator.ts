@@ -68,10 +68,10 @@ export interface Arena {
 
 // ─── Константы ───────────────────────────────────────────────────────────────
 
-const BASE_PILLAR_COUNT = 6;
-const BASE_SPIKE_COUNT = 4;
+const BASE_PILLAR_COUNT = 4;
+const BASE_SPIKE_COUNT = 2;
 const BASE_PASSAGE_COUNT = 1;
-const BASE_ZONE_COUNT = 4;
+const BASE_ZONE_COUNT = 8;
 
 const PILLAR_RADIUS = 20;
 const SPIKE_RADIUS = 16;
