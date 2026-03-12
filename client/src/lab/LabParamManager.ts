@@ -223,7 +223,7 @@ export class LabParamManager {
             "orbs.maxRadius": 25,
             "orbs.minSpeed": 10,
             "orbs.maxSpeed": 50,
-            "orbs.spikeKill": true,
+            "orbs.spikeKill": false,
 
             // Физика мира
             "worldPhysics.widthM": wp.widthM ?? 800,
