@@ -68,10 +68,10 @@ export interface Arena {
 
 // ─── Константы ───────────────────────────────────────────────────────────────
 
-const BASE_PILLAR_COUNT = 6;
-const BASE_SPIKE_COUNT = 4;
-const BASE_PASSAGE_COUNT = 2;
-const BASE_ZONE_COUNT = 4;
+const BASE_PILLAR_COUNT = 4;
+const BASE_SPIKE_COUNT = 2;
+const BASE_PASSAGE_COUNT = 1;
+const BASE_ZONE_COUNT = 8;
 
 const PILLAR_RADIUS = 20;
 const SPIKE_RADIUS = 16;
@@ -87,7 +87,13 @@ const PLACEMENT_RETRIES = 30;
 const OBSTACLE_SPACING = 8;
 const SPAWN_EXCLUSION_RADIUS = 60;
 
-const ZONE_TYPES: ArenaZone["type"][] = ["ice", "mud", "turbo", "sand"];
+// Вероятности: turbo 50%, ice 30%, sand 10%, mud 10%
+const ZONE_TYPES: ArenaZone["type"][] = [
+    "turbo", "turbo", "turbo", "turbo", "turbo",
+    "ice", "ice", "ice",
+    "sand",
+    "mud",
+];
 
 // DEPRECATED: Устаревшие параметры зон — физика теперь использует пресеты SurfaceConfig из surfaceConfig.ts.
 // Эти значения по-прежнему записываются в ArenaZone.params для обратной совместимости со схемой Colyseus.
@@ -183,31 +189,38 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
 
     const obstacles: ArenaObject[] = [];
 
-    // 2. Проходы (два столба, образующие узкий зазор)
+    // 2. Проходы (цепочка 2-3 шаров поперёк трассы с зазорами для прохода)
     const passageCount = scaledCount(BASE_PASSAGE_COUNT, objectDensity);
-    const halfPassageDist = passageGap / 2 + passageR;
+    // Расстояние между центрами соседних шаров: passageGap (зазор) + 2 * passageR (радиусы)
+    const chainStep = passageGap + 2 * passageR;
 
     for (let i = 0; i < passageCount; i++) {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
-            const margin = passageR + OBSTACLE_SPACING + halfPassageDist;
+            const chainLength = 2 + Math.floor(rng.range(0, 2)); // 2 или 3
+            const totalWidth = (chainLength - 1) * chainStep;
+            const margin = passageR + OBSTACLE_SPACING + totalWidth / 2;
             const center = randomPoint(rng, halfW, halfH, margin);
-            const angle = rng.range(0, Math.PI * 2);
-            const ox = Math.cos(angle) * halfPassageDist;
-            const oy = Math.sin(angle) * halfPassageDist;
+            // Шары горизонтально (по X) поперёк трассы, игрок едет вверх (по Y)
+            const startX = center.x - totalWidth / 2;
 
-            const ax = center.x - ox;
-            const ay = center.y - oy;
-            const bx = center.x + ox;
-            const by = center.y + oy;
+            // Проверить размещение всех шаров цепочки
+            let canPlaceAll = true;
+            for (let c = 0; c < chainLength; c++) {
+                if (!canPlace(startX + c * chainStep, center.y, passageR, obstacles, halfW, halfH, exclusionPoints)) {
+                    canPlaceAll = false;
+                    break;
+                }
+            }
 
-            if (
-                canPlace(ax, ay, passageR, obstacles, halfW, halfH, exclusionPoints) &&
-                canPlace(bx, by, passageR, obstacles, halfW, halfH, exclusionPoints)
-            ) {
-                obstacles.push(
-                    { type: "passage", x: ax, y: ay, radius: passageR },
-                    { type: "passage", x: bx, y: by, radius: passageR },
-                );
+            if (canPlaceAll) {
+                for (let c = 0; c < chainLength; c++) {
+                    obstacles.push({
+                        type: "passage",
+                        x: startX + c * chainStep,
+                        y: center.y,
+                        radius: passageR,
+                    });
+                }
                 break;
             }
         }

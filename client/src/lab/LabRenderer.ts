@@ -40,7 +40,7 @@ const WALL_LINE_WIDTH = 4;
 const OBSTACLE_STYLES: Record<string, { fill: string; stroke: string }> = {
     pillar: { fill: "#555555", stroke: "#888888" },
     spike: { fill: "#cc3333", stroke: "#991111" },
-    passage: { fill: "transparent", stroke: "#666666" },
+    passage: { fill: "#999999", stroke: "#bbbbbb" },
 };
 
 const CHAR_FILL_OUTER = "#44aaff";
@@ -374,20 +374,11 @@ export class LabRenderer {
             ctx.beginPath();
             ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
 
-            if (obs.type === "passage") {
-                // Только пунктирный контур
-                ctx.setLineDash([6 / this.scale, 4 / this.scale]);
-                ctx.strokeStyle = style.stroke;
-                ctx.lineWidth = 2 / this.scale;
-                ctx.stroke();
-                ctx.setLineDash([]);
-            } else {
-                ctx.fillStyle = style.fill;
-                ctx.fill();
-                ctx.strokeStyle = style.stroke;
-                ctx.lineWidth = 2 / this.scale;
-                ctx.stroke();
-            }
+            ctx.fillStyle = style.fill;
+            ctx.fill();
+            ctx.strokeStyle = style.stroke;
+            ctx.lineWidth = 2 / this.scale;
+            ctx.stroke();
         }
     }
 

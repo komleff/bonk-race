@@ -13,9 +13,10 @@ import type { SandboxOrb } from "./labTypes";
 
 // ─── UpdateEffect ────────────────────────────────────────────────────────────
 
-interface UpdateEffect {
+export interface UpdateEffect {
     regenerateArena?: boolean;
     massChanged?: boolean;
+    newDensity?: number;
 }
 
 // ─── setNestedValue ──────────────────────────────────────────────────────────
@@ -52,17 +53,12 @@ export class LabParamManager {
     /** Внешний массив орбов — задаётся BonkLab для обновления масс в autoSyncOrbDensity */
     orbs: SandboxOrb[] = [];
 
-    /** Последняя плотность арены (обновляется при установке "arena.objectDensity") */
-    lastDensity: number;
-
     constructor(
         private slimeConfig: SlimeConfig,
         private worldPhysics: WorldPhysicsConfig,
         private zoneSurfaces: Record<string, SurfaceConfig>,
         initialMass: number,
-        lastDensity: number,
     ) {
-        this.lastDensity = lastDensity;
         this.mass = initialMass;
         this.params = {};
     }
@@ -90,8 +86,7 @@ export class LabParamManager {
         }
 
         if (key === "arena.objectDensity") {
-            this.lastDensity = value as number;
-            return { regenerateArena: true };
+            return { regenerateArena: true, newDensity: value as number };
         }
 
         // Параметры геометрии арены → перегенерация арены
@@ -152,7 +147,7 @@ export class LabParamManager {
      * Строит плоский Record<string, number|boolean|string> из разрешённого конфига баланса
      * для UI-панели. Ключи используют пути через точку, соответствующие структуре SlimeConfig.
      */
-    buildFlatParams(): Record<string, number | boolean | string> {
+    buildFlatParams(lastDensity: number): Record<string, number | boolean | string> {
         const sc = this.slimeConfig;
         const wp = this.worldPhysics;
 
@@ -213,7 +208,7 @@ export class LabParamManager {
             "massScaling.angularSpeedLimitRadps.exp": sc.massScaling.angularSpeedLimitRadps.exp ?? 0,
 
             // Генерация арены
-            "arena.objectDensity": this.lastDensity,
+            "arena.objectDensity": lastDensity,
 
             // Геометрия арены (ТЗ v1.2 §A5)
             "arena.pillarRadius": sc.geometry.baseRadiusM,
@@ -222,13 +217,13 @@ export class LabParamManager {
             "arena.passageGap": sc.geometry.baseRadiusM * 2 * 1.2,
 
             // Орбы (ТЗ v1.2 §A7)
-            "orbs.count": 25,
+            "orbs.count": 30,
             "orbs.density": this.mass / (Math.PI * sc.geometry.baseRadiusM * sc.geometry.baseRadiusM),
             "orbs.minRadius": 5,
             "orbs.maxRadius": 25,
-            "orbs.minSpeed": 0,
+            "orbs.minSpeed": 10,
             "orbs.maxSpeed": 50,
-            "orbs.spikeKill": true,
+            "orbs.spikeKill": false,
 
             // Физика мира
             "worldPhysics.widthM": wp.widthM ?? 800,
@@ -246,7 +241,7 @@ export class LabParamManager {
 
             // Следы (значения по умолчанию)
             "trail.enabled": true,
-            "trail.maxAge": 1.2,
+            "trail.maxAge": 1.0,
             "trail.baseAlpha": 0.6,
             "trail.pattern": "drift",
             "trail.primaryColor": "#44aaff",
