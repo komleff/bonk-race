@@ -217,11 +217,11 @@ export class LabParamManager {
             "arena.passageGap": sc.geometry.baseRadiusM * 2 * 1.2,
 
             // Орбы (ТЗ v1.2 §A7)
-            "orbs.count": 25,
+            "orbs.count": 30,
             "orbs.density": this.mass / (Math.PI * sc.geometry.baseRadiusM * sc.geometry.baseRadiusM),
             "orbs.minRadius": 5,
             "orbs.maxRadius": 25,
-            "orbs.minSpeed": 0,
+            "orbs.minSpeed": 10,
             "orbs.maxSpeed": 50,
             "orbs.spikeKill": true,
 
