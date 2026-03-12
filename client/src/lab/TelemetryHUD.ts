@@ -5,7 +5,8 @@
  * velocity/heading misalignment, FA state, zone, and elapsed time.
  */
 
-import type { SandboxState } from "./BonkLab";
+import type { SandboxState } from "./labTypes";
+import { formatTime, ZONE_LABELS, FA_LABELS } from "./labConstants";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -28,21 +29,6 @@ const COL_BAR_RED = "#f44336";
 
 const RAD2DEG = 180 / Math.PI;
 
-// FA state display names
-const FA_LABELS: Record<string, string> = {
-    "accel": "Разгон",
-    "brake": "Торможение",
-    "drift-correction": "Дрейф-коррекция",
-    "idle": "Холостой ход",
-};
-
-// Zone display names
-const ZONE_LABELS: Record<string, string> = {
-    "ice": "Лёд",
-    "turbo": "Турбо",
-    "mud": "Грязь",
-};
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Lerp between two colors based on ratio. Returns hex-ish for simple cases. */
@@ -50,14 +36,6 @@ function speedBarColor(ratio: number): string {
     if (ratio < 0.6) return COL_BAR_GREEN;
     if (ratio < 0.85) return COL_BAR_YELLOW;
     return COL_BAR_RED;
-}
-
-function formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    const mm = String(mins).padStart(2, "0");
-    const ss = secs.toFixed(1).padStart(4, "0");
-    return `${mm}:${ss}`;
 }
 
 // ─── TelemetryHUD ────────────────────────────────────────────────────────────
@@ -103,7 +81,7 @@ export class TelemetryHUD {
 
         const faLabel = FA_LABELS[state.faState] || state.faState;
         const zoneLabel = state.currentZone ? (ZONE_LABELS[state.currentZone] || state.currentZone) : "Нет";
-        const timeStr = formatTime(state.elapsedTime);
+        const timeStr = formatTime(state.elapsedTime, true);
 
         // ── Draw rows ──
         let rowY = y0 + PAD;

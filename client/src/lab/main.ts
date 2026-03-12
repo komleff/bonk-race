@@ -7,6 +7,7 @@ import { LabRenderer, CHAR_SCREEN_Y_RATIO, type TrailPattern } from "./LabRender
 import { TelemetryHUD } from "./TelemetryHUD";
 import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
+import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
 const root = document.getElementById("lab-root")!;
 
@@ -37,27 +38,7 @@ root.appendChild(uiContainer);
 const lab = new BonkLab(canvas);
 
 // Apply "BonkRace v0.3" preset on startup — casual arcade racing
-const STARTUP_PRESET: Record<string, number | boolean | string> = {
-    "mass": 40,
-    "geometry.inertiaFactor": 0.05,
-    "propulsion.thrustForwardN": 70000,
-    "propulsion.thrustReverseN": 30000,
-    "propulsion.thrustLateralN": 25000,
-    "propulsion.turnTorqueNm": 80000,
-    "limits.speedLimitForwardMps": 380,
-    "worldPhysics.forwardDragK": 0.05,
-    "worldPhysics.lateralGripMultiplier": 25.0,
-    "worldPhysics.angularDragK": 0.15,
-    "worldPhysics.restitution": 0.80,
-    "trail.enabled": true,
-    "trail.maxAge": 1.2,
-    "trail.baseAlpha": 0.6,
-    "trail.pattern": "drift",
-    "trail.primaryColor": "#44aaff",
-    "trail.driftColor": "#ffff00",
-    "trail.rainbowPeriodSec": 2.0,
-};
-for (const [key, val] of Object.entries(STARTUP_PRESET)) {
+for (const [key, val] of Object.entries(PRESETS[DEFAULT_PRESET_IDX].values)) {
     lab.updateParams(key, val);
 }
 

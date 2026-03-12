@@ -20,11 +20,9 @@ import {
     integratePhysics,
     resolveWallCollision,
     resolveCircleStaticCollision,
-    resolveCircleCircleCollision,
     Rng,
     DEFAULT_SURFACE_CONFIG,
     SURFACE_PRESETS,
-    clampSurfaceConfig,
     toSurfaceParams,
     toSurfaceAssistParams,
 } from "@bonk-race/shared";
@@ -42,7 +40,10 @@ import type {
     ArenaObject,
     SurfaceConfig,
 } from "@bonk-race/shared";
+import type { SandboxOrb, SandboxState } from "./labTypes";
+import { tickOrbs } from "./orbSimulator";
 import { generateArena } from "@bonk-race/shared";
+import { LabParamManager } from "./LabParamManager";
 
 import balanceJson from "../../../config/balance.json";
 
@@ -63,76 +64,6 @@ function buildZoneSurfaces(): Record<string, SurfaceConfig> {
     };
 }
 
-// ─── SandboxState ────────────────────────────────────────────────────────────
-
-export interface SandboxOrb {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    radius: number;
-    mass: number;
-    alive: boolean;
-    /** Death animation progress (0 = just died, 1 = animation done) */
-    deathProgress: number;
-}
-
-export interface SandboxState {
-    // Character
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    angle: number;
-    angularVelocity: number;
-    mass: number;
-    radius: number;
-
-    // Input
-    inputX: number;
-    inputY: number;
-    inputMagnitude: number;
-
-    // FA output (for visualization)
-    assistFx: number;
-    assistFy: number;
-    assistTorque: number;
-    faState: "accel" | "brake" | "drift-correction" | "idle";
-
-    // Correction vector (for orange arrow)
-    correctionFx: number;
-    correctionFy: number;
-
-    // Arena
-    arena: Arena;
-
-    // Orbs
-    orbs: SandboxOrb[];
-
-    // Timing
-    elapsedTime: number;
-
-    // Current zone
-    currentZone: string | null;
-
-    // Progress
-    distanceM: number;       // distance from spawn toward finish (metres)
-    progressPct: number;     // 0..1 progress from spawn to finish
-
-    // Death state (spike hit)
-    deathTimer: number;
-    deathX: number;
-    deathY: number;
-    deathDistanceM: number;  // distance at moment of death (for death message)
-    respawnCountdown: number; // таймер заморозки Go!-Go! после респауна
-    startCountdown: number;   // pre-race 3-2-1-Go! countdown timer
-
-    // Finish state
-    finished: boolean;
-    finishTime: number;      // elapsed time when crossed finish
-    bestTime: number;        // best time across runs (0 = no record yet)
-    isNewRecord: boolean;    // true if finishTime < previous bestTime
-}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -174,28 +105,6 @@ function classifyFaState(
 }
 
 /**
- * Set a deep property on a nested object using a dotted key path.
- * e.g. setNestedValue(obj, "propulsion.thrustForwardN", 5000)
- */
-const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-
-function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
-    const keys = path.split(".");
-    let current: Record<string, unknown> = obj;
-    for (let i = 0; i < keys.length - 1; i++) {
-        const key = keys[i];
-        if (UNSAFE_KEYS.has(key)) return;
-        if (current[key] === undefined || typeof current[key] !== "object") {
-            current[key] = {};
-        }
-        current = current[key] as Record<string, unknown>;
-    }
-    const finalKey = keys[keys.length - 1];
-    if (UNSAFE_KEYS.has(finalKey)) return;
-    current[finalKey] = value;
-}
-
-/**
  * Deep-clone a plain object (no functions/dates/etc).
  */
 function deepClone<T>(obj: T): T {
@@ -205,8 +114,13 @@ function deepClone<T>(obj: T): T {
 // ─── BonkLab ─────────────────────────────────────────────────────────────────
 
 export class BonkLab {
-    /** All tunable parameters, initialized from balance.json defaults */
-    params: Record<string, number | boolean | string>;
+    /** Delegated parameter manager (flat params, nested config patching, orb density sync) */
+    private paramManager: LabParamManager;
+
+    /** All tunable parameters, delegated to paramManager */
+    get params(): Record<string, number | boolean | string> {
+        return this.paramManager.params;
+    }
 
     // Stored for future LabRenderer use
     readonly canvas: HTMLCanvasElement;
@@ -271,8 +185,6 @@ export class BonkLab {
 
     // Orbs
     private orbs: SandboxOrb[] = [];
-    /** Flag: user manually set orb density (disables auto-sync) */
-    private orbDensityManual = false;
 
     /** True defaults (balance.json + BonkLab overrides, before any startup preset) */
     private readonly trueDefaults: Record<string, number | boolean | string>;
@@ -291,8 +203,17 @@ export class BonkLab {
         this.worldPhysics.widthM = 800;
         this.worldPhysics.heightM = 10130;
 
+        // Create parameter manager (owns flat params, nested config patching, orb density sync)
+        this.paramManager = new LabParamManager(
+            this.slimeConfig,
+            this.worldPhysics,
+            this.zoneSurfaces,
+            this.mass,
+            this.lastDensity,
+        );
+
         // Build flat params from balance.json defaults + overrides
-        this.params = this.buildFlatParams();
+        this.paramManager.params = this.paramManager.buildFlatParams();
         // Snapshot true defaults before any startup preset is applied
         this.trueDefaults = { ...this.params };
 
@@ -301,6 +222,8 @@ export class BonkLab {
 
         // Initialize orbs from arena
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
+        // Share orbs reference with paramManager (for autoSyncOrbDensity)
+        this.paramManager.orbs = this.orbs;
 
         // Place character at spawn
         this.x = this.arena.spawnPoint.x;
@@ -364,10 +287,12 @@ export class BonkLab {
         this.deathDistanceM = 0;
         // bestTime persists across resets (record tracking)
         // Reset orb density auto-sync (user didn't manually set it via reset)
-        this.orbDensityManual = false;
+        this.paramManager.orbDensityManual = false;
         this.restoreDestroyedObstacles();
         // Reset orbs to initial state from arena seed
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
+        // Keep paramManager's orbs reference in sync
+        this.paramManager.orbs = this.orbs;
         console.log("[BonkLab] state reset");
     }
 
@@ -404,80 +329,15 @@ export class BonkLab {
     }
 
     updateParams(key: string, value: number | boolean | string): void {
-        this.params[key] = value;
-
-        // Handle special keys
-        if (key === "mass") {
-            this.mass = value as number;
-            // Auto-sync orb density (unless user manually overrode it)
-            if (!this.orbDensityManual) {
-                this.autoSyncOrbDensity();
-            }
-            return;
+        const effect = this.paramManager.update(key, value);
+        if (effect.massChanged) {
+            this.mass = this.paramManager.mass;
         }
-
-        if (key === "geometry.baseRadiusM") {
-            setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
-            // Auto-sync orb density
-            if (!this.orbDensityManual) {
-                this.autoSyncOrbDensity();
-            }
-            return;
-        }
-
-        if (key === "arena.objectDensity") {
-            this.lastDensity = value as number;
+        // Sync lastDensity (paramManager owns it for "arena.objectDensity" key)
+        this.lastDensity = this.paramManager.lastDensity;
+        if (effect.regenerateArena) {
             this.regenerateArena(this.lastSeed, this.lastDensity);
-            return;
         }
-
-        // Arena geometry params → regenerate arena
-        if (key.startsWith("arena.")) {
-            this.regenerateArena(this.lastSeed, this.lastDensity);
-            return;
-        }
-
-        // Orb params → regenerate arena (orbs are generated from seed)
-        if (key.startsWith("orbs.")) {
-            if (key === "orbs.density") {
-                this.orbDensityManual = true;
-            }
-            if (key !== "orbs.spikeKill") {
-                this.regenerateArena(this.lastSeed, this.lastDensity);
-            }
-            return;
-        }
-
-        // Zone surface params (e.g. "zone.ice.forwardDragMultiplier")
-        if (key.startsWith("zone.")) {
-            const parts = key.split(".");
-            if (parts.length === 3) {
-                const zoneName = parts[1];
-                const field = parts[2] as keyof SurfaceConfig;
-                const surface = this.zoneSurfaces[zoneName];
-                if (surface && field in surface) {
-                    (surface as unknown as Record<string, number>)[field] = value as number;
-                    // Валидация диапазонов
-                    const clamped = clampSurfaceConfig(surface);
-                    Object.assign(surface, clamped);
-                }
-            }
-            return;
-        }
-
-        // Map worldPhysics params
-        if (key.startsWith("worldPhysics.")) {
-            const wpKey = key.replace("worldPhysics.", "");
-            setNestedValue(this.worldPhysics as unknown as Record<string, unknown>, wpKey, value);
-            // Re-generate arena when map dimensions change
-            if (wpKey === "widthM" || wpKey === "heightM") {
-                this.regenerateArena(this.lastSeed, this.lastDensity);
-            }
-            return;
-        }
-
-        // All other keys map to slimeConfig
-        setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
     }
 
     /** Distance from spawn toward finish (metres, 0 at spawn, positive going up) */
@@ -490,19 +350,6 @@ export class BonkLab {
         const total = this.arena.spawnPoint.y - this.arena.finishPoint.y;
         if (total <= 0) return 0;
         return Math.max(0, Math.min(1, this.computeDistance() / total));
-    }
-
-    /** Recalculate orb density from player mass/radius and update existing orb masses */
-    private autoSyncOrbDensity(): void {
-        const r = this.slimeConfig.geometry.baseRadiusM;
-        const density = this.mass / (Math.PI * r * r);
-        this.params["orbs.density"] = density;
-        // Update masses of existing live orbs to reflect new density
-        for (const orb of this.orbs) {
-            if (orb.alive) {
-                orb.mass = density * Math.PI * orb.radius * orb.radius;
-            }
-        }
     }
 
     getState(): SandboxState {
@@ -557,7 +404,7 @@ export class BonkLab {
 
     /** Reset orbDensityManual flag (called before batch reset/preset application) */
     resetOrbDensityManual(): void {
-        this.orbDensityManual = false;
+        this.paramManager.orbDensityManual = false;
     }
 
     setInput(x: number, y: number, magnitude: number): void {
@@ -573,10 +420,10 @@ export class BonkLab {
         // Preserve orbDensityManual across reset (regenerateArena is called from
         // updateParams paths including manual orbs.density change — reset() must
         // not clobber the flag that was just set)
-        const savedOrbDensityManual = this.orbDensityManual;
+        const savedOrbDensityManual = this.paramManager.orbDensityManual;
         // Full state reset (position, velocity, FA state, timers, orbs)
         this.reset();
-        this.orbDensityManual = savedOrbDensityManual;
+        this.paramManager.orbDensityManual = savedOrbDensityManual;
         this.bestTime = 0; // reset record — track layout changed
 
         console.log("[BonkLab] arena regenerated", { seed, density, obstacles: this.arena.obstacles.length });
@@ -921,7 +768,23 @@ export class BonkLab {
         }
 
         // ── 6. Orb physics ──
-        this.tickOrbs(dt, body, wallBounds, collisionConfig);
+        tickOrbs(
+            this.orbs,
+            dt,
+            body,
+            this.arena.obstacles,
+            wallBounds,
+            collisionConfig,
+            this.worldPhysics.forwardDragK,
+            this.worldPhysics.restitution,
+            (this.params["worldPhysics.passageRestitution"] as number) ?? this.worldPhysics.restitution * 0.5,
+            Boolean(this.params["orbs.spikeKill"] ?? true),
+        );
+        // Write player body back (orb-player collision may have changed it)
+        this.x = body.x;
+        this.y = body.y;
+        this.vx = body.vx;
+        this.vy = body.vy;
 
         // ── 7. Update elapsed time (before finish check so finishTime includes this tick) ──
         this.elapsedTime += dt;
@@ -947,222 +810,5 @@ export class BonkLab {
             }
             return; // freeze simulation
         }
-    }
-
-    /** Orb simulation: drag, integration, collisions, spike death */
-    private tickOrbs(
-        dt: number,
-        playerBody: ICircleBody,
-        wallBounds: IWallBounds,
-        collisionConfig: { correctionPercent: number; slop: number; maxCorrection: number },
-    ): void {
-        const dragK = this.worldPhysics.forwardDragK;
-        const spikeKill = this.params["orbs.spikeKill"] as boolean ?? true;
-        const restitution = this.worldPhysics.restitution;
-        const passageRestitution = (this.params["worldPhysics.passageRestitution"] as number) ?? restitution * 0.5;
-        const ORB_DEATH_DURATION = 0.5; // seconds
-
-        // 1. Drag + position integration for each live orb
-        for (const orb of this.orbs) {
-            if (!orb.alive) {
-                // Advance death animation
-                if (orb.deathProgress >= 0 && orb.deathProgress < 1) {
-                    orb.deathProgress += dt / ORB_DEATH_DURATION;
-                    if (orb.deathProgress > 1) orb.deathProgress = 1;
-                }
-                continue;
-            }
-            // Exponential drag decay (isotropic for orbs)
-            const damping = Math.exp(-dragK * dt);
-            orb.vx *= damping;
-            orb.vy *= damping;
-            // Semi-implicit Euler
-            orb.x += orb.vx * dt;
-            orb.y += orb.vy * dt;
-        }
-
-        // 2. Collision resolution (4 iterations)
-        // Build parallel arrays: orbBodies for physics, orbIndices to map back to this.orbs
-        const orbBodies: ICircleBody[] = [];
-        const orbIndices: number[] = [];
-        const spikeHit: boolean[] = [];
-        for (let idx = 0; idx < this.orbs.length; idx++) {
-            const o = this.orbs[idx];
-            if (!o.alive) continue;
-            orbBodies.push({ x: o.x, y: o.y, vx: o.vx, vy: o.vy, radius: o.radius, mass: o.mass });
-            orbIndices.push(idx);
-            spikeHit.push(false);
-        }
-
-        for (let iter = 0; iter < 4; iter++) {
-            for (let i = 0; i < orbBodies.length; i++) {
-                const ob = orbBodies[i];
-
-                // Orb-obstacle collisions
-                for (const obs of this.arena.obstacles) {
-                    if (obs.alive === false) continue; // Skip destroyed obstacles
-                    const staticObs: IStaticObstacle = {
-                        x: obs.x, y: obs.y, radius: obs.radius,
-                        type: obs.type === "passage" ? "pillar" : (obs.type as "pillar" | "spike" | "wall"),
-                    };
-                    const obsRestitution = obs.type === "passage" ? passageRestitution : restitution;
-                    const collided = resolveCircleStaticCollision(ob, staticObs, obsRestitution, collisionConfig);
-                    if (collided && obs.type === "spike") spikeHit[i] = true;
-                }
-
-                // Orb-wall collisions
-                resolveWallCollision(ob, wallBounds, restitution);
-
-                // Orb-player collision
-                resolveCircleCircleCollision(ob, playerBody, restitution, collisionConfig);
-
-                // Orb-orb collisions
-                for (let j = i + 1; j < orbBodies.length; j++) {
-                    resolveCircleCircleCollision(ob, orbBodies[j], restitution, collisionConfig);
-                }
-            }
-        }
-
-        // 3. Write collision results back to orbs + apply spike deaths
-        for (let i = 0; i < orbBodies.length; i++) {
-            const orb = this.orbs[orbIndices[i]];
-            const ob = orbBodies[i];
-            orb.x = ob.x;
-            orb.y = ob.y;
-            orb.vx = ob.vx;
-            orb.vy = ob.vy;
-
-            if (spikeKill && spikeHit[i]) {
-                orb.alive = false;
-                orb.deathProgress = 0;
-            }
-        }
-
-        // 4. Write player body back (orb-player collision may have changed it)
-        this.x = playerBody.x;
-        this.y = playerBody.y;
-        this.vx = playerBody.vx;
-        this.vy = playerBody.vy;
-    }
-
-    // ── Parameter Mapping ────────────────────────────────────────────────────
-
-    /**
-     * Builds a flat Record<string, number|boolean|string> from the resolved balance config
-     * for use by the UI panel. Keys use dotted paths matching the SlimeConfig structure.
-     */
-    private buildFlatParams(): Record<string, number | boolean | string> {
-        const sc = this.slimeConfig;
-        const wp = this.worldPhysics;
-
-        return {
-            // Mass
-            "mass": this.mass,
-
-            // Geometry
-            "geometry.baseMassKg": sc.geometry.baseMassKg,
-            "geometry.baseRadiusM": sc.geometry.baseRadiusM,
-            "geometry.inertiaFactor": sc.geometry.inertiaFactor,
-
-            // Propulsion
-            "propulsion.thrustForwardN": sc.propulsion.thrustForwardN,
-            "propulsion.thrustReverseN": sc.propulsion.thrustReverseN,
-            "propulsion.thrustLateralN": sc.propulsion.thrustLateralN,
-            "propulsion.turnTorqueNm": sc.propulsion.turnTorqueNm,
-
-            // Limits
-            "limits.speedLimitForwardMps": sc.limits.speedLimitForwardMps,
-            "limits.speedLimitReverseMps": sc.limits.speedLimitReverseMps,
-            "limits.speedLimitLateralMps": sc.limits.speedLimitLateralMps,
-            "limits.angularSpeedLimitRadps": sc.limits.angularSpeedLimitRadps,
-
-            // Assist
-            "assist.comfortableBrakingTimeS": sc.assist.comfortableBrakingTimeS,
-            "assist.angularStopTimeS": sc.assist.angularStopTimeS,
-            "assist.angularBrakeBoostFactor": sc.assist.angularBrakeBoostFactor,
-            "assist.autoBrakeMaxThrustFraction": sc.assist.autoBrakeMaxThrustFraction,
-            "assist.overspeedDampingRate": sc.assist.overspeedDampingRate,
-            "assist.yawFullDeflectionAngleRad": sc.assist.yawFullDeflectionAngleRad,
-            "assist.yawOscillationWindowFrames": sc.assist.yawOscillationWindowFrames,
-            "assist.yawOscillationSignFlipsThreshold": sc.assist.yawOscillationSignFlipsThreshold,
-            "assist.yawDampingBoostFactor": sc.assist.yawDampingBoostFactor,
-            "assist.yawCmdEps": sc.assist.yawCmdEps,
-            "assist.angularDeadzoneRad": sc.assist.angularDeadzoneRad,
-            "assist.yawRateGain": sc.assist.yawRateGain,
-            "assist.reactionTimeS": sc.assist.reactionTimeS,
-            "assist.accelTimeS": sc.assist.accelTimeS,
-            "assist.velocityErrorThreshold": sc.assist.velocityErrorThreshold,
-            "assist.inputMagnitudeThreshold": sc.assist.inputMagnitudeThreshold,
-            "assist.counterAccelEnabled": sc.assist.counterAccelEnabled,
-            "assist.counterAccelDirectionThresholdDeg": sc.assist.counterAccelDirectionThresholdDeg,
-            "assist.counterAccelTimeS": sc.assist.counterAccelTimeS,
-            "assist.counterAccelMinSpeedMps": sc.assist.counterAccelMinSpeedMps,
-
-            // Reverse zone (locked — not yet implemented)
-            "assist.reverseZoneAngleDeg": 0,
-
-            // Mass scaling exponents
-            "massScaling.thrustForwardN.exp": sc.massScaling.thrustForwardN.exp ?? 0,
-            "massScaling.thrustReverseN.exp": sc.massScaling.thrustReverseN.exp ?? 0,
-            "massScaling.thrustLateralN.exp": sc.massScaling.thrustLateralN.exp ?? 0,
-            "massScaling.turnTorqueNm.exp": sc.massScaling.turnTorqueNm.exp ?? 0,
-            "massScaling.speedLimitForwardMps.exp": sc.massScaling.speedLimitForwardMps.exp ?? 0,
-            "massScaling.speedLimitReverseMps.exp": sc.massScaling.speedLimitReverseMps.exp ?? 0,
-            "massScaling.speedLimitLateralMps.exp": sc.massScaling.speedLimitLateralMps.exp ?? 0,
-            "massScaling.angularSpeedLimitRadps.exp": sc.massScaling.angularSpeedLimitRadps.exp ?? 0,
-
-            // Arena generation
-            "arena.objectDensity": this.lastDensity,
-
-            // Arena geometry (TZ v1.2 §A5)
-            "arena.pillarRadius": sc.geometry.baseRadiusM,
-            "arena.spikeRadius": sc.geometry.baseRadiusM,
-            "arena.passageRadius": sc.geometry.baseRadiusM,
-            "arena.passageGap": sc.geometry.baseRadiusM * 2 * 1.2,
-
-            // Orbs (TZ v1.2 §A7)
-            "orbs.count": 25,
-            "orbs.density": this.mass / (Math.PI * sc.geometry.baseRadiusM * sc.geometry.baseRadiusM),
-            "orbs.minRadius": 5,
-            "orbs.maxRadius": 25,
-            "orbs.minSpeed": 0,
-            "orbs.maxSpeed": 50,
-            "orbs.spikeKill": true,
-
-            // World physics
-            "worldPhysics.widthM": wp.widthM ?? 800,
-            "worldPhysics.heightM": wp.heightM ?? 10130,
-            "worldPhysics.forwardDragK": wp.forwardDragK,
-            "worldPhysics.lateralGripMultiplier": wp.lateralGripMultiplier,
-            "worldPhysics.angularDragK": wp.angularDragK,
-            "worldPhysics.restitution": wp.restitution,
-            "worldPhysics.passageRestitution": wp.restitution * 0.5,
-
-            // Spike options
-            "spike.killOnHit": false,
-            "spike.destroyOnHit": false,
-            "spike.knockbackImpulse": 30_000,
-
-            // Trail defaults
-            "trail.enabled": true,
-            "trail.maxAge": 1.2,
-            "trail.baseAlpha": 0.6,
-            "trail.pattern": "drift",
-            "trail.primaryColor": "#44aaff",
-            "trail.driftColor": "#ffff00",
-            "trail.rainbowPeriodSec": 2.0,
-            // Zone surface overrides (from SURFACE_PRESETS defaults)
-            ...this.buildZoneParams(),
-        };
-    }
-
-    private buildZoneParams(): Record<string, number> {
-        const result: Record<string, number> = {};
-        for (const [zoneName, surface] of Object.entries(this.zoneSurfaces)) {
-            for (const [field, value] of Object.entries(surface)) {
-                result[`zone.${zoneName}.${field}`] = value as number;
-            }
-        }
-        return result;
     }
 }
