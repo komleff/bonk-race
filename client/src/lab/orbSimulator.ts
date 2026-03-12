@@ -1,21 +1,20 @@
 /**
- * orbSimulator — pure-function orb physics tick.
+ * orbSimulator — физика орбов (мутирующая функция).
  *
- * Extracted from BonkLab.tickOrbs() so that orb simulation is
- * a standalone, testable function with no class dependencies.
- * Mutates the orbs array and playerBody in place.
+ * Извлечено из BonkLab.tickOrbs(). Автономная функция без зависимости от класса.
+ * Мутирует массив orbs и playerBody на месте (in-place).
  */
 
 import type { ICircleBody, IStaticObstacle, IWallBounds, ArenaObject } from "@bonk-race/shared";
 import { resolveCircleCircleCollision, resolveCircleStaticCollision, resolveWallCollision } from "@bonk-race/shared";
 import type { SandboxOrb } from "./labTypes";
 
-/** Duration of the orb death shrink animation (seconds). */
+/** Длительность анимации сжатия орба при гибели (секунды). */
 const ORB_DEATH_DURATION = 0.5;
 
 /**
- * Tick all orbs: drag, integration, wall/obstacle/player collision, death animation.
- * Mutates `orbs` array and `playerBody` in place.
+ * Тик всех орбов: торможение, интеграция, столкновения со стенами/препятствиями/игроком, анимация гибели.
+ * Мутирует массив `orbs` и `playerBody` на месте.
  */
 export function tickOrbs(
     orbs: SandboxOrb[],
@@ -29,27 +28,27 @@ export function tickOrbs(
     passageRestitution: number,
     spikeKill: boolean,
 ): void {
-    // 1. Drag + position integration for each live orb
+    // 1. Торможение + интеграция позиции для живых орбов
     for (const orb of orbs) {
         if (!orb.alive) {
-            // Advance death animation
+            // Продвинуть анимацию гибели
             if (orb.deathProgress >= 0 && orb.deathProgress < 1) {
                 orb.deathProgress += dt / ORB_DEATH_DURATION;
                 if (orb.deathProgress > 1) orb.deathProgress = 1;
             }
             continue;
         }
-        // Exponential drag decay (isotropic for orbs)
+        // Экспоненциальное затухание (изотропное для орбов)
         const damping = Math.exp(-dragK * dt);
         orb.vx *= damping;
         orb.vy *= damping;
-        // Semi-implicit Euler
+        // Полу-неявный Эйлер
         orb.x += orb.vx * dt;
         orb.y += orb.vy * dt;
     }
 
-    // 2. Collision resolution (4 iterations)
-    // Build parallel arrays: orbBodies for physics, orbIndices to map back to orbs
+    // 2. Разрешение столкновений (4 итерации)
+    // Параллельные массивы: orbBodies для физики, orbIndices для обратного маппинга
     const orbBodies: ICircleBody[] = [];
     const orbIndices: number[] = [];
     const spikeHit: boolean[] = [];
@@ -65,9 +64,9 @@ export function tickOrbs(
         for (let i = 0; i < orbBodies.length; i++) {
             const ob = orbBodies[i];
 
-            // Orb-obstacle collisions
+            // Столкновения орб-препятствие
             for (const obs of obstacles) {
-                if (obs.alive === false) continue; // Skip destroyed obstacles
+                if (obs.alive === false) continue; // Пропустить уничтоженные
                 const staticObs: IStaticObstacle = {
                     x: obs.x, y: obs.y, radius: obs.radius,
                     type: obs.type === "passage" ? "pillar" : (obs.type as "pillar" | "spike" | "wall"),
@@ -77,20 +76,20 @@ export function tickOrbs(
                 if (collided && obs.type === "spike") spikeHit[i] = true;
             }
 
-            // Orb-wall collisions
+            // Столкновения орб-стена
             resolveWallCollision(ob, wallBounds, restitution);
 
-            // Orb-player collision
+            // Столкновение орб-игрок
             resolveCircleCircleCollision(ob, playerBody, restitution, collisionConfig);
 
-            // Orb-orb collisions
+            // Столкновения орб-орб
             for (let j = i + 1; j < orbBodies.length; j++) {
                 resolveCircleCircleCollision(ob, orbBodies[j], restitution, collisionConfig);
             }
         }
     }
 
-    // 3. Write collision results back to orbs + apply spike deaths
+    // 3. Записать результаты столкновений обратно в орбы + применить гибель от шипов
     for (let i = 0; i < orbBodies.length; i++) {
         const orb = orbs[orbIndices[i]];
         const ob = orbBodies[i];
@@ -105,6 +104,6 @@ export function tickOrbs(
         }
     }
 
-    // 4. playerBody is mutated in place by orb-player collisions above;
-    //    the caller reads updated values from playerBody after this call.
+    // 4. playerBody мутируется на месте столкновениями орб-игрок выше;
+    //    вызывающий код читает обновлённые значения из playerBody после вызова.
 }

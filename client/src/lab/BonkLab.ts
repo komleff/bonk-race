@@ -1,10 +1,10 @@
 /**
- * BonkLab — standalone sandbox orchestrator for testing physics/FA tuning.
+ * BonkLab — автономный песочница-оркестратор для тестирования физики и FA.
  *
- * Uses the EXACT same physics pipeline as the server:
+ * Использует тот же пайплайн физики, что и сервер:
  *   computeFlightAssist() → integratePhysics() → collisions
  *
- * Fully client-side, no server connection required.
+ * Полностью клиентский, соединение с сервером не требуется.
  */
 
 import type {
@@ -41,6 +41,7 @@ import type {
     SurfaceConfig,
 } from "@bonk-race/shared";
 import type { SandboxOrb, SandboxState } from "./labTypes";
+export type { SandboxOrb, SandboxState } from "./labTypes";
 import { tickOrbs } from "./orbSimulator";
 import { generateArena } from "@bonk-race/shared";
 import { LabParamManager } from "./LabParamManager";
