@@ -2,12 +2,12 @@
 
 Текущее состояние проекта и фокус работы.
 
-## Текущее состояние (11 марта 2026)
+## Текущее состояние (13 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `main` (все спринтовые ветки смержены)
+**Активная ветка:** `chore/release-v0.5.0` (релиз v0.5.0 в подготовке)
 **GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
-**Версия:** 0.4.0
+**Версия:** 0.5.0
 
 ---
 
@@ -29,7 +29,28 @@
 | #12 | `feat/countdown-and-respawn-overlay` | Countdown 3-2-1-Go! + respawn overlay | **Open — ревью** |
 | #14 | `tz-lateral-grip` | Анизотропное трение + BonkRace v0.3 пресеты | **Merged** |
 | #15 | `sprint/trails-direction-triangle` | Следы, треугольник направления, техдолг | **Merged** |
-| #17 | `feat/trail-coloring` | Trail coloring + spike knockback/destroy | **6/6 APPROVED → awaiting merge** |
+| #17 | `feat/trail-coloring` | Trail coloring + spike knockback/destroy | **Merged** |
+| #22 | `fix/bonklab-techdebt` | Tech debt + zone tuning + arena balancing | **Open — ревью** |
+
+---
+
+## PR #22 — BonkLab Tech Debt + Zone Tuning + Arena Balancing (13 марта 2026)
+
+**Ветка:** `fix/bonklab-techdebt`
+**Ревью:** Copilot (COMMENTED), Claude Opus (2x APPROVED), GPT-5 Codex (CHANGES_REQUESTED → исправлено)
+**Тесты:** 15/15 (determinism, orb-bite, arena-generation, anisotropic-friction)
+
+### Ключевые изменения
+
+| Категория | Описание |
+|-----------|---------|
+| **Рефакторинг BonkLab** | Извлечены spikeResolver.ts, OrbTickConfig; убрано dual ownership lastDensity |
+| **Баг-фиксы** | correctionPercent в static collisions, zone 1-tick lag |
+| **Тюнинг зон** | Ice (скользкий разгон), Turbo (буст x2), Mud (вязкая ловушка), Sand (занос) |
+| **Балансировка арены** | Зоны 8 (turbo 50%, ice 30%), камни 4, шипы 2, проходы 1 |
+| **Проходы** | Горизонтальные цепочки 2-3 шаров, светлый цвет #999/#bbb |
+| **Орбы** | count 30, minSpeed 10, spikeKill выкл |
+| **UI** | «Насыщенность» вместо «Плотность», zoneThrustN max 100k, trail maxAge 1.0 |
 
 ---
 
@@ -90,14 +111,15 @@
 
 | Приоритет | Файл | Проблема |
 |-----------|------|---------|
-| P2 | `client/src/lab/BonkLab.ts` | Zone modifier 1-tick application lag |
-| P2 | `client/src/lab/BonkLab.ts` | correctionPercent in static collisions always 1.0 |
+| P2 | `shared/src/surfaceConfig.ts` | Пресеты зон захардкожены — вынести в balance.json |
+| P2 | `shared/src/physics/arenaGenerator.ts` | Вероятности зон через массив — заменить на weighted random |
 | P2 | `client/src/lab/BonkLab.ts` | reverseZoneAngleDeg — не реализован |
 | P2 | `server/src/meta/routes/runs.ts:43` | operationId от клиента не используется сервером |
 | P3 | `client/src/raceMain.ts` | Isotropic drag (TODO LG-6) |
 | P3 | `shared/src/config.ts` | race.* секция не типизирована в resolveBalanceConfig() |
 | P3 | `server/src/meta/routes/ghosts.ts:78` | Guest без profiles — нет opponent ghost |
 | P3 | `client/src/lab/LabRenderer.ts` | Sub-pixel anti-aliasing blur |
+| P3 | — | Тесты не валидируют реальные preset-значения зон |
 
 ---
 
