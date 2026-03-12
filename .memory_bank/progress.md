@@ -4,11 +4,34 @@
 
 ## Контроль изменений
 
-- **last_checked_commit**: `sprint/trails-direction-triangle` merged @ 11 марта 2026
-- **Активная ветка**: `main`
+- **last_checked_commit**: PR #22 `fix/bonklab-techdebt` @ 13 марта 2026
+- **Активная ветка**: `chore/release-v0.5.0`
 - **Production:** BonkLab на GitHub Pages, основная игра не задеплоена
-- **Версия:** 0.4.0
+- **Версия:** 0.5.0
 - **GDD версия**: v4.0 (`docs/gdd/GDD-index.md`)
+
+---
+
+## Sprint: BonkLab Tech Debt + Zone Tuning + Arena Balancing (13 марта 2026) — ЗАВЕРШЁН
+
+**PR:** #22 (`fix/bonklab-techdebt`) — Open, ревью пройдено
+**Ревью:** Copilot, Claude Opus (2x), GPT-5 Codex — замечания исправлены
+**Тесты:** 15/15
+
+- [x] bonk-race-hyf: correctionPercent в static collisions
+- [x] bonk-race-ovb: Zone modifier 1-tick lag
+- [x] bonk-race-dom: lastDensity dual ownership
+- [x] bonk-race-yno: tickOrbs OrbTickConfig
+- [x] bonk-race-d63: Spike knockback → spikeResolver.ts
+- [x] bonk-race-pdi: «Плотность» → «Насыщенность»
+- [x] bonk-race-79e: Ice zone tuning (скользкий разгон)
+- [x] bonk-race-o9f: Turbo zone tuning (ракетный буст)
+- [x] bonk-race-dog: Passage visibility (цепочки, светлый цвет)
+- [x] bonk-race-s75: Sand/Mud differentiation
+- [x] bonk-race-8e8: Trail maxAge 1.0
+- [x] Балансировка арены: зоны 8, камни 4, шипы 2, проходы 1
+- [x] Вероятности зон: turbo 50%, ice 30%, sand 10%, mud 10%
+- [x] Орбы: count 30, minSpeed 10, spikeKill выкл
 
 ---
 
@@ -110,8 +133,8 @@
 | P1 | bonk-race-6nu | Серверная интеграция movementSystems (LG-5) |
 | P2 | bonk-race-sz1 | reverseZoneAngleDeg — не реализован |
 | P2 | bonk-race-qp0 | BonkLab track editor |
-| P2 | bonk-race-hyf | correctionPercent always 1.0 |
-| P2 | bonk-race-ovb | Zone modifier 1-tick lag |
+| P2 | — | Пресеты зон в balance.json (из ревью PR #22) |
+| P2 | — | Weighted random для зон (из ревью PR #22) |
 | P2 | bonk-race-lx2 | runs/submit идемпотентность |
 | P3 | bonk-race-t7p | Sub-pixel anti-aliasing blur |
 | P3 | bonk-race-col | Guest opponent ghost profiles |
