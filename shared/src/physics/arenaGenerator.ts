@@ -87,7 +87,13 @@ const PLACEMENT_RETRIES = 30;
 const OBSTACLE_SPACING = 8;
 const SPAWN_EXCLUSION_RADIUS = 60;
 
-const ZONE_TYPES: ArenaZone["type"][] = ["ice", "mud", "turbo", "turbo", "sand"];
+// Вероятности: turbo 50%, ice 30%, sand 10%, mud 10%
+const ZONE_TYPES: ArenaZone["type"][] = [
+    "turbo", "turbo", "turbo", "turbo", "turbo",
+    "ice", "ice", "ice",
+    "sand",
+    "mud",
+];
 
 // DEPRECATED: Устаревшие параметры зон — физика теперь использует пресеты SurfaceConfig из surfaceConfig.ts.
 // Эти значения по-прежнему записываются в ArenaZone.params для обратной совместимости со схемой Colyseus.
