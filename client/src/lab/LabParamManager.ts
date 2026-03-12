@@ -1,7 +1,7 @@
 /**
  * LabParamManager — управление параметрами, извлечённое из BonkLab.
  *
- * Обрабатывает обновления flat-параметров, патчинг вложенных конфигов,
+ * Обрабатывает обновления плоских параметров, применение изменений вложенных конфигов,
  * авто-синхронизацию плотности орбов и построение начальной карты параметров.
  *
  * Однонаправленная зависимость: BonkLab → LabParamManager (не наоборот).
@@ -138,7 +138,7 @@ export class LabParamManager {
             return {};
         }
 
-        // spike.* и trail.* хранятся только в flat-параметрах, не в slimeConfig
+        // spike.* и trail.* хранятся только в плоских параметрах, не в slimeConfig
         if (key.startsWith("spike.") || key.startsWith("trail.")) {
             return {};
         }
@@ -149,8 +149,8 @@ export class LabParamManager {
     }
 
     /**
-     * Строит flat Record<string, number|boolean|string> из resolved balance config
-     * для UI-панели. Ключи используют dotted-пути, соответствующие структуре SlimeConfig.
+     * Строит плоский Record<string, number|boolean|string> из разрешённого конфига баланса
+     * для UI-панели. Ключи используют пути через точку, соответствующие структуре SlimeConfig.
      */
     buildFlatParams(): Record<string, number | boolean | string> {
         const sc = this.slimeConfig;

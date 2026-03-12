@@ -2,7 +2,7 @@
  * orbSimulator — физика орбов (мутирующая функция).
  *
  * Извлечено из BonkLab.tickOrbs(). Автономная функция без зависимости от класса.
- * Мутирует массив orbs и playerBody на месте (in-place).
+ * Мутирует массив orbs и playerBody на месте.
  */
 
 import type { ICircleBody, IStaticObstacle, IWallBounds, ArenaObject } from "@bonk-race/shared";
