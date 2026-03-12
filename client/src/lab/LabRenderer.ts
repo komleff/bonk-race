@@ -374,20 +374,11 @@ export class LabRenderer {
             ctx.beginPath();
             ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
 
-            if (obs.type === "passage") {
-                // Только пунктирный контур
-                ctx.setLineDash([6 / this.scale, 4 / this.scale]);
-                ctx.strokeStyle = style.stroke;
-                ctx.lineWidth = 2 / this.scale;
-                ctx.stroke();
-                ctx.setLineDash([]);
-            } else {
-                ctx.fillStyle = style.fill;
-                ctx.fill();
-                ctx.strokeStyle = style.stroke;
-                ctx.lineWidth = 2 / this.scale;
-                ctx.stroke();
-            }
+            ctx.fillStyle = style.fill;
+            ctx.fill();
+            ctx.strokeStyle = style.stroke;
+            ctx.lineWidth = 2 / this.scale;
+            ctx.stroke();
         }
     }
 
