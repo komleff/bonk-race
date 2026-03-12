@@ -1,10 +1,10 @@
 /**
- * LabParamManager — extracted parameter management logic from BonkLab.
+ * LabParamManager — управление параметрами, извлечённое из BonkLab.
  *
- * Handles flat param updates, nested config patching, auto-sync of orb density,
- * and building the initial flat params map from resolved balance configs.
+ * Обрабатывает обновления плоских параметров, применение изменений вложенных конфигов,
+ * авто-синхронизацию плотности орбов и построение начальной карты параметров.
  *
- * One-way dependency: BonkLab → LabParamManager (never the reverse).
+ * Однонаправленная зависимость: BonkLab → LabParamManager (не наоборот).
  */
 
 import type { SlimeConfig, WorldPhysicsConfig, SurfaceConfig } from "@bonk-race/shared";
@@ -13,7 +13,7 @@ import type { SandboxOrb } from "./labTypes";
 
 // ─── UpdateEffect ────────────────────────────────────────────────────────────
 
-export interface UpdateEffect {
+interface UpdateEffect {
     regenerateArena?: boolean;
     massChanged?: boolean;
 }
@@ -21,8 +21,8 @@ export interface UpdateEffect {
 // ─── setNestedValue ──────────────────────────────────────────────────────────
 
 /**
- * Set a deep property on a nested object using a dotted key path.
- * e.g. setNestedValue(obj, "propulsion.thrustForwardN", 5000)
+ * Установить глубокое свойство объекта по dotted-пути.
+ * Пример: setNestedValue(obj, "propulsion.thrustForwardN", 5000)
  */
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -49,10 +49,10 @@ export class LabParamManager {
     mass: number;
     orbDensityManual = false;
 
-    /** External orbs array — set by BonkLab so autoSyncOrbDensity can update masses */
+    /** Внешний массив орбов — задаётся BonkLab для обновления масс в autoSyncOrbDensity */
     orbs: SandboxOrb[] = [];
 
-    /** Last arena density (updated when "arena.objectDensity" is set) */
+    /** Последняя плотность арены (обновляется при установке "arena.objectDensity") */
     lastDensity: number;
 
     constructor(
@@ -70,10 +70,10 @@ export class LabParamManager {
     update(key: string, value: number | boolean | string): UpdateEffect {
         this.params[key] = value;
 
-        // Handle special keys
+        // Обработка специальных ключей
         if (key === "mass") {
             this.mass = value as number;
-            // Auto-sync orb density (unless user manually overrode it)
+            // Авто-синхронизация плотности орбов (если пользователь не задал вручную)
             if (!this.orbDensityManual) {
                 this.autoSyncOrbDensity();
             }
@@ -82,7 +82,7 @@ export class LabParamManager {
 
         if (key === "geometry.baseRadiusM") {
             setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
-            // Auto-sync orb density
+            // Авто-синхронизация плотности орбов
             if (!this.orbDensityManual) {
                 this.autoSyncOrbDensity();
             }
@@ -94,12 +94,12 @@ export class LabParamManager {
             return { regenerateArena: true };
         }
 
-        // Arena geometry params → regenerate arena
+        // Параметры геометрии арены → перегенерация арены
         if (key.startsWith("arena.")) {
             return { regenerateArena: true };
         }
 
-        // Orb params → regenerate arena (orbs are generated from seed)
+        // Параметры орбов → перегенерация арены (орбы генерируются из seed)
         if (key.startsWith("orbs.")) {
             if (key === "orbs.density") {
                 this.orbDensityManual = true;
@@ -110,7 +110,7 @@ export class LabParamManager {
             return {};
         }
 
-        // Zone surface params (e.g. "zone.ice.forwardDragMultiplier")
+        // Параметры зонных поверхностей (напр. "zone.ice.forwardDragMultiplier")
         if (key.startsWith("zone.")) {
             const parts = key.split(".");
             if (parts.length === 3) {
@@ -127,57 +127,57 @@ export class LabParamManager {
             return {};
         }
 
-        // Map worldPhysics params
+        // Параметры worldPhysics
         if (key.startsWith("worldPhysics.")) {
             const wpKey = key.replace("worldPhysics.", "");
             setNestedValue(this.worldPhysics as unknown as Record<string, unknown>, wpKey, value);
-            // Re-generate arena when map dimensions change
+            // Перегенерация арены при изменении размеров карты
             if (wpKey === "widthM" || wpKey === "heightM") {
                 return { regenerateArena: true };
             }
             return {};
         }
 
-        // spike.* and trail.* are stored in flat params only, not in slimeConfig
+        // spike.* и trail.* хранятся только в плоских параметрах, не в slimeConfig
         if (key.startsWith("spike.") || key.startsWith("trail.")) {
             return {};
         }
 
-        // All other keys map to slimeConfig
+        // Все остальные ключи маппятся на slimeConfig
         setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
         return {};
     }
 
     /**
-     * Builds a flat Record<string, number|boolean|string> from the resolved balance config
-     * for use by the UI panel. Keys use dotted paths matching the SlimeConfig structure.
+     * Строит плоский Record<string, number|boolean|string> из разрешённого конфига баланса
+     * для UI-панели. Ключи используют пути через точку, соответствующие структуре SlimeConfig.
      */
     buildFlatParams(): Record<string, number | boolean | string> {
         const sc = this.slimeConfig;
         const wp = this.worldPhysics;
 
         return {
-            // Mass
+            // Масса
             "mass": this.mass,
 
-            // Geometry
+            // Геометрия
             "geometry.baseMassKg": sc.geometry.baseMassKg,
             "geometry.baseRadiusM": sc.geometry.baseRadiusM,
             "geometry.inertiaFactor": sc.geometry.inertiaFactor,
 
-            // Propulsion
+            // Тяга
             "propulsion.thrustForwardN": sc.propulsion.thrustForwardN,
             "propulsion.thrustReverseN": sc.propulsion.thrustReverseN,
             "propulsion.thrustLateralN": sc.propulsion.thrustLateralN,
             "propulsion.turnTorqueNm": sc.propulsion.turnTorqueNm,
 
-            // Limits
+            // Лимиты
             "limits.speedLimitForwardMps": sc.limits.speedLimitForwardMps,
             "limits.speedLimitReverseMps": sc.limits.speedLimitReverseMps,
             "limits.speedLimitLateralMps": sc.limits.speedLimitLateralMps,
             "limits.angularSpeedLimitRadps": sc.limits.angularSpeedLimitRadps,
 
-            // Assist
+            // Ассист
             "assist.comfortableBrakingTimeS": sc.assist.comfortableBrakingTimeS,
             "assist.angularStopTimeS": sc.assist.angularStopTimeS,
             "assist.angularBrakeBoostFactor": sc.assist.angularBrakeBoostFactor,
@@ -199,10 +199,10 @@ export class LabParamManager {
             "assist.counterAccelTimeS": sc.assist.counterAccelTimeS,
             "assist.counterAccelMinSpeedMps": sc.assist.counterAccelMinSpeedMps,
 
-            // Reverse zone (locked — not yet implemented)
+            // Зона реверса (заблокировано — не реализовано)
             "assist.reverseZoneAngleDeg": 0,
 
-            // Mass scaling exponents
+            // Экспоненты масштабирования по массе
             "massScaling.thrustForwardN.exp": sc.massScaling.thrustForwardN.exp ?? 0,
             "massScaling.thrustReverseN.exp": sc.massScaling.thrustReverseN.exp ?? 0,
             "massScaling.thrustLateralN.exp": sc.massScaling.thrustLateralN.exp ?? 0,
@@ -212,16 +212,16 @@ export class LabParamManager {
             "massScaling.speedLimitLateralMps.exp": sc.massScaling.speedLimitLateralMps.exp ?? 0,
             "massScaling.angularSpeedLimitRadps.exp": sc.massScaling.angularSpeedLimitRadps.exp ?? 0,
 
-            // Arena generation
+            // Генерация арены
             "arena.objectDensity": this.lastDensity,
 
-            // Arena geometry (TZ v1.2 §A5)
+            // Геометрия арены (ТЗ v1.2 §A5)
             "arena.pillarRadius": sc.geometry.baseRadiusM,
             "arena.spikeRadius": sc.geometry.baseRadiusM,
             "arena.passageRadius": sc.geometry.baseRadiusM,
             "arena.passageGap": sc.geometry.baseRadiusM * 2 * 1.2,
 
-            // Orbs (TZ v1.2 §A7)
+            // Орбы (ТЗ v1.2 §A7)
             "orbs.count": 25,
             "orbs.density": this.mass / (Math.PI * sc.geometry.baseRadiusM * sc.geometry.baseRadiusM),
             "orbs.minRadius": 5,
@@ -230,7 +230,7 @@ export class LabParamManager {
             "orbs.maxSpeed": 50,
             "orbs.spikeKill": true,
 
-            // World physics
+            // Физика мира
             "worldPhysics.widthM": wp.widthM ?? 800,
             "worldPhysics.heightM": wp.heightM ?? 10130,
             "worldPhysics.forwardDragK": wp.forwardDragK,
@@ -239,12 +239,12 @@ export class LabParamManager {
             "worldPhysics.restitution": wp.restitution,
             "worldPhysics.passageRestitution": wp.restitution * 0.5,
 
-            // Spike options
+            // Параметры шипов
             "spike.killOnHit": false,
             "spike.destroyOnHit": false,
             "spike.knockbackImpulse": 30_000,
 
-            // Trail defaults
+            // Следы (значения по умолчанию)
             "trail.enabled": true,
             "trail.maxAge": 1.2,
             "trail.baseAlpha": 0.6,
@@ -252,7 +252,7 @@ export class LabParamManager {
             "trail.primaryColor": "#44aaff",
             "trail.driftColor": "#ffff00",
             "trail.rainbowPeriodSec": 2.0,
-            // Zone surface overrides (from SURFACE_PRESETS defaults)
+            // Переопределения зонных поверхностей (из SURFACE_PRESETS по умолчанию)
             ...this.buildZoneParams(),
         };
     }
@@ -267,12 +267,12 @@ export class LabParamManager {
         return result;
     }
 
-    /** Recalculate orb density from player mass/radius and update existing orb masses */
+    /** Пересчитать плотность орбов из массы/радиуса игрока и обновить массы существующих орбов */
     private autoSyncOrbDensity(): void {
         const r = this.slimeConfig.geometry.baseRadiusM;
         const density = this.mass / (Math.PI * r * r);
         this.params["orbs.density"] = density;
-        // Update masses of existing live orbs to reflect new density
+        // Обновить массы живых орбов согласно новой плотности
         for (const orb of this.orbs) {
             if (orb.alive) {
                 orb.mass = density * Math.PI * orb.radius * orb.radius;

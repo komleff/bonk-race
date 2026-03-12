@@ -1,8 +1,8 @@
 /**
- * labTypes — shared type definitions for BonkLab sandbox.
+ * labTypes — общие типы для песочницы BonkLab.
  *
- * Extracted from BonkLab.ts so that renderers and HUDs can import
- * lightweight types without pulling in the full orchestrator module.
+ * Извлечены из BonkLab.ts, чтобы модули отрисовки и панели интерфейса могли
+ * импортировать облегчённые типы без подключения всего модуля-оркестратора.
  */
 
 import type { Arena } from "@bonk-race/shared";
@@ -17,14 +17,14 @@ export interface SandboxOrb {
     radius: number;
     mass: number;
     alive: boolean;
-    /** Death animation progress (0 = just died, 1 = animation done) */
+    /** Прогресс анимации гибели (0 = только что погиб, 1 = анимация завершена) */
     deathProgress: number;
 }
 
 // ─── SandboxState ────────────────────────────────────────────────────────────
 
 export interface SandboxState {
-    // Character
+    // Персонаж
     x: number;
     y: number;
     vx: number;
@@ -34,48 +34,48 @@ export interface SandboxState {
     mass: number;
     radius: number;
 
-    // Input
+    // Ввод
     inputX: number;
     inputY: number;
     inputMagnitude: number;
 
-    // FA output (for visualization)
+    // Выход FA (для визуализации)
     assistFx: number;
     assistFy: number;
     assistTorque: number;
     faState: "accel" | "brake" | "drift-correction" | "idle";
 
-    // Correction vector (for orange arrow)
+    // Вектор коррекции (для оранжевой стрелки)
     correctionFx: number;
     correctionFy: number;
 
-    // Arena
+    // Арена
     arena: Arena;
 
-    // Orbs
+    // Орбы
     orbs: SandboxOrb[];
 
-    // Timing
+    // Время
     elapsedTime: number;
 
-    // Current zone
+    // Текущая зона
     currentZone: string | null;
 
-    // Progress
-    distanceM: number;       // distance from spawn toward finish (metres)
-    progressPct: number;     // 0..1 progress from spawn to finish
+    // Прогресс
+    distanceM: number;       // расстояние от спавна к финишу (метры)
+    progressPct: number;     // 0..1 прогресс от спавна до финиша
 
-    // Death state (spike hit)
+    // Состояние смерти (удар шипом)
     deathTimer: number;
     deathX: number;
     deathY: number;
-    deathDistanceM: number;  // distance at moment of death (for death message)
+    deathDistanceM: number;  // расстояние в момент гибели (для сообщения)
     respawnCountdown: number; // таймер заморозки Go!-Go! после респауна
-    startCountdown: number;   // pre-race 3-2-1-Go! countdown timer
+    startCountdown: number;   // таймер обратного отсчёта 3-2-1-Go!
 
-    // Finish state
+    // Состояние финиша
     finished: boolean;
-    finishTime: number;      // elapsed time when crossed finish
-    bestTime: number;        // best time across runs (0 = no record yet)
-    isNewRecord: boolean;    // true if finishTime < previous bestTime
+    finishTime: number;      // время прохождения при пересечении финиша
+    bestTime: number;        // лучшее время за все попытки (0 = нет рекорда)
+    isNewRecord: boolean;    // true если finishTime < предыдущего bestTime
 }

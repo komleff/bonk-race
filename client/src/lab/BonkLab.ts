@@ -1,10 +1,10 @@
 /**
- * BonkLab — standalone sandbox orchestrator for testing physics/FA tuning.
+ * BonkLab — автономный оркестратор-песочница для тестирования физики и FA.
  *
- * Uses the EXACT same physics pipeline as the server:
+ * Использует тот же конвейер физики, что и сервер:
  *   computeFlightAssist() → integratePhysics() → collisions
  *
- * Fully client-side, no server connection required.
+ * Полностью клиентский, соединение с сервером не требуется.
  */
 
 import type {
@@ -41,6 +41,7 @@ import type {
     SurfaceConfig,
 } from "@bonk-race/shared";
 import type { SandboxOrb, SandboxState } from "./labTypes";
+export type { SandboxOrb, SandboxState } from "./labTypes";
 import { tickOrbs } from "./orbSimulator";
 import { generateArena } from "@bonk-race/shared";
 import { LabParamManager } from "./LabParamManager";
@@ -49,12 +50,12 @@ import balanceJson from "../../../config/balance.json";
 
 /**
  * Максимальная скорость после knockback (м/с).
- * Выбрано чтобы блоб не телепортировался через стены при extreme impulse.
+ * Выбрано чтобы блоб не телепортировался через стены при экстремальном импульсе.
  */
 const MAX_KNOCKBACK_SPEED = 2000;
 
-// ─── Zone name → SurfaceConfig mapping for ArenaZone.type strings ───────────
-// Mutable at runtime so LabPanel zone sliders can override presets.
+// ─── Соответствие имени зоны → SurfaceConfig для строк ArenaZone.type ────────
+// Мутабельный во время выполнения, чтобы ползунки зон LabPanel могли переопределять пресеты.
 function buildZoneSurfaces(): Record<string, SurfaceConfig> {
     return {
         ice: { ...SURFACE_PRESETS.ice },
@@ -65,13 +66,13 @@ function buildZoneSurfaces(): Record<string, SurfaceConfig> {
 }
 
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Вспомогательные функции ─────────────────────────────────────────────────
 
-const FIXED_DT = 1 / 60; // 16.7ms — 60 Hz, smooth rendering (server runs 30 Hz)
+const FIXED_DT = 1 / 60; // 16.7мс — 60 Гц, плавный рендеринг (сервер работает на 30 Гц)
 // DEATH_FREEZE_S, COUNTDOWN_TOTAL_S, RESPAWN_GO_TOTAL_S — импортируются из @bonk-race/shared
 
 /**
- * Determines the FA state label based on input and velocity error.
+ * Определяет метку состояния FA на основе ввода и ошибки скорости.
  */
 function classifyFaState(
     hasInput: boolean,
@@ -91,11 +92,11 @@ function classifyFaState(
 
     if (forceMag < 0.01) return "idle";
 
-    // Detect drift correction: correction vector is >40% of total force
+    // Обнаружение коррекции сноса: вектор коррекции составляет >40% от общей силы
     const corrMag = Math.hypot(correctionFx, correctionFy);
     if (corrMag > forceMag * 0.4 && speed > 5) return "drift-correction";
 
-    // Check if force opposes velocity (braking)
+    // Проверка, противодействует ли сила скорости (торможение)
     if (speed > 1) {
         const dot = (faOutput.assistFx * vx + faOutput.assistFy * vy) / (forceMag * speed);
         if (dot < -0.3) return "brake";
@@ -105,7 +106,7 @@ function classifyFaState(
 }
 
 /**
- * Deep-clone a plain object (no functions/dates/etc).
+ * Глубокое клонирование простого объекта (без функций/дат и т.п.).
  */
 function deepClone<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj));
@@ -114,60 +115,60 @@ function deepClone<T>(obj: T): T {
 // ─── BonkLab ─────────────────────────────────────────────────────────────────
 
 export class BonkLab {
-    /** Delegated parameter manager (flat params, nested config patching, orb density sync) */
+    /** Делегированный менеджер параметров (плоские параметры, патчинг вложенных конфигов, синхронизация плотности орбов) */
     private paramManager: LabParamManager;
 
-    /** All tunable parameters, delegated to paramManager */
+    /** Все настраиваемые параметры, делегированные paramManager */
     get params(): Record<string, number | boolean | string> {
         return this.paramManager.params;
     }
 
-    // Stored for future LabRenderer use
+    // Сохранено для будущего использования в LabRenderer
     readonly canvas: HTMLCanvasElement;
     private running = false;
     private rafId = 0;
     private accumulator = 0;
     private lastTimestamp = 0;
 
-    // Physics state
+    // Состояние физики
     private slimeConfig: SlimeConfig;
     private worldPhysics: WorldPhysicsConfig;
     private arena: Arena;
     private mass: number;
     private yawSignHistory: number[] = [];
 
-    // Position / velocity
+    // Позиция / скорость
     private x = 0;
     private y = 0;
     private vx = 0;
     private vy = 0;
-    private angle = -Math.PI / 2; // face up (toward finish)
+    private angle = -Math.PI / 2; // направлен вверх (к финишу)
     private angVel = 0;
 
-    // Input
+    // Ввод
     private inputX = 0;
     private inputY = 0;
     private inputMagnitude = 0;
 
-    // Last FA output (for visualization)
+    // Последний результат FA (для визуализации)
     private lastFaOutput: IFlightAssistOutput = { assistFx: 0, assistFy: 0, assistTorque: 0 };
     private lastFaState: SandboxState["faState"] = "idle";
     private correctionFx = 0;
     private correctionFy = 0;
 
-    // Timing
+    // Время
     private elapsedTime = 0;
 
-    // Zone
+    // Зона
     private currentZone: string | null = null;
     private currentSurface: SurfaceConfig = DEFAULT_SURFACE_CONFIG;
     private zoneSurfaces: Record<string, SurfaceConfig> = buildZoneSurfaces();
 
-    // Arena generation state (remembered for re-generation on size change)
+    // Состояние генерации арены (сохраняется для повторной генерации при изменении размера)
     private lastSeed = 42;
     private lastDensity = 5.0;
 
-    // Death state (spike hit — GDD §4.2: instant defeat → restart)
+    // Состояние смерти (попадание на шип — GDD §4.2: мгновенное поражение → рестарт)
     private deathTimer = 0;
     private deathX = 0;
     private deathY = 0;
@@ -177,33 +178,33 @@ export class BonkLab {
     /** Стартовый обратный отсчёт 3-2-1-Go! */
     private startCountdown = 0;
 
-    // Finish state
+    // Состояние финиша
     private finished = false;
     private finishTime = 0;
     private bestTime = 0;
     private isNewRecord = false;
 
-    // Orbs
+    // Орбы
     private orbs: SandboxOrb[] = [];
 
-    /** True defaults (balance.json + BonkLab overrides, before any startup preset) */
+    /** Истинные значения по умолчанию (balance.json + переопределения BonkLab, до применения стартового пресета) */
     private readonly trueDefaults: Record<string, number | boolean | string>;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
 
-        // Resolve balance.json through the shared config parser
+        // Разрешить balance.json через общий парсер конфигурации
         const resolved = resolveBalanceConfig(balanceJson);
         this.slimeConfig = deepClone(resolved.slimeConfigs.base);
         this.worldPhysics = deepClone(resolved.worldPhysics);
         this.mass = resolved.slime.initialMass;
 
-        // BonkLab-override defaults (TZ v1.2 §A1)
+        // Переопределения по умолчанию для BonkLab (TZ v1.2 §A1)
         this.slimeConfig.geometry.baseRadiusM = 20;
         this.worldPhysics.widthM = 800;
         this.worldPhysics.heightM = 10130;
 
-        // Create parameter manager (owns flat params, nested config patching, orb density sync)
+        // Создать менеджер параметров (владеет плоскими параметрами, патчингом вложенных конфигов, синхронизацией плотности орбов)
         this.paramManager = new LabParamManager(
             this.slimeConfig,
             this.worldPhysics,
@@ -212,20 +213,20 @@ export class BonkLab {
             this.lastDensity,
         );
 
-        // Build flat params from balance.json defaults + overrides
+        // Построить плоские параметры из значений по умолчанию balance.json + переопределения
         this.paramManager.params = this.paramManager.buildFlatParams();
-        // Snapshot true defaults before any startup preset is applied
+        // Сохранить снимок истинных значений по умолчанию до применения стартового пресета
         this.trueDefaults = { ...this.params };
 
-        // Generate initial arena (use lastDensity to match UI default)
+        // Сгенерировать начальную арену (использовать lastDensity для соответствия значению UI по умолчанию)
         this.arena = this.buildArena(42, this.lastDensity);
 
-        // Initialize orbs from arena
+        // Инициализировать орбы из арены
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
-        // Share orbs reference with paramManager (for autoSyncOrbDensity)
+        // Передать ссылку на орбы в paramManager (для autoSyncOrbDensity)
         this.paramManager.orbs = this.orbs;
 
-        // Place character at spawn
+        // Поместить персонажа на точку спауна
         this.x = this.arena.spawnPoint.x;
         this.y = this.arena.spawnPoint.y;
 
@@ -238,7 +239,7 @@ export class BonkLab {
         });
     }
 
-    // ── Public API ───────────────────────────────────────────────────────────
+    // ── Публичный API ────────────────────────────────────────────────────────
 
     start(): void {
         if (this.running) return;
@@ -262,7 +263,7 @@ export class BonkLab {
         this.y = this.arena.spawnPoint.y;
         this.vx = 0;
         this.vy = 0;
-        this.angle = -Math.PI / 2; // face up (toward finish)
+        this.angle = -Math.PI / 2; // направлен вверх (к финишу)
         this.angVel = 0;
         this.elapsedTime = 0;
         this.accumulator = 0;
@@ -285,25 +286,25 @@ export class BonkLab {
         this.finishTime = 0;
         this.isNewRecord = false;
         this.deathDistanceM = 0;
-        // bestTime persists across resets (record tracking)
-        // Reset orb density auto-sync (user didn't manually set it via reset)
+        // bestTime сохраняется между сбросами (отслеживание рекорда)
+        // Сбросить автосинхронизацию плотности орбов (пользователь не устанавливал вручную через сброс)
         this.paramManager.orbDensityManual = false;
         this.restoreDestroyedObstacles();
-        // Reset orbs to initial state from arena seed
+        // Сбросить орбы в начальное состояние из сида арены
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
-        // Keep paramManager's orbs reference in sync
+        // Поддерживать синхронизацию ссылки на орбы в paramManager
         this.paramManager.orbs = this.orbs;
         console.log("[BonkLab] state reset");
     }
 
-    /** Восстанавливает уничтоженные шипы (после reset/respawn) */
+    /** Восстанавливает уничтоженные шипы (после сброса/респауна) */
     private restoreDestroyedObstacles(): void {
         for (const obs of this.arena.obstacles) {
             if (obs.alive === false) obs.alive = true;
         }
     }
 
-    /** Build an Arena from seed+density+current params */
+    /** Построить арену из сида, плотности и текущих параметров */
     private buildArena(seed: number, density: number): Arena {
         const rng = new Rng(seed);
         const baseRadius = this.slimeConfig.geometry.baseRadiusM;
@@ -333,19 +334,19 @@ export class BonkLab {
         if (effect.massChanged) {
             this.mass = this.paramManager.mass;
         }
-        // Sync lastDensity (paramManager owns it for "arena.objectDensity" key)
+        // Синхронизировать lastDensity (paramManager владеет им для ключа "arena.objectDensity")
         this.lastDensity = this.paramManager.lastDensity;
         if (effect.regenerateArena) {
             this.regenerateArena(this.lastSeed, this.lastDensity);
         }
     }
 
-    /** Distance from spawn toward finish (metres, 0 at spawn, positive going up) */
+    /** Расстояние от точки спауна до финиша (метры, 0 на спауне, положительное вверх) */
     private computeDistance(): number {
         return Math.max(0, this.arena.spawnPoint.y - this.y);
     }
 
-    /** Progress from spawn to finish as 0..1 */
+    /** Прогресс от спауна до финиша как 0..1 */
     private computeProgress(): number {
         const total = this.arena.spawnPoint.y - this.arena.finishPoint.y;
         if (total <= 0) return 0;
@@ -397,12 +398,12 @@ export class BonkLab {
         };
     }
 
-    /** Returns true defaults (balance.json + BonkLab overrides, before startup preset) */
+    /** Возвращает истинные значения по умолчанию (balance.json + переопределения BonkLab, до стартового пресета) */
     getDefaults(): Record<string, number | boolean | string> {
         return this.trueDefaults;
     }
 
-    /** Reset orbDensityManual flag (called before batch reset/preset application) */
+    /** Сбросить флаг orbDensityManual (вызывается перед пакетным сбросом/применением пресета) */
     resetOrbDensityManual(): void {
         this.paramManager.orbDensityManual = false;
     }
@@ -417,19 +418,19 @@ export class BonkLab {
         this.lastSeed = seed;
         this.lastDensity = density;
         this.arena = this.buildArena(seed, density);
-        // Preserve orbDensityManual across reset (regenerateArena is called from
-        // updateParams paths including manual orbs.density change — reset() must
-        // not clobber the flag that was just set)
+        // Сохранить orbDensityManual при сбросе (regenerateArena вызывается из
+        // путей updateParams, включая ручное изменение orbs.density — reset() не
+        // должен затирать только что установленный флаг)
         const savedOrbDensityManual = this.paramManager.orbDensityManual;
-        // Full state reset (position, velocity, FA state, timers, orbs)
+        // Полный сброс состояния (позиция, скорость, состояние FA, таймеры, орбы)
         this.reset();
         this.paramManager.orbDensityManual = savedOrbDensityManual;
-        this.bestTime = 0; // reset record — track layout changed
+        this.bestTime = 0; // сбросить рекорд — раскладка трассы изменилась
 
         console.log("[BonkLab] arena regenerated", { seed, density, obstacles: this.arena.obstacles.length });
     }
 
-    // ── Simulation Loop (private) ────────────────────────────────────────────
+    // ── Цикл симуляции (приватный) ───────────────────────────────────────────
 
     private loop(timestamp: number): void {
         if (!this.running) return;
@@ -438,11 +439,11 @@ export class BonkLab {
             this.lastTimestamp = timestamp;
         }
 
-        const frameDt = Math.min((timestamp - this.lastTimestamp) / 1000, 0.1); // cap at 100ms
+        const frameDt = Math.min((timestamp - this.lastTimestamp) / 1000, 0.1); // ограничение в 100мс
         this.lastTimestamp = timestamp;
         this.accumulator += frameDt;
 
-        // Fixed timestep simulation at 60 Hz
+        // Симуляция с фиксированным шагом на 60 Гц
         while (this.accumulator >= FIXED_DT) {
             this.tick(FIXED_DT);
             this.accumulator -= FIXED_DT;
@@ -457,7 +458,7 @@ export class BonkLab {
             this.startCountdown -= dt;
             if (this.startCountdown <= 0) {
                 this.startCountdown = 0;
-                // Сбросить stale input чтобы персонаж не двигался после Go!
+                // Сбросить устаревший ввод, чтобы персонаж не двигался после Go!
                 this.inputX = 0;
                 this.inputY = 0;
                 this.inputMagnitude = 0;
@@ -465,10 +466,10 @@ export class BonkLab {
             return;
         }
 
-        // Finished — simulation frozen until restart
+        // Финиш — симуляция заморожена до перезапуска
         if (this.finished) return;
 
-        // Death freeze — wait before respawn (GDD §4.2)
+        // Заморозка смерти — ожидание перед респауном (GDD §4.2)
         if (this.deathTimer > 0) {
             this.deathTimer -= dt;
             if (this.deathTimer <= 0) {
@@ -477,11 +478,11 @@ export class BonkLab {
                 this.y = this.arena.spawnPoint.y;
                 this.vx = 0;
                 this.vy = 0;
-                this.angle = -Math.PI / 2; // face up (toward finish)
+                this.angle = -Math.PI / 2; // направлен вверх (к финишу)
                 this.angVel = 0;
-                // Reset stopwatch on respawn (TZ v1.2 §A4)
+                // Сбросить секундомер при респауне (TZ v1.2 §A4)
                 this.elapsedTime = 0;
-                // Clear FA state to prevent stale oscillation damping after respawn
+                // Очистить состояние FA для предотвращения устаревшего гашения колебаний после респауна
                 this.yawSignHistory.length = 0;
                 this.lastFaOutput = { assistFx: 0, assistFy: 0, assistTorque: 0 };
                 this.lastFaState = "idle";
@@ -500,7 +501,7 @@ export class BonkLab {
             this.respawnCountdown -= dt;
             if (this.respawnCountdown <= 0) {
                 this.respawnCountdown = 0;
-                // Сбросить stale input чтобы персонаж не двигался после Go!
+                // Сбросить устаревший ввод, чтобы персонаж не двигался после Go!
                 this.inputX = 0;
                 this.inputY = 0;
                 this.inputMagnitude = 0;
@@ -513,7 +514,7 @@ export class BonkLab {
         const radius = slimeConfig.geometry.baseRadiusM;
         const inertia = slimeConfig.geometry.inertiaFactor * mass * radius * radius;
 
-        // ── 1. Build FA input state ──
+        // ── 1. Построить входное состояние FA ──
         const faState: ISlimePhysicsState = {
             x: this.x,
             y: this.y,
@@ -530,7 +531,7 @@ export class BonkLab {
             yawSignHistory: this.yawSignHistory,
         };
 
-        // Neutral modifiers (no talents in sandbox)
+        // Нейтральные модификаторы (в песочнице нет талантов)
         const modifiers: ISlimeModifiers = {
             thrustForwardBonus: 0,
             thrustReverseBonus: 0,
@@ -549,7 +550,7 @@ export class BonkLab {
             angularDragK: this.worldPhysics.angularDragK,
         };
 
-        // ── 2. Compute Flight Assist (with surface zone multipliers) ──
+        // ── 2. Вычислить Flight Assist (с множителями зоны поверхности) ──
         const surfaceAssist = toSurfaceAssistParams(this.currentSurface);
         const faOutput = computeFlightAssist(
             faState,
@@ -566,7 +567,7 @@ export class BonkLab {
 
         const hasInput = this.inputMagnitude > slimeConfig.assist.inputMagnitudeThreshold;
 
-        // Compute correction vector BEFORE classify (it needs correctionF values)
+        // Вычислить вектор коррекции ДО классификации (ей нужны значения correctionF)
         if (hasInput && Math.hypot(this.vx, this.vy) > 1) {
             const inputAngle = Math.atan2(this.inputY, this.inputX);
             const thrustDirX = Math.cos(inputAngle);
@@ -575,7 +576,7 @@ export class BonkLab {
             if (forceMag > 0.01) {
                 const forceDirX = faOutput.assistFx / forceMag;
                 const forceDirY = faOutput.assistFy / forceMag;
-                // Correction is the perpendicular component relative to input direction
+                // Коррекция — перпендикулярная составляющая относительно направления ввода
                 const dot = forceDirX * thrustDirX + forceDirY * thrustDirY;
                 this.correctionFx = faOutput.assistFx - dot * forceMag * thrustDirX;
                 this.correctionFy = faOutput.assistFy - dot * forceMag * thrustDirY;
@@ -584,18 +585,18 @@ export class BonkLab {
                 this.correctionFy = 0;
             }
         } else {
-            // No input — no meaningful correction to visualize
+            // Нет ввода — нет значимой коррекции для визуализации
             this.correctionFx = 0;
             this.correctionFy = 0;
         }
 
-        // Classify FA state (after correction is computed)
+        // Классифицировать состояние FA (после вычисления коррекции)
         this.lastFaState = classifyFaState(
             hasInput, faOutput, this.vx, this.vy,
             this.correctionFx, this.correctionFy,
         );
 
-        // ── 3. Integrate Physics ──
+        // ── 3. Интегрировать физику ──
         const dragParams: IWorldDragParams = {
             forwardDragK: this.worldPhysics.forwardDragK,
             lateralGripMultiplier: this.worldPhysics.lateralGripMultiplier,
@@ -620,8 +621,8 @@ export class BonkLab {
             slimeConfig,
             dragParams,
             surfaceParams,
-            false, // isLastBreath
-            1, // lastBreathSpeedPenalty
+            false, // последний вздох
+            1, // штраф скорости последнего вздоха
             dt,
         );
 
@@ -632,7 +633,7 @@ export class BonkLab {
         this.angle = result.angle;
         this.angVel = result.angVel;
 
-        // ── 4. Collision resolution (4 iterations, matching server) ──
+        // ── 4. Разрешение столкновений (4 итерации, как на сервере) ──
         const body: ICircleBody = {
             x: this.x,
             y: this.y,
@@ -648,7 +649,7 @@ export class BonkLab {
             maxCorrection: this.worldPhysics.maxPositionCorrectionM ?? 0.5,
         };
 
-        // Wall bounds
+        // Границы стен
         const halfW = this.arena.width / 2;
         const halfH = this.arena.height / 2;
         const wallBounds: IWallBounds = {
@@ -663,9 +664,9 @@ export class BonkLab {
         let spikeNy = 0;
         const hitSpikeSet = new Set<ArenaObject>();
         for (let iter = 0; iter < iterations; iter++) {
-            // Obstacle collisions first (matching server order)
+            // Сначала столкновения с препятствиями (в порядке сервера)
             for (const obs of this.arena.obstacles) {
-                // Skip destroyed spikes
+                // Пропустить уничтоженные шипы
                 if (obs.alive === false) continue;
 
                 const staticObs: IStaticObstacle = {
@@ -679,7 +680,7 @@ export class BonkLab {
                     : this.worldPhysics.restitution;
                 const collided = resolveCircleStaticCollision(body, staticObs, rest, collisionConfig);
                 if (collided && obs.type === "spike" && !hitSpikeSet.has(obs)) {
-                    // Record spike once (avoid re-counting across iterations)
+                    // Записать шип один раз (избежать повторного подсчёта между итерациями)
                     const dx = body.x - obs.x;
                     const dy = body.y - obs.y;
                     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -689,19 +690,19 @@ export class BonkLab {
                 }
             }
 
-            // Wall collisions last (rectangular arena boundary)
+            // Столкновения со стенами последними (прямоугольная граница арены)
             resolveWallCollision(body, wallBounds, this.worldPhysics.restitution);
         }
 
-        // Write collision results back (before death check — need corrected position)
+        // Записать результаты столкновений обратно (до проверки смерти — нужна скорректированная позиция)
         this.x = body.x;
         this.y = body.y;
         this.vx = body.vx;
         this.vy = body.vy;
 
-        // Spike collision response — knockback is ADDITIVE to post-bounce velocity
+        // Реакция на столкновение с шипом — отталкивание АДДИТИВНО к скорости после отскока
         if (hitSpikeSet.size > 0) {
-            // Normalize accumulated normal (fallback to (1,0) if degenerate)
+            // Нормализовать накопленную нормаль (запасной вариант (1,0) при вырождении)
             const nLen = Math.sqrt(spikeNx * spikeNx + spikeNy * spikeNy);
             if (nLen > 1e-6) {
                 spikeNx /= nLen;
@@ -731,13 +732,13 @@ export class BonkLab {
                 return;
             }
 
-            // Knockback: dv = impulse / mass (тяжёлый блоб отлетает меньше)
+            // Отталкивание: dv = импульс / масса (тяжёлый блоб отлетает меньше)
             const safeMass = Math.max(mass, 0.01);
             const dv = spikeKnockbackImpulse / safeMass;
             this.vx += spikeNx * dv;
             this.vy += spikeNy * dv;
 
-            // Ограничение скорости после knockback
+            // Ограничение скорости после отталкивания
             const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
             if (speed > MAX_KNOCKBACK_SPEED) {
                 const scale = MAX_KNOCKBACK_SPEED / speed;
@@ -745,7 +746,7 @@ export class BonkLab {
                 this.vy *= scale;
             }
 
-            // Sync body so tickOrbs doesn't overwrite knockback
+            // Синхронизировать тело, чтобы tickOrbs не перезаписал отталкивание
             body.vx = this.vx;
             body.vy = this.vy;
 
@@ -754,7 +755,7 @@ export class BonkLab {
             }
         }
 
-        // ── 5. Zone detection (point-in-circle) ──
+        // ── 5. Определение зоны (точка в окружности) ──
         this.currentZone = null;
         this.currentSurface = DEFAULT_SURFACE_CONFIG;
         for (const zone of this.arena.zones) {
@@ -767,7 +768,7 @@ export class BonkLab {
             }
         }
 
-        // ── 6. Orb physics ──
+        // ── 6. Физика орбов ──
         tickOrbs(
             this.orbs,
             dt,
@@ -780,22 +781,22 @@ export class BonkLab {
             (this.params["worldPhysics.passageRestitution"] as number) ?? this.worldPhysics.restitution * 0.5,
             Boolean(this.params["orbs.spikeKill"] ?? true),
         );
-        // Write player body back (orb-player collision may have changed it)
+        // Записать тело игрока обратно (столкновение орб-игрок могло его изменить)
         this.x = body.x;
         this.y = body.y;
         this.vx = body.vx;
         this.vy = body.vy;
 
-        // ── 7. Update elapsed time (before finish check so finishTime includes this tick) ──
+        // ── 7. Обновить прошедшее время (до проверки финиша, чтобы finishTime включал этот тик) ──
         this.elapsedTime += dt;
 
-        // ── 8. Finish line detection (circle-vs-rect with checkered strip) ──
-        // Strip: centered at finishPoint, width = arena.width * 0.6, height = ROWS * CELL = 24
-        const FINISH_STRIP_HALF_H = 12; // 2 rows × 12px cell / 2
+        // ── 8. Определение пересечения финишной черты (окружность-против-прямоугольника с клетчатой полосой) ──
+        // Полоса: по центру finishPoint, ширина = arena.width * 0.6, высота = ROWS * CELL = 24
+        const FINISH_STRIP_HALF_H = 12; // 2 ряда × 12px ячейка / 2
         const finishHalfW = this.arena.width * 0.3;
         const fpx = this.arena.finishPoint.x;
         const fpy = this.arena.finishPoint.y;
-        // Circle-vs-AABB: closest point on rect to circle center
+        // Окружность-против-AABB: ближайшая точка прямоугольника к центру окружности
         const closestX = Math.max(fpx - finishHalfW, Math.min(this.x, fpx + finishHalfW));
         const closestY = Math.max(fpy - FINISH_STRIP_HALF_H, Math.min(this.y, fpy + FINISH_STRIP_HALF_H));
         const distX = this.x - closestX;
@@ -808,7 +809,7 @@ export class BonkLab {
             if (this.isNewRecord) {
                 this.bestTime = this.elapsedTime;
             }
-            return; // freeze simulation
+            return; // заморозить симуляцию
         }
     }
 }
