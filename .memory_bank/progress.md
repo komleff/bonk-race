@@ -5,7 +5,7 @@
 ## Контроль изменений
 
 - **last_checked_commit**: PR #22 `fix/bonklab-techdebt` @ 13 марта 2026
-- **Активная ветка**: `chore/release-v0.5.0`
+- **Активная ветка**: `main`
 - **Production:** BonkLab на GitHub Pages, основная игра не задеплоена
 - **Версия:** 0.5.0
 - **GDD версия**: v4.0 (`docs/gdd/GDD-index.md`)
@@ -14,7 +14,7 @@
 
 ## Sprint: BonkLab Tech Debt + Zone Tuning + Arena Balancing (13 марта 2026) — ЗАВЕРШЁН
 
-**PR:** #22 (`fix/bonklab-techdebt`) — Open, ревью пройдено
+**PR:** #22 (`fix/bonklab-techdebt`) — Merged
 **Ревью:** Copilot, Claude Opus (2x), GPT-5 Codex — замечания исправлены
 **Тесты:** 15/15
 

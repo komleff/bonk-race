@@ -5,7 +5,7 @@
 ## Текущее состояние (13 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `chore/release-v0.5.0` (релиз v0.5.0 в подготовке)
+**Активная ветка:** `main` (v0.5.0 released)
 **GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
 **Версия:** 0.5.0
 
@@ -30,7 +30,8 @@
 | #14 | `tz-lateral-grip` | Анизотропное трение + BonkRace v0.3 пресеты | **Merged** |
 | #15 | `sprint/trails-direction-triangle` | Следы, треугольник направления, техдолг | **Merged** |
 | #17 | `feat/trail-coloring` | Trail coloring + spike knockback/destroy | **Merged** |
-| #22 | `fix/bonklab-techdebt` | Tech debt + zone tuning + arena balancing | **Open — ревью** |
+| #22 | `fix/bonklab-techdebt` | Tech debt + zone tuning + arena balancing | **Merged** |
+| #23 | `chore/release-v0.5.0` | Release v0.5.0 | **Merged** |
 
 ---
 
