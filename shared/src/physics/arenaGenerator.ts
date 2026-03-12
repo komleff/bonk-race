@@ -189,7 +189,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
 
     const obstacles: ArenaObject[] = [];
 
-    // 2. Проходы (цепочка 2-4 шаров поперёк трассы с зазорами для прохода)
+    // 2. Проходы (цепочка 2-3 шаров поперёк трассы с зазорами для прохода)
     const passageCount = scaledCount(BASE_PASSAGE_COUNT, objectDensity);
     // Расстояние между центрами соседних шаров: passageGap (зазор) + 2 * passageR (радиусы)
     const chainStep = passageGap + 2 * passageR;

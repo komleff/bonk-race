@@ -9,7 +9,7 @@ import type { ArenaObject } from "@bonk-race/shared";
 export interface SpikeResult {
     /** Игрок погиб от шипа */
     died: boolean;
-    /** Скорость после knockback (или 0 при гибели) */
+    /** Скорость после отталкивания (или 0 при гибели) */
     vx: number;
     vy: number;
 }
@@ -21,8 +21,8 @@ export interface SpikeParams {
 }
 
 /**
- * Обработка столкновений с шипами: гибель или knockback.
- * Не мутирует входные данные — возвращает результат.
+ * Обработка столкновений с шипами: гибель или отталкивание.
+ * При destroyOnHit помечает шипы из hitSpikes как уничтоженные (alive = false).
  */
 export function resolveSpikeCollision(
     hitSpikes: Set<ArenaObject>,
