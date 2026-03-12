@@ -183,47 +183,37 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
 
     const obstacles: ArenaObject[] = [];
 
-    // 2. Проходы (два столба, образующие узкий зазор)
+    // 2. Проходы (цепочка 2-4 шаров поперёк трассы с зазорами для прохода)
     const passageCount = scaledCount(BASE_PASSAGE_COUNT, objectDensity);
-    const halfPassageDist = passageGap / 2 + passageR;
+    // Расстояние между центрами соседних шаров: passageGap (зазор) + 2 * passageR (радиусы)
+    const chainStep = passageGap + 2 * passageR;
 
     for (let i = 0; i < passageCount; i++) {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
-            // Цепочка из 2-4 шаров с каждой стороны прохода
-            const chainLength = 2 + Math.floor(rng.range(0, 3));
-            const chainSpacing = passageR * 2.2;
-            const totalChainExtent = halfPassageDist + (chainLength - 1) * chainSpacing;
-            const margin = passageR + OBSTACLE_SPACING + totalChainExtent;
+            const chainLength = 2 + Math.floor(rng.range(0, 3)); // 2, 3 или 4
+            const totalWidth = (chainLength - 1) * chainStep;
+            const margin = passageR + OBSTACLE_SPACING + totalWidth / 2;
             const center = randomPoint(rng, halfW, halfH, margin);
-            // Горизонтальные ворота (перпендикулярно направлению движения)
-            const angle = Math.PI / 2;
-            const ox = Math.cos(angle) * halfPassageDist;
-            const oy = Math.sin(angle) * halfPassageDist;
+            // Шары горизонтально (по X) поперёк трассы, игрок едет вверх (по Y)
+            const startX = center.x - totalWidth / 2;
 
-            const ax = center.x - ox;
-            const ay = center.y - oy;
-            const bx = center.x + ox;
-            const by = center.y + oy;
+            // Проверить размещение всех шаров цепочки
+            let canPlaceAll = true;
+            for (let c = 0; c < chainLength; c++) {
+                if (!canPlace(startX + c * chainStep, center.y, passageR, obstacles, halfW, halfH, exclusionPoints)) {
+                    canPlaceAll = false;
+                    break;
+                }
+            }
 
-            // Проверить размещение крайних шаров цепочки
-            const farExtent = (chainLength - 1) * chainSpacing;
-            const farAx = ax - Math.cos(angle) * farExtent;
-            const farAy = ay - Math.sin(angle) * farExtent;
-            const farBx = bx + Math.cos(angle) * farExtent;
-            const farBy = by + Math.sin(angle) * farExtent;
-
-            if (
-                canPlace(ax, ay, passageR, obstacles, halfW, halfH, exclusionPoints) &&
-                canPlace(bx, by, passageR, obstacles, halfW, halfH, exclusionPoints) &&
-                canPlace(farAx, farAy, passageR, obstacles, halfW, halfH, exclusionPoints) &&
-                canPlace(farBx, farBy, passageR, obstacles, halfW, halfH, exclusionPoints)
-            ) {
+            if (canPlaceAll) {
                 for (let c = 0; c < chainLength; c++) {
-                    const offset = c * chainSpacing;
-                    obstacles.push(
-                        { type: "passage", x: ax - Math.cos(angle) * offset, y: ay - Math.sin(angle) * offset, radius: passageR },
-                        { type: "passage", x: bx + Math.cos(angle) * offset, y: by + Math.sin(angle) * offset, radius: passageR },
-                    );
+                    obstacles.push({
+                        type: "passage",
+                        x: startX + c * chainStep,
+                        y: center.y,
+                        radius: passageR,
+                    });
                 }
                 break;
             }
