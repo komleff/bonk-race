@@ -190,7 +190,7 @@ export function generateArena(config: ArenaConfig, rng: Rng): Arena {
 
     for (let i = 0; i < passageCount; i++) {
         for (let attempt = 0; attempt < PLACEMENT_RETRIES; attempt++) {
-            const chainLength = 2 + Math.floor(rng.range(0, 3)); // 2, 3 или 4
+            const chainLength = 2 + Math.floor(rng.range(0, 2)); // 2 или 3
             const totalWidth = (chainLength - 1) * chainStep;
             const margin = passageR + OBSTACLE_SPACING + totalWidth / 2;
             const center = randomPoint(rng, halfW, halfH, margin);
