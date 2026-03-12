@@ -138,6 +138,11 @@ export class LabParamManager {
             return {};
         }
 
+        // spike.* and trail.* are stored in flat params only, not in slimeConfig
+        if (key.startsWith("spike.") || key.startsWith("trail.")) {
+            return {};
+        }
+
         // All other keys map to slimeConfig
         setNestedValue(this.slimeConfig as unknown as Record<string, unknown>, key, value);
         return {};

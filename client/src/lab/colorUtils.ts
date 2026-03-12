@@ -60,7 +60,7 @@ export function hslToHex(h: number, s: number, l: number): string {
 /**
  * Нормализация угла в диапазон [-π, π]
  */
-export function normalizeAngle(angle: number): number {
+function normalizeAngle(angle: number): number {
     let a = angle;
     while (a > Math.PI) a -= 2 * Math.PI;
     while (a < -Math.PI) a += 2 * Math.PI;
