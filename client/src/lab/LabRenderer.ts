@@ -482,23 +482,58 @@ export class LabRenderer {
         }
     }
 
+    /**
+     * Оптимизированная отрисовка следа за один проход.
+     * Точки квантуются по уровню прозрачности (OPACITY_LEVELS групп),
+     * вызовы отрисовки сбрасываются только при смене группы или цвета.
+     * Сложность: O(N) итераций вместо O(N × кол-во групп).
+     */
     private drawTrail(ctx: CanvasRenderingContext2D, charRadius: number): void {
         if (this.trailCount === 0) return;
         const maxAge = this.trailMaxAge;
         const baseAlpha = this.trailBaseAlpha;
+        // Количество уровней прозрачности (квантование непрерывного затухания)
+        const OPACITY_LEVELS = 10;
+
+        let curGroup = -1;
+        let curColor = "";
+        let pathOpen = false;
 
         for (let i = 0; i < this.trailCount; i++) {
             const pt = this.trailBuffer[i];
             if (pt.age >= maxAge) continue;
 
-            const t = pt.age / maxAge; // 0→1
-            ctx.globalAlpha = baseAlpha * (1 - t);
-            ctx.fillStyle = pt.color;
+            const t = pt.age / maxAge; // 0→1, доля прожитого возраста
+            const group = Math.min(Math.floor(t * OPACITY_LEVELS), OPACITY_LEVELS - 1);
+
+            // При смене группы прозрачности или цвета — сбросить накопленный path
+            if (group !== curGroup || pt.color !== curColor) {
+                if (pathOpen) {
+                    ctx.fill();
+                    pathOpen = false;
+                }
+                curGroup = group;
+                curColor = pt.color;
+
+                // Прозрачность по центру группы; слишком тусклые — пропускаем
+                const groupAlpha = baseAlpha * (1 - (group + 0.5) / OPACITY_LEVELS);
+                if (groupAlpha < 0.005) continue;
+
+                ctx.globalAlpha = groupAlpha;
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                pathOpen = true;
+            }
+
+            // Пропустить точку, если текущая группа слишком прозрачна
+            if (!pathOpen) continue;
+
             const r = charRadius * (1 - t * 0.6);
-            ctx.beginPath();
+            ctx.moveTo(pt.x + r, pt.y);
             ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-            ctx.fill();
         }
+
+        if (pathOpen) ctx.fill();
         ctx.globalAlpha = 1;
     }
 
