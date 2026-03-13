@@ -483,17 +483,25 @@ export class LabRenderer {
     }
 
     /**
-     * Отрисовка следа с непрерывным затуханием прозрачности.
-     * Обход кольцевого буфера по возрасту (от старых к новым) обеспечивает
-     * правильный z-порядок: тусклые точки рисуются первыми, яркие — поверх.
+     * Отрисовка следа с плавным затуханием прозрачности.
+     * Обход кольцевого буфера по возрасту (от старых к новым) обеспечивает:
+     * - правильный z-порядок (тусклые под яркими);
+     * - монотонную смену групп прозрачности → минимум fill-вызовов.
+     * 100 уровней квантования: шаг альфа ~0.006 — бандинг незаметен,
+     * при моноцвете ≤100 fill-вызовов вместо 600.
      */
     private drawTrail(ctx: CanvasRenderingContext2D, charRadius: number): void {
         if (this.trailCount === 0) return;
         const maxAge = this.trailMaxAge;
         const baseAlpha = this.trailBaseAlpha;
+        const OPACITY_LEVELS = 100;
+
+        let curGroup = -1;
+        let curColor = "";
+        let pathOpen = false;
 
         // Обход кольцевого буфера по возрасту: от старых к новым.
-        // Растущий буфер (trailCount < TRAIL_MAX_POINTS): индексы 0→trailCount уже по возрасту.
+        // Растущий буфер: индексы 0→trailCount уже по возрасту.
         // Полный буфер: trailHead = самая старая точка (следующая на перезапись).
         const isFull = this.trailCount >= TRAIL_MAX_POINTS;
         for (let j = 0; j < this.trailCount; j++) {
@@ -502,17 +510,34 @@ export class LabRenderer {
             if (pt.age >= maxAge) continue;
 
             const t = pt.age / maxAge; // 0→1, доля прожитого возраста
-            const alpha = baseAlpha * (1 - t);
-            if (alpha < 0.005) continue;
+            const group = Math.min(Math.floor(t * OPACITY_LEVELS), OPACITY_LEVELS - 1);
 
-            ctx.globalAlpha = alpha;
-            ctx.fillStyle = pt.color;
+            // При смене группы прозрачности или цвета — сбросить накопленный path
+            if (group !== curGroup || pt.color !== curColor) {
+                if (pathOpen) {
+                    ctx.fill();
+                    pathOpen = false;
+                }
+                curGroup = group;
+                curColor = pt.color;
+
+                const groupAlpha = baseAlpha * (1 - (group + 0.5) / OPACITY_LEVELS);
+                if (groupAlpha < 0.005) continue;
+
+                ctx.globalAlpha = groupAlpha;
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                pathOpen = true;
+            }
+
+            if (!pathOpen) continue;
+
             const r = charRadius * (1 - t * 0.6);
-            ctx.beginPath();
+            ctx.moveTo(pt.x + r, pt.y);
             ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-            ctx.fill();
         }
 
+        if (pathOpen) ctx.fill();
         ctx.globalAlpha = 1;
     }
 
