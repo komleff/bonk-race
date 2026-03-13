@@ -246,6 +246,8 @@ export class BonkLab {
         // Поместить персонажа на точку спауна
         this.x = this.arena.spawnPoint.x;
         this.y = this.arena.spawnPoint.y;
+        // Инициализировать prev-состояние, чтобы интерполяция не зависела от порядка вызова start()
+        this.syncPrevState();
 
         console.log("[BonkLab] initialized", {
             mass: this.mass,
@@ -498,13 +500,15 @@ export class BonkLab {
         if (this.deathTimer > 0 || this.finished || this.startCountdown > 0 || this.respawnCountdown > 0) {
             return this.getState();
         }
+        // Защитный clamp: alpha вне [0,1] возможен при сбое таймера или отрицательном dt
+        const a = Math.max(0, Math.min(alpha, 1));
         const state = this.getState();
-        state.x = this.prevX + (this.x - this.prevX) * alpha;
-        state.y = this.prevY + (this.y - this.prevY) * alpha;
-        state.vx = this.prevVx + (this.vx - this.prevVx) * alpha;
-        state.vy = this.prevVy + (this.vy - this.prevVy) * alpha;
-        state.angle = lerpAngle(this.prevAngle, this.angle, alpha);
-        state.angularVelocity = this.prevAngVel + (this.angVel - this.prevAngVel) * alpha;
+        state.x = this.prevX + (this.x - this.prevX) * a;
+        state.y = this.prevY + (this.y - this.prevY) * a;
+        state.vx = this.prevVx + (this.vx - this.prevVx) * a;
+        state.vy = this.prevVy + (this.vy - this.prevVy) * a;
+        state.angle = lerpAngle(this.prevAngle, this.angle, a);
+        state.angularVelocity = this.prevAngVel + (this.angVel - this.prevAngVel) * a;
         return state;
     }
 
