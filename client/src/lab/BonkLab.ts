@@ -455,7 +455,11 @@ export class BonkLab {
      * Возвращает alpha (0..1) — доля накопленного остатка для интерполяции рендера.
      */
     update(frameDtSec: number): number {
-        this.accumulator += frameDtSec;
+        if (!this.running) return 0;
+
+        // Ограничение dt: при табах/паузах браузер может передать огромный dt
+        const clampedDt = Math.min(frameDtSec, 0.1);
+        this.accumulator += clampedDt;
 
         while (this.accumulator >= FIXED_DT) {
             this.tick(FIXED_DT);
