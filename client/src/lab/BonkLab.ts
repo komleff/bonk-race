@@ -73,6 +73,17 @@ const FIXED_DT = 1 / 60; // 16.7мс — 60 Гц, плавный рендери�
 // DEATH_FREEZE_S, COUNTDOWN_TOTAL_S, RESPAWN_GO_TOTAL_S — импортируются из @bonk-race/shared
 
 /**
+ * Линейная интерполяция угла по кратчайшей дуге.
+ * Корректно обрабатывает переход через ±π.
+ */
+function lerpAngle(a: number, b: number, t: number): number {
+    let delta = b - a;
+    if (delta > Math.PI) delta -= 2 * Math.PI;
+    if (delta < -Math.PI) delta += 2 * Math.PI;
+    return a + delta * t;
+}
+
+/**
  * Определяет метку состояния FA на основе ввода и ошибки скорости.
  */
 function classifyFaState(
@@ -127,9 +138,15 @@ export class BonkLab {
     // Сохранено для будущего использования в LabRenderer
     readonly canvas: HTMLCanvasElement;
     private running = false;
-    private rafId = 0;
     private accumulator = 0;
-    private lastTimestamp = 0;
+
+    // Предыдущее состояние для интерполяции между тиками физики
+    private prevX = 0;
+    private prevY = 0;
+    private prevVx = 0;
+    private prevVy = 0;
+    private prevAngle = -Math.PI / 2;
+    private prevAngVel = 0;
 
     // Состояние физики
     private slimeConfig: SlimeConfig;
@@ -245,16 +262,14 @@ export class BonkLab {
         if (this.running) return;
         this.startCountdown = COUNTDOWN_TOTAL_S;
         this.running = true;
-        this.lastTimestamp = 0;
         this.accumulator = 0;
-        this.rafId = requestAnimationFrame((ts) => this.loop(ts));
+        this.syncPrevState();
         console.log(`[BonkLab] simulation started (countdown ${COUNTDOWN_TOTAL_S.toFixed(1)}s)`);
     }
 
     stop(): void {
         if (!this.running) return;
         this.running = false;
-        cancelAnimationFrame(this.rafId);
         console.log("[BonkLab] simulation stopped");
     }
 
@@ -267,7 +282,6 @@ export class BonkLab {
         this.angVel = 0;
         this.elapsedTime = 0;
         this.accumulator = 0;
-        this.lastTimestamp = 0;
         this.yawSignHistory.length = 0;
         this.inputX = 0;
         this.inputY = 0;
@@ -294,6 +308,8 @@ export class BonkLab {
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
         // Поддерживать синхронизацию ссылки на орбы в paramManager
         this.paramManager.orbs = this.orbs;
+        // Синхронизировать prev-состояние, чтобы интерполяция не дёргала после сброса
+        this.syncPrevState();
         console.log("[BonkLab] state reset");
     }
 
@@ -433,24 +449,59 @@ export class BonkLab {
 
     // ── Цикл симуляции (приватный) ───────────────────────────────────────────
 
-    private loop(timestamp: number): void {
-        if (!this.running) return;
+    /**
+     * Обновляет симуляцию на frameDtSec секунд (вызывается из внешнего RAF-цикла).
+     * Аккумулирует время и шагает фиксированными тиками FIXED_DT.
+     * Возвращает alpha (0..1) — доля накопленного остатка для интерполяции рендера.
+     */
+    update(frameDtSec: number): number {
+        this.accumulator += frameDtSec;
 
-        if (this.lastTimestamp === 0) {
-            this.lastTimestamp = timestamp;
-        }
-
-        const frameDt = Math.min((timestamp - this.lastTimestamp) / 1000, 0.1); // ограничение в 100мс
-        this.lastTimestamp = timestamp;
-        this.accumulator += frameDt;
-
-        // Симуляция с фиксированным шагом на 60 Гц
         while (this.accumulator >= FIXED_DT) {
             this.tick(FIXED_DT);
             this.accumulator -= FIXED_DT;
         }
 
-        this.rafId = requestAnimationFrame((ts) => this.loop(ts));
+        return this.accumulator / FIXED_DT;
+    }
+
+    /** Возвращает true, если симуляция запущена (нужно вызывать update). */
+    get isRunning(): boolean {
+        return this.running;
+    }
+
+    /**
+     * Копирует текущее состояние в prev*-поля.
+     * Вызывается перед каждым тиком физики, а также при телепортации (респаун, сброс),
+     * чтобы интерполяция не дёргала персонажа между старой и новой позицией.
+     */
+    private syncPrevState(): void {
+        this.prevX = this.x;
+        this.prevY = this.y;
+        this.prevVx = this.vx;
+        this.prevVy = this.vy;
+        this.prevAngle = this.angle;
+        this.prevAngVel = this.angVel;
+    }
+
+    /**
+     * Возвращает интерполированное состояние между предыдущим и текущим тиком.
+     * alpha = 0 → предыдущий тик, alpha = 1 → текущий тик.
+     * При заморозке (смерть, финиш, обратный отсчёт) — возвращает текущее состояние без интерполяции.
+     */
+    getInterpolatedState(alpha: number): SandboxState {
+        // При заморозке — текущее состояние, интерполяция не нужна
+        if (this.deathTimer > 0 || this.finished || this.startCountdown > 0 || this.respawnCountdown > 0) {
+            return this.getState();
+        }
+        const state = this.getState();
+        state.x = this.prevX + (this.x - this.prevX) * alpha;
+        state.y = this.prevY + (this.y - this.prevY) * alpha;
+        state.vx = this.prevVx + (this.vx - this.prevVx) * alpha;
+        state.vy = this.prevVy + (this.vy - this.prevVy) * alpha;
+        state.angle = lerpAngle(this.prevAngle, this.angle, alpha);
+        state.angularVelocity = this.prevAngVel + (this.angVel - this.prevAngVel) * alpha;
+        return state;
     }
 
     private tick(dt: number): void {
@@ -491,6 +542,9 @@ export class BonkLab {
                 this.correctionFy = 0;
                 this.currentZone = null;
                 this.restoreDestroyedObstacles();
+                // Синхронизировать prev-состояние, чтобы интерполяция не дёргала
+                // персонажа от точки смерти к точке респауна
+                this.syncPrevState();
                 // Go!-Go! отсчёт (2×0.4с заморозка после респауна)
                 this.respawnCountdown = RESPAWN_GO_TOTAL_S;
             }
@@ -509,6 +563,9 @@ export class BonkLab {
             }
             return;
         }
+
+        // Сохранить предыдущее состояние для интерполяции перед шагом физики
+        this.syncPrevState();
 
         const mass = this.mass;
         const slimeConfig = this.slimeConfig;

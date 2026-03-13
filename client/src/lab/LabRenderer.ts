@@ -482,22 +482,60 @@ export class LabRenderer {
         }
     }
 
+    /**
+     * Оптимизированная отрисовка следа: точки группируются в ~10 бакетов по alpha,
+     * что сокращает количество draw calls с ~600 до ~10.
+     */
     private drawTrail(ctx: CanvasRenderingContext2D, charRadius: number): void {
         if (this.trailCount === 0) return;
         const maxAge = this.trailMaxAge;
         const baseAlpha = this.trailBaseAlpha;
+        const BUCKET_COUNT = 10;
 
-        for (let i = 0; i < this.trailCount; i++) {
-            const pt = this.trailBuffer[i];
-            if (pt.age >= maxAge) continue;
+        // Собрать точки в бакеты по уровню прозрачности
+        for (let b = 0; b < BUCKET_COUNT; b++) {
+            // Диапазон alpha для этого бакета (от яркого к тусклому)
+            const alphaLow = (b / BUCKET_COUNT);
+            const alphaHigh = ((b + 1) / BUCKET_COUNT);
+            // Среднее значение alpha для бакета
+            const bucketAlpha = baseAlpha * (1 - (alphaLow + alphaHigh) / 2);
+            if (bucketAlpha < 0.005) continue; // слишком прозрачный — пропускаем
 
-            const t = pt.age / maxAge; // 0→1
-            ctx.globalAlpha = baseAlpha * (1 - t);
-            ctx.fillStyle = pt.color;
-            const r = charRadius * (1 - t * 0.6);
+            let hasPoints = false;
+            ctx.globalAlpha = bucketAlpha;
+
+            // Группировка по цвету внутри бакета (один beginPath + fill на цвет)
+            // Для простоты и скорости — объединяем все цвета в один path,
+            // используя самый частый случай (один цвет паттерна)
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
-            ctx.fill();
+            let lastColor = "";
+
+            for (let i = 0; i < this.trailCount; i++) {
+                const pt = this.trailBuffer[i];
+                if (pt.age >= maxAge) continue;
+
+                const t = pt.age / maxAge; // 0→1
+                // Определить, в какой бакет попадает эта точка
+                if (t < alphaLow || t >= alphaHigh) continue;
+
+                // Если цвет изменился — сбросить path и отрисовать предыдущий
+                if (pt.color !== lastColor && hasPoints) {
+                    ctx.fillStyle = lastColor;
+                    ctx.fill();
+                    ctx.beginPath();
+                }
+                lastColor = pt.color;
+                hasPoints = true;
+
+                const r = charRadius * (1 - t * 0.6);
+                ctx.moveTo(pt.x + r, pt.y);
+                ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+            }
+
+            if (hasPoints) {
+                ctx.fillStyle = lastColor;
+                ctx.fill();
+            }
         }
         ctx.globalAlpha = 1;
     }

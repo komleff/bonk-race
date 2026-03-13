@@ -92,10 +92,16 @@ renderPanel();
 (window as unknown as Record<string, unknown>).__labInput = input;
 (window as unknown as Record<string, unknown>).__labRenderer = renderer;
 
-// ── Unified render + simulation loop ──
+// ── Единый цикл рендера + симуляции ──
 let rafId: number | null = null;
+let lastFrameTs = 0;
 
 function frame(): void {
+    // Вычислить frameDt (секунды с предыдущего кадра, ограничение 100мс)
+    const now = performance.now();
+    const frameDt = lastFrameTs > 0 ? Math.min((now - lastFrameTs) / 1000, 0.1) : 0;
+    lastFrameTs = now;
+
     // Обновляем экранную позицию персонажа для корректного расчёта направления мыши
     const canvasRect = renderer.getCanvasRect();
     input.setCharacterScreenPos(
@@ -103,17 +109,23 @@ function frame(): void {
         canvasRect.top + canvasRect.height * CHAR_SCREEN_Y_RATIO,
     );
 
-    // Feed input into simulation
+    // Передать ввод в симуляцию
     const inputState = input.getState();
     lab.setInput(inputState.x, inputState.y, inputState.magnitude);
 
-    // Update normalization from current params
+    // Шагнуть физику и получить alpha для интерполяции
+    let alpha = 0;
+    if (lab.isRunning) {
+        alpha = lab.update(frameDt);
+    }
+
+    // Обновить нормализацию из текущих параметров
     renderer.setNormalization(
         lab.params["limits.speedLimitForwardMps"] as number,
         lab.params["propulsion.thrustForwardN"] as number,
     );
 
-    // Trail config
+    // Конфигурация следа
     const VALID_TRAIL_PATTERNS: TrailPattern[] = ["off", "drift", "rainbow"];
     const rawPattern = (lab.params["trail.pattern"] as unknown as string) ?? "drift";
     const trailPattern: TrailPattern = VALID_TRAIL_PATTERNS.includes(rawPattern as TrailPattern)
@@ -129,11 +141,11 @@ function frame(): void {
         rainbowPeriodSec: (lab.params["trail.rainbowPeriodSec"] as number) ?? 2.0,
     });
 
-    // Get simulation state and render
-    const state = lab.getState();
+    // Получить интерполированное состояние и отрисовать
+    const state = lab.getInterpolatedState(alpha);
     renderer.render(state, inputState);
 
-    // Draw telemetry HUD overlay (screen-space, on top of everything)
+    // Отрисовать HUD телеметрии поверх всего (экранные координаты)
     const ctx = canvas.getContext("2d");
     if (ctx) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
