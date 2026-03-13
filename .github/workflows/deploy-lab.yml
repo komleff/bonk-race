@@ -9,6 +9,7 @@ on:
       - 'client/vite.config.lab.ts'
       - 'shared/src/**'
       - 'config/balance.json'
+      - 'version.json'
   workflow_dispatch: # manual trigger
 
 permissions:
