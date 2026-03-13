@@ -1,7 +1,7 @@
 # =============================================================================
 # Slime Arena App + DB - Docker Compose
 # Two containers: App (MetaServer + MatchServer + Client + Admin) + DB (PostgreSQL + Redis)
-# Version: 0.5.0
+# Version: 0.6.0
 # =============================================================================
 
 name: slime-arena
@@ -12,7 +12,7 @@ services:
   # Contains: PostgreSQL + Redis
   # ---------------------------------------------------------------------------
   db:
-    image: ghcr.io/komleff/slime-arena-db:${VERSION:-0.5.0}
+    image: ghcr.io/komleff/slime-arena-db:${VERSION:-0.6.0}
     container_name: slime-arena-db
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-slime}
@@ -34,7 +34,7 @@ services:
   # Contains: MetaServer + MatchServer + Client + Admin Dashboard
   # ---------------------------------------------------------------------------
   app:
-    image: ghcr.io/komleff/slime-arena-app:${VERSION:-0.5.0}
+    image: ghcr.io/komleff/slime-arena-app:${VERSION:-0.6.0}
     container_name: slime-arena-app
     ports:
       - "3000:3000"   # MetaServer (HTTP API)
