@@ -483,60 +483,57 @@ export class LabRenderer {
     }
 
     /**
-     * Оптимизированная отрисовка следа: точки группируются в ~10 бакетов по alpha,
-     * что сокращает количество draw calls с ~600 до ~10.
+     * Оптимизированная отрисовка следа за один проход.
+     * Точки квантуются по уровню прозрачности (OPACITY_LEVELS групп),
+     * вызовы отрисовки сбрасываются только при смене группы или цвета.
+     * Сложность: O(N) итераций вместо O(N × кол-во групп).
      */
     private drawTrail(ctx: CanvasRenderingContext2D, charRadius: number): void {
         if (this.trailCount === 0) return;
         const maxAge = this.trailMaxAge;
         const baseAlpha = this.trailBaseAlpha;
-        const BUCKET_COUNT = 10;
+        // Количество уровней прозрачности (квантование непрерывного затухания)
+        const OPACITY_LEVELS = 10;
 
-        // Собрать точки в бакеты по уровню прозрачности
-        for (let b = 0; b < BUCKET_COUNT; b++) {
-            // Диапазон alpha для этого бакета (от яркого к тусклому)
-            const alphaLow = (b / BUCKET_COUNT);
-            const alphaHigh = ((b + 1) / BUCKET_COUNT);
-            // Среднее значение alpha для бакета
-            const bucketAlpha = baseAlpha * (1 - (alphaLow + alphaHigh) / 2);
-            if (bucketAlpha < 0.005) continue; // слишком прозрачный — пропускаем
+        let curGroup = -1;
+        let curColor = "";
+        let pathOpen = false;
 
-            let hasPoints = false;
-            ctx.globalAlpha = bucketAlpha;
+        for (let i = 0; i < this.trailCount; i++) {
+            const pt = this.trailBuffer[i];
+            if (pt.age >= maxAge) continue;
 
-            // Группировка по цвету внутри бакета (один beginPath + fill на цвет)
-            // Для простоты и скорости — объединяем все цвета в один path,
-            // используя самый частый случай (один цвет паттерна)
-            ctx.beginPath();
-            let lastColor = "";
+            const t = pt.age / maxAge; // 0→1, доля прожитого возраста
+            const group = Math.min(Math.floor(t * OPACITY_LEVELS), OPACITY_LEVELS - 1);
 
-            for (let i = 0; i < this.trailCount; i++) {
-                const pt = this.trailBuffer[i];
-                if (pt.age >= maxAge) continue;
-
-                const t = pt.age / maxAge; // 0→1
-                // Определить, в какой бакет попадает эта точка
-                if (t < alphaLow || t >= alphaHigh) continue;
-
-                // Если цвет изменился — сбросить path и отрисовать предыдущий
-                if (pt.color !== lastColor && hasPoints) {
-                    ctx.fillStyle = lastColor;
+            // При смене группы прозрачности или цвета — сбросить накопленный path
+            if (group !== curGroup || pt.color !== curColor) {
+                if (pathOpen) {
                     ctx.fill();
-                    ctx.beginPath();
+                    pathOpen = false;
                 }
-                lastColor = pt.color;
-                hasPoints = true;
+                curGroup = group;
+                curColor = pt.color;
 
-                const r = charRadius * (1 - t * 0.6);
-                ctx.moveTo(pt.x + r, pt.y);
-                ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+                // Прозрачность по центру группы; слишком тусклые — пропускаем
+                const groupAlpha = baseAlpha * (1 - (group + 0.5) / OPACITY_LEVELS);
+                if (groupAlpha < 0.005) continue;
+
+                ctx.globalAlpha = groupAlpha;
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                pathOpen = true;
             }
 
-            if (hasPoints) {
-                ctx.fillStyle = lastColor;
-                ctx.fill();
-            }
+            // Пропустить точку, если текущая группа слишком прозрачна
+            if (!pathOpen) continue;
+
+            const r = charRadius * (1 - t * 0.6);
+            ctx.moveTo(pt.x + r, pt.y);
+            ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
         }
+
+        if (pathOpen) ctx.fill();
         ctx.globalAlpha = 1;
     }
 

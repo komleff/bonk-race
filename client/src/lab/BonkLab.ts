@@ -459,8 +459,9 @@ export class BonkLab {
     update(frameDtSec: number): number {
         if (!this.running) return 0;
 
-        // Ограничение dt: при табах/паузах браузер может передать огромный dt
-        const clampedDt = Math.min(frameDtSec, 0.1);
+        // Ограничение dt: при табах/паузах браузер может передать огромный dt;
+        // отрицательный dt теоретически возможен при сбое performance.now()
+        const clampedDt = Math.max(0, Math.min(frameDtSec, 0.1));
         this.accumulator += clampedDt;
 
         while (this.accumulator >= FIXED_DT) {

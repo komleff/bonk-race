@@ -145,7 +145,7 @@ function frame(): void {
     const state = lab.getInterpolatedState(alpha);
     renderer.render(state, inputState);
 
-    // Отрисовать HUD телеметрии поверх всего (экранные координаты)
+    // Отрисовать оверлей телеметрии поверх всего (экранные координаты)
     const ctx = canvas.getContext("2d");
     if (ctx) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
