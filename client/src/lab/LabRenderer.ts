@@ -483,23 +483,29 @@ export class LabRenderer {
     }
 
     /**
-     * Оптимизированная отрисовка следа за один проход.
-     * Точки квантуются по уровню прозрачности (OPACITY_LEVELS групп),
-     * вызовы отрисовки сбрасываются только при смене группы или цвета.
-     * Сложность: O(N) итераций вместо O(N × кол-во групп).
+     * Отрисовка следа с плавным затуханием прозрачности.
+     * Обход кольцевого буфера по возрасту (от старых к новым) обеспечивает:
+     * - правильный z-порядок (тусклые под яркими);
+     * - монотонную смену групп прозрачности → минимум fill-вызовов.
+     * 100 уровней квантования: шаг альфа ~0.006 — бандинг незаметен,
+     * при моноцвете ≤100 fill-вызовов вместо 600.
      */
     private drawTrail(ctx: CanvasRenderingContext2D, charRadius: number): void {
         if (this.trailCount === 0) return;
         const maxAge = this.trailMaxAge;
         const baseAlpha = this.trailBaseAlpha;
-        // Количество уровней прозрачности (квантование непрерывного затухания)
-        const OPACITY_LEVELS = 10;
+        const OPACITY_LEVELS = 100;
 
         let curGroup = -1;
         let curColor = "";
         let pathOpen = false;
 
-        for (let i = 0; i < this.trailCount; i++) {
+        // Обход кольцевого буфера по возрасту: от старых к новым.
+        // Растущий буфер: индексы 0→trailCount уже по возрасту.
+        // Полный буфер: trailHead = самая старая точка (следующая на перезапись).
+        const isFull = this.trailCount >= TRAIL_MAX_POINTS;
+        for (let j = 0; j < this.trailCount; j++) {
+            const i = isFull ? (this.trailHead + j) % TRAIL_MAX_POINTS : j;
             const pt = this.trailBuffer[i];
             if (pt.age >= maxAge) continue;
 
@@ -515,7 +521,6 @@ export class LabRenderer {
                 curGroup = group;
                 curColor = pt.color;
 
-                // Прозрачность по центру группы; слишком тусклые — пропускаем
                 const groupAlpha = baseAlpha * (1 - (group + 0.5) / OPACITY_LEVELS);
                 if (groupAlpha < 0.005) continue;
 
@@ -525,7 +530,6 @@ export class LabRenderer {
                 pathOpen = true;
             }
 
-            // Пропустить точку, если текущая группа слишком прозрачна
             if (!pathOpen) continue;
 
             const r = charRadius * (1 - t * 0.6);
