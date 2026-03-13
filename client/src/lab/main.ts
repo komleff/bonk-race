@@ -1,4 +1,4 @@
-/** BonkLab — dev-песочница для тестирования игровых механик */
+/** BonkLab — песочница для отладки игровых механик */
 
 import { render, h } from "preact";
 import { BonkLab } from "./BonkLab";
@@ -11,7 +11,7 @@ import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
 const root = document.getElementById("lab-root")!;
 
-// Создать canvas — заполняет viewport (правый край зарезервирован для панели параметров)
+// Создать canvas — заполняет область видимости (правый край зарезервирован для панели параметров)
 const canvas = document.createElement("canvas");
 canvas.id = "lab-canvas";
 canvas.style.display = "block";
@@ -55,7 +55,7 @@ onResize(); // начальный размер
 
 // Триггеры синхронизации для межкомпонентного взаимодействия
 let syncTrigger = 0;        // toolbar → panel: перечитать параметры
-let paramChangeCounter = 0; // panel → toolbar: пометить пресет как Custom
+let paramChangeCounter = 0; // panel → toolbar: пометить пресет как «Свой»
 
 function renderToolbar(): void {
     render(
@@ -159,7 +159,7 @@ function frame(): void {
 lab.start();
 rafId = requestAnimationFrame(frame);
 
-// Очистка при HMR — предотвращение устаревших листенеров/циклов при hot reload Vite
+// Очистка при горячей перезагрузке — предотвращение устаревших листенеров/циклов при HMR Vite
 if (import.meta.hot) {
     import.meta.hot.dispose(() => {
         lab.stop();

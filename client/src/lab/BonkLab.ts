@@ -460,7 +460,8 @@ export class BonkLab {
         if (!this.running) return 0;
 
         // Ограничение dt: при табах/паузах браузер может передать огромный dt;
-        // отрицательный dt теоретически возможен при сбое performance.now()
+        // NaN/Infinity/отрицательный dt возможны при сбое performance.now()
+        if (!Number.isFinite(frameDtSec)) return 0;
         const clampedDt = Math.max(0, Math.min(frameDtSec, 0.1));
         this.accumulator += clampedDt;
 
@@ -510,6 +511,12 @@ export class BonkLab {
         state.vy = this.prevVy + (this.vy - this.prevVy) * a;
         state.angle = lerpAngle(this.prevAngle, this.angle, a);
         state.angularVelocity = this.prevAngVel + (this.angVel - this.prevAngVel) * a;
+        // Пересчитать производные поля по интерполированной позиции,
+        // чтобы оверлей телеметрии не расходился с отрисованной позицией
+        const interpDist = Math.max(0, this.arena.spawnPoint.y - state.y);
+        state.distanceM = interpDist;
+        const totalDist = this.arena.spawnPoint.y - this.arena.finishPoint.y;
+        state.progressPct = totalDist > 0 ? Math.max(0, Math.min(1, interpDist / totalDist)) : 0;
         return state;
     }
 
