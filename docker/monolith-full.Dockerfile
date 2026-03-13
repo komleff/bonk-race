@@ -1,7 +1,7 @@
 # =============================================================================
 # Slime Arena Monolith Full Container
 # All-in-One: PostgreSQL + Redis + MetaServer + MatchServer + Client
-# Version: 0.5.0
+# Version: 0.6.0
 # Platforms: linux/amd64, linux/arm64
 # =============================================================================
 
@@ -60,7 +60,7 @@ LABEL org.opencontainers.image.title="Slime Arena Monolith Full"
 LABEL org.opencontainers.image.description="Slime Arena all-in-one container: PostgreSQL + Redis + MetaServer + MatchServer + Client + Admin Dashboard"
 LABEL org.opencontainers.image.vendor="komleff"
 LABEL org.opencontainers.image.source="https://github.com/komleff/slime-arena"
-LABEL org.opencontainers.image.version="0.5.0"
+LABEL org.opencontainers.image.version="0.6.0"
 LABEL org.opencontainers.image.licenses="MIT"
 
 WORKDIR /app
