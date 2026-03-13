@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "TodoWrite",
+      "NotebookEdit"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Read(**/credentials*)",
+      "Read(**/secrets*)",
+      "Bash(rm -rf:*)",
+      "Bash(rm *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push origin main)",
+      "Bash(gh pr merge *)",
+      "Bash(gh repo delete *)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "language": "russian",
+  "alwaysThinkingEnabled": true
+}
