@@ -271,7 +271,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
         <Fragment>
             <div class="lab-toolbar">
                 {/* Title */}
-                <span class="lab-toolbar-title">BonkLab</span>
+                <span class="lab-toolbar-title">BonkLab <span style="opacity:0.5;font-size:0.75em">v{__APP_VERSION__}</span></span>
 
                 <div class="lab-tb-sep" />
 

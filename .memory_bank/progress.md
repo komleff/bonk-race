@@ -4,122 +4,69 @@
 
 ## Контроль изменений
 
-- **last_checked_commit**: PR #22 `fix/bonklab-techdebt` @ 13 марта 2026
-- **Активная ветка**: `main`
+- **last_checked_commit**: PR #26 `fix/trail-rendering-order` @ 13 марта 2026
+- **Активная ветка**: `chore/release-v0.6.0-prep`
 - **Production:** BonkLab на GitHub Pages, основная игра не задеплоена
-- **Версия:** 0.5.0
+- **Версия:** 0.6.0
 - **GDD версия**: v4.0 (`docs/gdd/GDD-index.md`)
+
+---
+
+## Sprint: BonkLab Render Interpolation (13 марта 2026) — ЗАВЕРШЁН
+
+**PR:** #25 (`fix/bonklab-render-interpolation`) — Merged
+**PR:** #26 (`fix/trail-rendering-order`) — На ревью (фикс следа)
+**Ревью:** Copilot (×2), GPT-5 Codex, GPT-5.3-Codex, Claude Opus 4.6 (×2)
+**Тесты:** 15/15
+
+- [x] Объединение двух RAF-циклов в один (main.ts)
+- [x] Интерполяция состояния между тиками физики (getInterpolatedState)
+- [x] syncPrevState() во всех точках телепортации
+- [x] lerpAngle() для углов через ±π
+- [x] Однопроходный drawTrail() → непрерывная per-point альфа + обход по возрасту
+- [x] Number.isFinite guard в update()
+- [x] Пересчёт distanceM/progressPct по интерполированной позиции
+- [x] Русификация комментариев (убраны англицизмы)
+- [x] Версия в тулбаре BonkLab
 
 ---
 
 ## Sprint: BonkLab Tech Debt + Zone Tuning + Arena Balancing (13 марта 2026) — ЗАВЕРШЁН
 
 **PR:** #22 (`fix/bonklab-techdebt`) — Merged
-**Ревью:** Copilot, Claude Opus (2x), GPT-5 Codex — замечания исправлены
 **Тесты:** 15/15
 
-- [x] bonk-race-hyf: correctionPercent в static collisions
-- [x] bonk-race-ovb: Zone modifier 1-tick lag
-- [x] bonk-race-dom: lastDensity dual ownership
-- [x] bonk-race-yno: tickOrbs OrbTickConfig
-- [x] bonk-race-d63: Spike knockback → spikeResolver.ts
-- [x] bonk-race-pdi: «Плотность» → «Насыщенность»
-- [x] bonk-race-79e: Ice zone tuning (скользкий разгон)
-- [x] bonk-race-o9f: Turbo zone tuning (ракетный буст)
-- [x] bonk-race-dog: Passage visibility (цепочки, светлый цвет)
-- [x] bonk-race-s75: Sand/Mud differentiation
-- [x] bonk-race-8e8: Trail maxAge 1.0
+- [x] bonk-race-hyf, ovb, dom, yno, d63, pdi — баг-фиксы и рефакторинг
+- [x] Тюнинг зон: Ice, Turbo, Mud, Sand
 - [x] Балансировка арены: зоны 8, камни 4, шипы 2, проходы 1
-- [x] Вероятности зон: turbo 50%, ice 30%, sand 10%, mud 10%
-- [x] Орбы: count 30, minSpeed 10, spikeKill выкл
 
 ---
 
-## Sprint: Trails + Direction Triangle + Tech Debt (11 марта 2026) — ЗАВЕРШЁН
+## Sprint: Trail Coloring + Spike Knockback (11 марта 2026) — ЗАВЕРШЁН
 
-**PR:** #15 (`sprint/trails-direction-triangle`) — Merged
-**Ревью:** Copilot, GPT-5 Codex, GPT-5.3 Codex, Claude Haiku — все P2 исправлены
-**Тесты:** 21/21
-
-- [x] bonk-race-vyh: Треугольник-стрелка внутри круга персонажа
-- [x] bonk-race-hmg: Следы движения (circular buffer 600 точек, fade, distance thinning)
-- [x] bonk-race-2tp: Баг авто-старта (зоны в spawn area)
-- [x] bonk-race-d9o: replayData Number.isFinite валидация
-- [x] bonk-race-dh0: Hardcoded константы → balance.json
-- [x] bonk-race-gl2: Sand zone не генерируется
-- [x] bonk-race-83p: Зонные SurfaceConfig слайдеры в LabPanel
-- [x] Все замечания PR review (trail cleanup, zone clamping, i18n)
+**PR:** #17 — Merged | **Тесты:** 15/15
 
 ---
 
-## Релиз 0.3.0 — Анизотропное трение (10 марта 2026) — ЗАВЕРШЁН
+## Sprint: Trails + Direction Triangle (11 марта 2026) — ЗАВЕРШЁН
 
-**PR:** #14 (`tz-lateral-grip`) — Merged
-**Ревью:** 5× APPROVED (Security, Architecture, Code Quality, Gemini, Codex)
-**Тесты:** 15/15 anisotropic-friction + все остальные
+**PR:** #15 — Merged | **Тесты:** 21/21
 
-- [x] Анизотропный decay exp(-k*dt) вместо force-based drag
-- [x] SurfaceConfig: ISurfaceParams (4 поля) + ISurfaceAssistParams (3 поля)
-- [x] 12 BonkLab пресетов (BonkRace v0.3 по умолчанию)
-- [x] inertiaFactor → "Коэф. формы"
-- [x] clampSurfaceConfig() с NaN guard
-- [x] Зона Sand (ZONE_TYPE_SAND = 6)
-- [x] Серверные зоны через getSurfaceParams()/getSurfaceAssistParams()
+---
+
+## Sprint: Анизотропное трение v0.3.0 (10 марта 2026) — ЗАВЕРШЁН
+
+**PR:** #14 — Merged | **Тесты:** 15/15
 
 ---
 
 ## Countdown и респаун-оверлей (10 марта 2026) — В РАБОТЕ
 
-**PR:** #12 (`feat/countdown-and-respawn-overlay`)
-**Ревьюеры:** Copilot, GPT-5 Codex (CHANGES_REQUESTED), GPT-5.3 Codex ✅
-
-- [x] Countdown 3→2→1→Go! при старте/рестарте (0.7с × 4 = 2.8с)
-- [x] Go!→Go! после смерти (2×0.4с = 0.8с)
-- [x] Анимация punch-in (easeOutQuad, жёлтый glow)
-- [x] Общий `computePunchIn()` в shared
-- [x] CSS-оверлей заменён на canvas-рендер
+**PR:** #12 — Open
+- [x] bonk-race-a5b: Countdown 3→2→1→Go!
+- [x] bonk-race-4iq: Go!-Go! после смерти
 - [ ] GhostRecorder: запись кадров во время freeze/respawnGo
-- [ ] Русификация комментариев (англицизмы)
-
----
-
-## Hotfix: Lab input direction (10 марта 2026) — ЗАВЕРШЁН
-
-**PR:** #11 (`fix/lab-input-direction`) — Merged
-
-- [x] Fix: направление мыши от экранной позиции персонажа
-- [x] CHAR_SCREEN_Y_RATIO = 0.65
-- [x] Визуальный тач-джойстик для мобильных
-
----
-
-## Sprint 2 (2026-03-09/10) — BonkLab v1.2 — ЗАВЕРШЁН
-
-**PR:** #9 (`feat/bonklab-v1.2`) — APPROVED, ready to merge
-
-- [x] Rename slime → mud
-- [x] Configurable obstacle radii
-- [x] Orb generation/physics/rendering
-- [x] Finish detection + overlay
-- [x] Camera offset, distance HUD, preset tracking
-
----
-
-## Sprint 1b (2026-03-09) — BonkLab v1.0 — ЗАВЕРШЁН
-
-**PR:** #6 (`feat/bonklab-v1`) — Merged
-
----
-
-## Sprint 1a (2026-03-07/08) — MVP playable loop — ЗАВЕРШЁН
-
-**PR:** #5 (`feat/vite-proxy-client-connect`) — OPEN, ожидает merge
-
----
-
-## Pre-Sprint (2026-03-07) — Инфраструктура
-
-- [x] PR#1–#4 — Shared, tracks, migrations, ребрендинг — all Merged
+- [ ] Русификация комментариев
 
 ---
 
@@ -133,9 +80,10 @@
 | P1 | bonk-race-6nu | Серверная интеграция movementSystems (LG-5) |
 | P2 | bonk-race-sz1 | reverseZoneAngleDeg — не реализован |
 | P2 | bonk-race-qp0 | BonkLab track editor |
-| P2 | — | Пресеты зон в balance.json (из ревью PR #22) |
-| P2 | — | Weighted random для зон (из ревью PR #22) |
+| P2 | — | Пресеты зон в balance.json |
+| P2 | — | Weighted random для зон |
 | P2 | bonk-race-lx2 | runs/submit идемпотентность |
+| P2 | — | tick() аллокации: pre-allocation, trail aging |
 | P3 | bonk-race-t7p | Sub-pixel anti-aliasing blur |
 | P3 | bonk-race-col | Guest opponent ghost profiles |
 
