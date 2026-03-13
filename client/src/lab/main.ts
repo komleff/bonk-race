@@ -1,4 +1,4 @@
-/** BonkLab — dev-only playground for testing game mechanics */
+/** BonkLab — dev-песочница для тестирования игровых механик */
 
 import { render, h } from "preact";
 import { BonkLab } from "./BonkLab";
@@ -11,7 +11,7 @@ import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
 const root = document.getElementById("lab-root")!;
 
-// Create canvas element — fills viewport (reserve right edge for future param panel)
+// Создать canvas — заполняет viewport (правый край зарезервирован для панели параметров)
 const canvas = document.createElement("canvas");
 canvas.id = "lab-canvas";
 canvas.style.display = "block";
@@ -24,7 +24,7 @@ canvas.style.background = "#1a1a2e";
 root.innerHTML = "";
 root.appendChild(canvas);
 
-// Mount Preact UI containers
+// Контейнеры для Preact UI
 const toolbarContainer = document.createElement("div");
 toolbarContainer.id = "lab-toolbar-ui";
 root.appendChild(toolbarContainer);
@@ -34,10 +34,10 @@ uiContainer.id = "lab-ui";
 root.appendChild(uiContainer);
 
 
-// Instantiate core systems
+// Инициализация основных систем
 const lab = new BonkLab(canvas);
 
-// Apply "BonkRace v0.3" preset on startup — casual arcade racing
+// Применить пресет "BonkRace v0.3" при запуске — казуальные аркадные гонки
 for (const [key, val] of Object.entries(PRESETS[DEFAULT_PRESET_IDX].values)) {
     lab.updateParams(key, val);
 }
@@ -46,16 +46,16 @@ const input = new LabInput(canvas);
 const renderer = new LabRenderer(canvas);
 const hud = new TelemetryHUD();
 
-// Handle window resize
+// Обработка изменения размера окна
 function onResize(): void {
     renderer.resize();
 }
 window.addEventListener("resize", onResize);
-onResize(); // initial sizing
+onResize(); // начальный размер
 
-// Sync triggers for cross-component communication
-let syncTrigger = 0;        // toolbar → panel: re-read params
-let paramChangeCounter = 0; // panel → toolbar: mark preset as Custom
+// Триггеры синхронизации для межкомпонентного взаимодействия
+let syncTrigger = 0;        // toolbar → panel: перечитать параметры
+let paramChangeCounter = 0; // panel → toolbar: пометить пресет как Custom
 
 function renderToolbar(): void {
     render(
@@ -83,11 +83,11 @@ function renderPanel(): void {
     );
 }
 
-// Initial render
+// Первоначальная отрисовка
 renderToolbar();
 renderPanel();
 
-// Expose to window for dev console access
+// Доступ из консоли разработчика
 (window as unknown as Record<string, unknown>).__bonkLab = lab;
 (window as unknown as Record<string, unknown>).__labInput = input;
 (window as unknown as Record<string, unknown>).__labRenderer = renderer;
@@ -96,10 +96,13 @@ renderPanel();
 let rafId: number | null = null;
 let lastFrameTs = 0;
 
+// Валидные паттерны следа (вынесено из frame() для избежания аллокации каждый кадр)
+const VALID_TRAIL_PATTERNS: TrailPattern[] = ["off", "drift", "rainbow"];
+
 function frame(): void {
-    // Вычислить frameDt (секунды с предыдущего кадра, ограничение 100мс)
+    // Вычислить frameDt (секунды с предыдущего кадра)
     const now = performance.now();
-    const frameDt = lastFrameTs > 0 ? Math.min((now - lastFrameTs) / 1000, 0.1) : 0;
+    const frameDt = lastFrameTs > 0 ? (now - lastFrameTs) / 1000 : 0;
     lastFrameTs = now;
 
     // Обновляем экранную позицию персонажа для корректного расчёта направления мыши
@@ -114,10 +117,8 @@ function frame(): void {
     lab.setInput(inputState.x, inputState.y, inputState.magnitude);
 
     // Шагнуть физику и получить alpha для интерполяции
-    let alpha = 0;
-    if (lab.isRunning) {
-        alpha = lab.update(frameDt);
-    }
+    // (update() сам проверяет running и ограничивает dt)
+    const alpha = lab.update(frameDt);
 
     // Обновить нормализацию из текущих параметров
     renderer.setNormalization(
@@ -126,7 +127,6 @@ function frame(): void {
     );
 
     // Конфигурация следа
-    const VALID_TRAIL_PATTERNS: TrailPattern[] = ["off", "drift", "rainbow"];
     const rawPattern = (lab.params["trail.pattern"] as unknown as string) ?? "drift";
     const trailPattern: TrailPattern = VALID_TRAIL_PATTERNS.includes(rawPattern as TrailPattern)
         ? rawPattern as TrailPattern
@@ -155,11 +155,11 @@ function frame(): void {
     rafId = requestAnimationFrame(frame);
 }
 
-// Start simulation (internal physics loop) and render loop
+// Запуск симуляции и цикла рендеринга
 lab.start();
 rafId = requestAnimationFrame(frame);
 
-// HMR cleanup — prevent stale listeners/loops on Vite hot reload
+// Очистка при HMR — предотвращение устаревших листенеров/циклов при hot reload Vite
 if (import.meta.hot) {
     import.meta.hot.dispose(() => {
         lab.stop();

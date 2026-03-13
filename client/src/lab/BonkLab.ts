@@ -564,6 +564,9 @@ export class BonkLab {
                 this.inputX = 0;
                 this.inputY = 0;
                 this.inputMagnitude = 0;
+                // Синхронизировать prev-состояние перед первым «живым» тиком,
+                // чтобы интерполяция не прыгнула от стейла заморозки
+                this.syncPrevState();
             }
             return;
         }
@@ -798,6 +801,9 @@ export class BonkLab {
                 this.angVel = 0;
                 body.vx = 0;
                 body.vy = 0;
+                // Синхронизировать prev-состояние, чтобы интерполяция не дёргала
+                // при изменении guard-условий в getInterpolatedState()
+                this.syncPrevState();
                 return;
             }
 
