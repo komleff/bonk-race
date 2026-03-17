@@ -2,10 +2,10 @@
 
 Текущее состояние проекта и фокус работы.
 
-## Текущее состояние (13 марта 2026)
+## Текущее состояние (18 марта 2026)
 
 **Репозиторий:** `komleff/bonk-race`
-**Активная ветка:** `main` (v0.6.0 готовится к релизу)
+**Активная ветка:** `main` (v0.6.0 выпущен)
 **GDD версия:** 4.0 (`docs/gdd/GDD-index.md`)
 **Версия:** 0.6.0
 
@@ -19,14 +19,14 @@
 | #2 | `race/phase5-track` | Starter Circuit, tracks API, wall/surface physics | Merged |
 | #3 | `fix/db-defaults-uuid` | UUID миграции fix, bonk_race DB defaults | Merged |
 | #4 | `chore/rebrand-and-memory-bank` | Ребрендинг slime-arena → bonk-race | Merged |
-| #5 | `feat/vite-proxy-client-connect` | Sprint 1: auth, submit, ghosts, vertical track | **Open → ready to merge** |
+| #5 | `feat/vite-proxy-client-connect` | Sprint 1: auth, submit, ghosts, vertical track | Merged |
 | #6 | `feat/bonklab-v1` | BonkLab v1.0: physics sandbox | Merged |
 | #7 | `ci/deploy-lab-workflow` | CI: GitHub Pages deployment for BonkLab | Merged |
 | #8 | `fix/lab-pages-base` | Fix: base path for GitHub Pages | Merged |
-| #9 | `feat/bonklab-v1.2` | BonkLab v1.2: orbs, finish, geometry, presets | **APPROVED → ready to merge** |
+| #9 | `feat/bonklab-v1.2` | BonkLab v1.2: orbs, finish, geometry, presets | Merged |
 | #10 | `feat/gdd-v4-ugc` | GDD v4.0: UGC-секция, русификация | Merged |
 | #11 | `fix/lab-input-direction` | Fix: направление мыши в BonkLab (2x angle error) | Merged |
-| #12 | `feat/countdown-and-respawn-overlay` | Countdown 3-2-1-Go! + respawn overlay | **Open — ревью** |
+| #12 | `feat/countdown-and-respawn-overlay` | Countdown 3-2-1-Go! + respawn overlay | Merged |
 | #14 | `tz-lateral-grip` | Анизотропное трение + BonkRace v0.3 пресеты | Merged |
 | #15 | `sprint/trails-direction-triangle` | Следы, треугольник направления, техдолг | Merged |
 | #17 | `feat/trail-coloring` | Trail coloring + spike knockback/destroy | Merged |
@@ -34,7 +34,10 @@
 | #23 | `chore/release-v0.5.0` | Release v0.5.0 | Merged |
 | #24 | `chore/cleanup` | Архив планов, удаление веток, фикс docs | Merged |
 | #25 | `fix/bonklab-render-interpolation` | Устранение jitter: единый RAF + интерполяция тиков | Merged |
-| #26 | `fix/trail-rendering-order` | Плавный след: обход ring buffer по возрасту | **На ревью** |
+| #26 | `fix/trail-rendering-order` | Плавный след: обход ring buffer по возрасту | Merged |
+| #27 | `chore/v0.6.0-release-prep` | v0.6.0 release prep — memory bank, README, toolbar, release notes | Merged |
+| #28 | `chore/release-v0.6.0` | Release v0.6.0 | Merged |
+| #29 | `ci/deploy-lab-version-trigger` | CI: trigger BonkLab deploy on version.json change | Merged |
 
 ---
 
