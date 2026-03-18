@@ -20,7 +20,7 @@
 - **VS Code** с расширением [Claude Code](https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code)
 - **Cursor** (опционально) — AI-first редактор
 - **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code`
-- **GitHub CLI** — `brew install gh` (для ревью и PR)
+- **GitHub CLI** — [cli.github.com](https://cli.github.com/) (для ревью и PR)
 - API-ключи: Anthropic (Claude), OpenAI (GPT) — для кросс-ревью
 
 ### Установка за 5 минут
@@ -166,7 +166,7 @@ Cursor использует `.cursorignore` и может читать `CLAUDE.m
 ## Частые вопросы
 
 **Q: Сколько стоит?**
-A: Основные затраты — API Claude (Opus). Для среднего проекта: $50–150/мес. GPT ревью добавляет $10–30/мес.
+A: Основные затраты — API Claude (Opus). Для активной разработки: $100–200/мес. GPT ревью добавляет $20–40/мес.
 
 **Q: Обязателен ли Beads?**
 A: Нет. Можно использовать GitHub Issues, Linear или просто текстовый backlog. Beads удобен для CLI-first workflow.

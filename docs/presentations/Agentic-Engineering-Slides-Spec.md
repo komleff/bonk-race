@@ -275,11 +275,15 @@ AGENT_ROLES.md     ✅ ссылка     ✅ ссылка  ✅ ссылка  📋
 ```json
 "deny": [
   "Read(.env*)",              // 🔒 Секреты
-  "Bash(rm -rf:*)",           // 🔒 Удаление
+  "Read(**/secrets*)",        // 🔒 Секреты
+  "Bash(rm -rf:*)",           // 🔒 Удаление (Linux)
+  "Bash(rm *)",               // 🔒 Удаление файлов
+  "Bash(del *)",              // 🔒 Удаление (Windows)
   "Bash(git push --force *)", // 🔒 Force push
   "Bash(git push origin main)", // 🔒 Push в main
   "Bash(gh pr merge *)",      // 🔒 Авто-merge
-  "Bash(gh repo delete *)"    // 🔒 Удаление репо
+  "Bash(gh repo delete *)",   // 🔒 Удаление репо
+  "Bash(gh api -X DELETE *)"  // 🔒 DELETE через API
 ]
 ```
 
@@ -576,16 +580,17 @@ starter-kit/
 **Контент:**
 
 ```bash
-# 1. Скопировать
-cp -r docs/starter-kit/* ./
+# 1. Скопировать шаблоны в корень проекта
+cp -rn docs/starter-kit/. ./   # -n: не перезаписывать
 
-# 2. Заменить плейсхолдеры
+# 2. Переименовать шаблоны (.template → готовый файл)
+find . -name "*.template" -exec sh -c \
+  'mv "$1" "${1%.template}"' _ {} \;
+
+# 3. Заменить плейсхолдеры
 # [PROJECT_NAME], [BUILD_CMD], [TEST_CMD]
 
-# 3. Заполнить Memory Bank
-# projectbrief.md, techContext.md
-
-# 4. Запустить
+# 4. Заполнить Memory Bank + запустить
 claude
 ```
 
@@ -635,7 +640,7 @@ claude
 
 | Вопрос | Ответ |
 |--------|-------|
-| Сколько стоит? | $120–240/мес (Claude + GPT). Джуниор — от $2000/мес. |
+| Сколько стоит? | $120–240/мес (Claude $100–200 + GPT $20–40). Джуниор — от $2000/мес. |
 | Конфиденциальность? | Код идёт в API. Проверьте compliance. Self-hosted — опция. |
 | Команда? | CLAUDE.md коммитится в репо. Memory Bank общий. Сессии пока однопользовательские. |
 | Когда НЕ подходит? | Banking, medical (нужен human review). DevOps. Легаси без тестов. |

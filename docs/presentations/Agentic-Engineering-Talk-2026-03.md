@@ -135,9 +135,6 @@ Reviewers ──────── ре-ревью ──► консенсус 
 
 ```jsonc
 {
-  "env": {
-    "ENABLE_TOOL_SEARCH": "auto:5"    // Авто-поиск инструментов (MCP), до 5 попыток
-  },
   "permissions": {
     "allow": [
       "Bash(*)",        // Все bash-команды (защита через deny-list ниже)
@@ -145,16 +142,20 @@ Reviewers ──────── ре-ревью ──► консенсус 
       "Glob", "Grep",   // Поиск файлов и текста
       "WebFetch", "WebSearch",  // Интернет (для research)
       "TodoWrite",       // Управление задачами в сессии
+      "Task",            // Запуск субагентов
       "NotebookEdit"     // Jupyter-ноутбуки
     ],
     "deny": [
       // 🔒 Защита секретов
       "Read(.env*)",              // .env файлы с API-ключами
       "Read(**/credentials*)",    // Файлы с учётными данными
+      "Read(**/secrets*)",        // Файлы с секретами
 
-      // 🔒 Защита от удаления
+      // 🔒 Защита от удаления (Linux + Windows)
       "Bash(rm -rf:*)",           // Рекурсивное удаление
       "Bash(rm *)",               // Удаление файлов
+      "Bash(del *)",              // Windows: удаление файлов
+      "Bash(rmdir *)",            // Windows: удаление директорий
 
       // 🔒 Защита git (КРИТИЧНО)
       "Bash(git push --force *)", // Force push
@@ -168,11 +169,8 @@ Reviewers ──────── ре-ревью ──► консенсус 
     ],
     "defaultMode": "acceptEdits"  // Авто-принятие правок файлов
   },
-  "enableAllProjectMcpServers": true,  // Beads MCP сервер
   "language": "russian",               // Русский язык ответов
-  "alwaysThinkingEnabled": true,       // Extended thinking (глубокий анализ)
-  "plansDirectory": "./docs/plans",    // Куда сохранять планы спринтов
-  "notebooksDirectory": "./docs/notebooks"
+  "alwaysThinkingEnabled": true        // Extended thinking (глубокий анализ)
 }
 ```
 
@@ -272,7 +270,7 @@ bd close <id> --reason="PR #42"     # Закрыть с причиной
 - **v0.3.1** — ошибка отсутствия файла конфигурации (withdrawn)
 - **v0.3.2** — ESM/CommonJS mismatch (withdrawn)
 - **v0.3.3** — 9 исправлений (D-01..D-09)
-- **v0.8.5** — Redis MISCONF: `stop-writes-on-bgsave-error` заблокировал все записи → 22 часа даунтайма
+- **Slime Arena v0.8.5** — Redis MISCONF: `stop-writes-on-bgsave-error` заблокировал все записи → 22 часа даунтайма
 
 **Вывод:** ИИ-агенты плохо справляются с инфраструктурой. DevOps-задачи требуют человеческого контроля.
 
@@ -313,14 +311,18 @@ Developer-агент получал отчёт ревьювера, но либо
 ### Быстрый старт
 
 ```bash
-# 1. Скопировать шаблоны
-cp -r docs/starter-kit/. ./
+# 1. Скопировать шаблоны (без перезаписи существующих)
+cp -rn docs/starter-kit/. ./
 
-# 2. Заменить плейсхолдеры [PROJECT_NAME], [BUILD_CMD], [TEST_CMD]
+# 2. Переименовать шаблоны (.template → готовый файл)
+find . -name "*.template" -exec sh -c \
+  'mv "$1" "${1%.template}"' _ {} \;
 
-# 3. Заполнить Memory Bank (projectbrief.md, techContext.md)
+# 3. Заменить плейсхолдеры [PROJECT_NAME], [BUILD_CMD], [TEST_CMD]
 
-# 4. Запустить Claude Code
+# 4. Заполнить Memory Bank (projectbrief.md, techContext.md)
+
+# 5. Запустить Claude Code
 claude
 ```
 

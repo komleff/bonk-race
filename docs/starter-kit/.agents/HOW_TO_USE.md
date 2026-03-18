@@ -1,6 +1,6 @@
 # Промпты активации ролей ИИ-агентов
 
-Шпаргалка по активации ролей из [AGENT_ROLES.md](./AGENT_ROLES.md.template).
+Шпаргалка по активации ролей из [AGENT_ROLES.md](./AGENT_ROLES.md).
 
 ---
 
