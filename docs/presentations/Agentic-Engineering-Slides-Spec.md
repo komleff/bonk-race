@@ -91,8 +91,8 @@
 | GPT-5.4 | Ревьювер, research | Лучший ревьювер |
 | GPT-5.3-Codex | Ревьювер, кодинг | Быстрый, дешёвый |
 | GPT Pro | Deep research | Глубокий анализ |
-| Gemini | Cross-check | ⚠️ Неуправляем |
-| Copilot | Автодополнение | IDE-интеграция |
+| Gemini | Промпты для MJ, арт | ⚠️ Был ревьювером → отказался (ложные APPROVED) |
+| Copilot | Ревьювер PR | IDE-интеграция |
 | DeepSeek | Cross-check | Бесплатный |
 | MidJourney | Арт, ассеты | Визуал |
 | Plaud | Запись встреч | Hardware AI |
