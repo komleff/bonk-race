@@ -7,6 +7,12 @@
   "beads.autoRefresh": true,
   "beads.refreshInterval": 5000,
   "chat.tools.terminal.autoApprove": {
-    "ssh": true
+    "/^git (status|log|diff|show|fetch|branch|stash|tag|add|commit|pull)( |$)/": true,
+    "/^git push(?!.*(-f |--force|origin main))/": true,
+    "/^gh (pr|issue) (view|list|comment|review --comment)/": true,
+    "/^(ls|cat|find|grep|rg|head|tail|wc|echo|pwd|which|env)/": true,
+    "/^(npm run|npx|node( |$))/": true,
+    "/^bd /": true
   }
 }
+

@@ -16,5 +16,12 @@
   "github.copilot.chat.localeOverride": "ru",
   "github.copilot.enable": {
     "*": true
+  },
+  "chat.tools.terminal.autoApprove": {
+    "/^git (status|log|diff|show|fetch|branch|stash|tag|add|commit|pull)( |$)/": true,
+    "/^git push(?!.*(-f |--force|origin main))/": true,
+    "/^gh (pr|issue) (view|list|comment|review --comment)/": true,
+    "/^(ls|cat|find|grep|rg|head|tail|wc|echo|pwd|which|env)/": true,
+    "/^(npm run|npx|node( |$))/": true
   }
 }
