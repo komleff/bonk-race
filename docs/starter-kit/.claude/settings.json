@@ -10,19 +10,23 @@
       "WebFetch",
       "WebSearch",
       "TodoWrite",
+      "Task",
       "NotebookEdit"
     ],
     "deny": [
       "Read(.env*)",
       "Read(**/credentials*)",
       "Read(**/secrets*)",
-      "Bash(rm -rf:*)",
-      "Bash(rm *)",
+      "Bash(rm -rf *)",
+      "Bash(rm -r *)",
+      "Bash(rm -fr *)",
+      "Bash(rmdir *)",
       "Bash(git push --force *)",
       "Bash(git push -f *)",
       "Bash(git push origin main)",
       "Bash(gh pr merge *)",
-      "Bash(gh repo delete *)"
+      "Bash(gh repo delete *)",
+      "Bash(gh api -X DELETE *)"
     ],
     "defaultMode": "acceptEdits"
   },
