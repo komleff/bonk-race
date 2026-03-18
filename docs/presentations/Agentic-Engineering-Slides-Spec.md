@@ -194,7 +194,7 @@ PM (Opus)        ── gh pr comment ──►│ "Developer Report: ..."
                                      │
 Reviewer 1 (Opus) ── gh pr comment ─►│ "APPROVED"
 Reviewer 2 (GPT)  ── gh pr comment ─►│ "CHANGES_REQUESTED"
-Reviewer 3 (Gemini)── gh pr comment ►│ "APPROVED"
+Reviewer 3 (Copilot)── gh pr comment►│ "APPROVED"
                                      │
 PM (Opus)         ── парсит JSON  ──►│  консенсус 2/3
                                      │
@@ -387,12 +387,14 @@ main.ts         4000+ строк    UI + сеть + рендер + ввод
 
 | Проблема | Статус | Workaround |
 |---------|--------|------------|
-| God Objects | ⚠️ Рефакторинг | Осторожные изменения |
+| God Objects | ⚠️ | Рефакторинг каждые 2 недели |
 | Цикл ревью обрывается | ❌ | Ручной запуск итераций |
-| Английский в комментариях | ⚠️ 70% | Отдельный PR |
-| Безопасность | ⚠️ | 3+ ревьювера разных моделей |
-| Инфраструктура | ❌ | Человеческий контроль |
-| Gemini | ❌ | Не доверять вердиктам |
+| Английский в комментариях | ⚠️ 70% | Отдельный PR + напоминать |
+| Безопасность | ⚠️ | GPT как внешний ревьювер |
+| Инфраструктура | ⚠️ | Настроили, но для коммерции рано |
+| Gemini | ❌ | Только арт, не ревью |
+| Потеря контекста (Memory Bank) | ❌ | Напоминать вручную |
+| Забытые отчёты в PR | ❌ | Следить за публикацией |
 
 **Визуал:**
 - Компактная таблица с цветовыми статусами
@@ -694,7 +696,7 @@ sequenceDiagram
     participant PM as PM (Opus)
     participant R1 as Reviewer (Opus)
     participant R2 as Reviewer (GPT)
-    participant R3 as Reviewer (Gemini)
+    participant R3 as Reviewer (Copilot)
     participant H as Оператор
 
     D->>PR: git push (код)
