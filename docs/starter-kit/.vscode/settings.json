@@ -22,6 +22,7 @@
     "/^git push(?!.*(-f |--force|origin main))/": true,
     "/^gh (pr|issue) (view|list|comment|review --comment)/": true,
     "/^(ls|cat|find|grep|rg|head|tail|wc|echo|pwd|which|env)/": true,
-    "/^(npm run|npx|node( |$))/": true
+    "/^(npm run|npx|node( |$))/": true,
+    "/^bd /": true
   }
 }
