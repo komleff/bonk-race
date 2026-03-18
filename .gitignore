@@ -12,6 +12,7 @@ server/dist/
 shared/dist/
 .vscode/
 !.vscode/settings.json
+!docs/starter-kit/.vscode/
 .obsidian/workspace.json
 .obsidian/workspace
 .u2/
