@@ -33,16 +33,20 @@ cp -r docs/starter-kit/.github .github
 cp -r docs/starter-kit/.memory_bank .memory_bank
 cp -r docs/starter-kit/.vscode .vscode
 cp docs/starter-kit/CLAUDE.md.template CLAUDE.md
+cp docs/starter-kit/CLAUDE-core.md.template CLAUDE-core.md
 cp docs/starter-kit/.cursorignore .cursorignore
 
-# 2. Отредактировать CLAUDE.md — заменить плейсхолдеры
+# 2. Переименовать шаблоны (убрать суффикс .template)
+find . -path './.git' -prune -o -name "*.template" -print | while read f; do mv "$f" "${f%.template}"; done
+
+# 3. Отредактировать CLAUDE.md — заменить плейсхолдеры
 # [PROJECT_NAME], [TECH_STACK], [BUILD_CMD], [TEST_CMD]
 
-# 3. Заполнить Memory Bank
+# 4. Заполнить Memory Bank
 # .memory_bank/projectbrief.md — зачем проект
 # .memory_bank/techContext.md — стек и ограничения
 
-# 4. Проверить
+# 5. Проверить
 claude  # запустить Claude Code и убедиться, что он читает CLAUDE.md
 ```
 
@@ -72,6 +76,7 @@ starter-kit/
 │   ├── productContext.md.template    ← Продуктовый контекст
 │   ├── activeContext.md.template     ← Текущее состояние
 │   ├── techContext.md.template       ← Технический стек
+│   ├── systemPatterns.md.template    ← Архитектурные паттерны
 │   └── progress.md.template          ← Прогресс
 │
 └── .vscode/

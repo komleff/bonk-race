@@ -1,4 +1,4 @@
-# Рабочее место ИИ-агентик инженера. Результаты зимнего исследования.
+# Рабочее место ИИ-агентного инженера. Результаты зимнего исследования.
 
 ## Полный текст доклада
 
@@ -144,8 +144,7 @@ Cursor использует `.cursorignore` для индексации, и мо
 Ещё важные настройки:
 - `"language": "russian"` — ответы на русском
 - `"alwaysThinkingEnabled": true` — extended thinking, глубокий анализ
-- `"enableAllProjectMcpServers": true` — включает Beads MCP для управления задачами
-- `"plansDirectory": "./docs/plans"` — куда PM сохраняет планы спринтов
+- `"defaultMode": "acceptEdits"` — агент применяет правки без подтверждения
 
 ### Слайд: copilot-instructions.md
 
@@ -261,7 +260,7 @@ GPT в тех же условиях ведёт себя дисциплиниро
 
 ```bash
 # 1. Скопировать шаблоны в проект
-cp -r docs/starter-kit/* ./
+cp -r docs/starter-kit/. ./
 
 # 2. Заменить плейсхолдеры
 # [PROJECT_NAME], [BUILD_CMD], [TEST_CMD]
