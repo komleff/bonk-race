@@ -27,28 +27,59 @@
 
 ```bash
 # 1. Скопировать шаблоны в корень проекта
-cp -r docs/starter-kit/.agents .agents
-cp -r docs/starter-kit/.claude .claude
-cp -r docs/starter-kit/.github .github
-cp -r docs/starter-kit/.memory_bank .memory_bank
-cp -r docs/starter-kit/.vscode .vscode
-cp docs/starter-kit/CLAUDE.md.template CLAUDE.md
-cp docs/starter-kit/CLAUDE-core.md.template CLAUDE-core.md
-cp docs/starter-kit/.cursorignore .cursorignore
+cp -rn docs/starter-kit/. ./
 
 # 2. Переименовать шаблоны (убрать суффикс .template)
-find . -path './.git' -prune -o -name "*.template" -print | while read f; do mv "$f" "${f%.template}"; done
+find . -path './.git' -prune -o -name "*.template" -print \
+  | while read f; do mv "$f" "${f%.template}"; done
 
-# 3. Отредактировать CLAUDE.md — заменить плейсхолдеры
-# [PROJECT_NAME], [TECH_STACK], [BUILD_CMD], [TEST_CMD]
+# 3. Заменить плейсхолдеры (см. таблицу ниже)
 
-# 4. Заполнить Memory Bank
-# .memory_bank/projectbrief.md — зачем проект
-# .memory_bank/techContext.md — стек и ограничения
+# 4. Заполнить Memory Bank (см. приоритеты ниже)
 
 # 5. Проверить
-claude  # запустить Claude Code и убедиться, что он читает CLAUDE.md
+claude  # запустить Claude Code → он должен поздороваться на русском
 ```
+
+### Плейсхолдеры — что заменить
+
+**Обязательные** (без них агент не поймёт проект):
+
+| Плейсхолдер | Где | Пример |
+|---|---|---|
+| `[PROJECT_NAME]` | CLAUDE.md, AGENT_ROLES.md | `My App` |
+| `[DATE]` | CLAUDE.md, AGENT_ROLES.md | `2026-03-19` |
+| `[BUILD_CMD]` | CLAUDE.md, copilot-instructions.md | `npm run build` |
+| `[TEST_CMD]` | CLAUDE.md, copilot-instructions.md | `npm run test` |
+| `[DEV_SERVER_CMD]` | CLAUDE.md | `npm run dev` |
+
+**Рекомендуемые** (улучшают контекст):
+
+| Плейсхолдер | Где | Пример |
+|---|---|---|
+| `[CONFIG_FILE]` | CLAUDE.md | `config/settings.json` |
+| `[MAIN_SERVER_FILE]` | CLAUDE.md | `src/server/index.ts` |
+| `[MAIN_CLIENT_FILE]` | CLAUDE.md | `src/client/App.tsx` |
+| `[ОПИСАНИЕ_ПРОЕКТА]` | copilot-instructions.md | `SaaS для управления задачами` |
+| `[КОНФИГ_ФАЙЛ]` | copilot-instructions.md | `config/app.json` |
+
+### Memory Bank — порядок заполнения
+
+| Приоритет | Файл | Когда заполнять |
+|---|---|---|
+| 🔴 Сразу | `projectbrief.md` | Перед первым запуском — цель, аудитория, MVP |
+| 🔴 Сразу | `techContext.md` | Перед первым запуском — стек, команды, ограничения |
+| 🟡 Первая сессия | `activeContext.md` | После первого спринта — текущий статус |
+| 🟡 Первая сессия | `productContext.md` | Когда есть понимание продукта |
+| ⚪ Позже | `systemPatterns.md` | Когда появятся архитектурные решения |
+| ⚪ Позже | `progress.md` | Когда начнётся итеративная работа |
+
+### Проверка установки
+
+После `claude` убедитесь:
+1. Агент отвечает **на русском** (настройка `language` из settings.json)
+2. Спросите `Какой проект?` — агент должен назвать `[PROJECT_NAME]` из CLAUDE.md
+3. Попробуйте `git push origin main` — агент должен **отказать** (deny-list)
 
 ---
 
