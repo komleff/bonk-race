@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/*)",
+      "Bash(git push origin main --force*)",
+      "Bash(git push origin main -f*)",
+      "Bash(git push --force origin main*)",
+      "Bash(git push -f origin main*)",
+      "Bash(gh repo delete *)"
+    ]
+  },
+  "effortLevel": "max"
+}

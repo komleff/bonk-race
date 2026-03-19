@@ -33,11 +33,14 @@ cp -rn docs/starter-kit/. ./
 find . -path './.git' -prune -o -name "*.template" -print \
   | while read f; do mv "$f" "${f%.template}"; done
 
-# 3. Заменить плейсхолдеры (см. таблицу ниже)
+# 3. Установить глобальные настройки Claude (один раз на машину)
+cp .claude/settings.global.json ~/.claude/settings.json
 
-# 4. Заполнить Memory Bank (см. приоритеты ниже)
+# 4. Заменить плейсхолдеры (см. таблицу ниже)
 
-# 5. Проверить
+# 5. Заполнить Memory Bank (см. приоритеты ниже)
+
+# 6. Проверить
 claude  # запустить Claude Code → он должен поздороваться на русском
 ```
 
@@ -97,7 +100,8 @@ starter-kit/
 │   └── HOW_TO_USE.md                 ← Промпты активации ролей
 │
 ├── .claude/
-│   └── settings.json                 ← Разрешения и deny-list
+│   ├── settings.json                 ← Разрешения и deny-list (уровень проекта)
+│   └── settings.global.json          ← Глобальные настройки → скопировать в ~/.claude/settings.json
 │
 ├── .github/
 │   └── copilot-instructions.md.template ← Правила для Copilot
