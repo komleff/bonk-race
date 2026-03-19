@@ -21,9 +21,13 @@
       "Bash(rm -r *)",
       "Bash(rm -fr *)",
       "Bash(rmdir *)",
+      "Bash(Remove-Item -Recurse *)",
       "Bash(git push --force *)",
       "Bash(git push -f *)",
       "Bash(git push origin main)",
+      "Bash(git push * main)",
+      "Bash(git push origin HEAD:main)",
+      "Bash(git push * HEAD:main)",
       "Bash(gh pr merge *)",
       "Bash(gh repo delete *)",
       "Bash(gh api -X DELETE *)"
