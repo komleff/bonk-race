@@ -100,6 +100,7 @@ starter-kit/
 │
 ├── .agents/
 │   ├── AGENT_ROLES.md.template       ← Роли агентов (PM, Developer, Reviewer)
+│   ├── PM_ROLE.md.template           ← PM-оркестратор: review-fix-review цикл
 │   └── HOW_TO_USE.md                 ← Промпты активации ролей
 │
 ├── .claude/
