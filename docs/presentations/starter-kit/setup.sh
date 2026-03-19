@@ -82,14 +82,42 @@ echo ""
 echo "2/4  Переименование шаблонов (.template → без суффикса)..."
 
 RENAMED=0
-find "$TARGET_DIR" -path "$TARGET_DIR/.git" -prune -o -name "*.template" -print | while read -r f; do
-  target="${f%.template}"
-  if [ -e "$target" ]; then
-    echo "   ⏭ Уже есть: $(basename "$target")"
-  else
-    mv "$f" "$target"
-    echo "   ✓ $(basename "$f") → $(basename "$target")"
-    ((RENAMED++)) || true
+# Переименовываем только файлы из известных директорий стартер-кита
+TEMPLATE_DIRS=(
+  "$TARGET_DIR/CLAUDE.md.template"
+  "$TARGET_DIR/CLAUDE-core.md.template"
+)
+TEMPLATE_SEARCH_DIRS=(
+  "$TARGET_DIR/.agents"
+  "$TARGET_DIR/.github"
+  "$TARGET_DIR/.memory_bank"
+)
+
+for f in "${TEMPLATE_DIRS[@]}"; do
+  if [ -f "$f" ]; then
+    target="${f%.template}"
+    if [ -e "$target" ]; then
+      echo "   ⏭ Уже есть: $(basename "$target")"
+    else
+      mv "$f" "$target"
+      echo "   ✓ $(basename "$f") → $(basename "$target")"
+      ((RENAMED++)) || true
+    fi
+  fi
+done
+
+for dir in "${TEMPLATE_SEARCH_DIRS[@]}"; do
+  if [ -d "$dir" ]; then
+    find "$dir" -name "*.template" -print | while read -r f; do
+      target="${f%.template}"
+      if [ -e "$target" ]; then
+        echo "   ⏭ Уже есть: $(basename "$target")"
+      else
+        mv "$f" "$target"
+        echo "   ✓ $(basename "$f") → $(basename "$target")"
+        ((RENAMED++)) || true
+      fi
+    done
   fi
 done
 
