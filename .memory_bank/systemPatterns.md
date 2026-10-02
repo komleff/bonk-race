@@ -89,3 +89,9 @@
 ## TugLab: общий расчёт пары (3 октября 2026)
 
 `advancePair` принимает actual A/B, сцепку, круги и bounds, callback только скоростей. Выдаёт новые тела/события либо атомарный отказ с исходными references; внешний yaw-history не допустим в повторяемом callback. Пружина даёт один kick на подшаг; ограничения/CCD чередуются по ограниченному горизонту до ближайшего события, unaccepted trials откатываются. Односторонние ограничения ограничивают итоговый накопленный импульс пробы; завершённые отрезки не откатываются. `stepWorld` пока изолированный прототип; интеграция stock BonkLab в работе. Орбы/линия не входят в статический CCD этого этапа.
+
+## TugLab: opt-in интеграция BonkLab
+
+`BonkLab(canvas,{towing:true})` включает `LabTowing`; безoption старый путь сохранён. ТолькоB/сцепка имеют дополнительное постоянное состояние; A берётся из штатных полей. Sections1–3 FA/история/зоны общие раз/maintick, motion4–6 ветвится. `integratePhysics` в callback отдаёт только скорости, drift/CCD одинобщий. B имеет свой drag/зону, без FA/angularclamp. Исходные Arena ID используются дляspikes, finish поA, смерть любого→общийrespawn. Орбы шагают одинраз; opt-in позиционнаякоррекция уходитворб, mass-dependent импульсы сохранены. Они остаютсяdiscrete contacts.
+
+`pause` сохраняетblur/hidden handlers, очищаетinput; terminalstop снимаетhandlers дажеpaused. `stepOnce` синхронизируетprevA/B. Live независимые mass/radius/k/damping сохраняютcapturedtarget; явные length/type иRestart используютconfiguredtarget. Capture 2–12м и≤2м/с включаетвращение. При невозможнойгеометрии settingsсохраняются, positions/mapне меняются, нуженmanualRestart.
