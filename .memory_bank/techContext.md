@@ -56,3 +56,11 @@ cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts
 - Исходники: `client/src/tuglab/{types.ts,config/,physics/}`. Отдельный TypeScript-конфиг `client/tsconfig.tuglab-test.json` и тесты `tests/tuglab/*.test.cjs`. Новые зависимости не добавлены.
 - Проверки: `npm run typecheck:tuglab`, `npm run test:tuglab` (32/32 PASS на checkpoint `1bd985d`). Существующая сборка и тесты также проходят по отчёту Developer.
 - Репозиторий в рабочей ветке: версия 0.6.1 по политике PATCH. Готовой точки входа/сборки TugLab пока нет; трос, пружина, CCD, UI и публикация не реализованы.
+
+## TugLab — самостоятельная оболочка (3 октября 2026)
+
+Существующие зависимости без добавлений. `npm run dev:tuglab`→LAN0.0.0.0:5174/tuglab.html; `npm run build:tuglab`→client/dist-tuglab/index.html сbase './'. Собственная версия0.1.0+gitcommit, репозиторий0.6.1. Тотжеlab/main выбираетопциюпоdata-mode="towing"; defaultlab.html сохраняетstockpath. Вbuiltstockпроверены noTowing/noWASD/export-import.
+
+`test:tuglab` включаетphysics/runtime/LabInput (182tests). `test:tuglab:ui` — browserinteraction через externalPlaywright/Chrome, задаютсяPLAYWRIGHT_MODULE/CHROME_PATH/TUGLAB_URL; defaultпути локальногоQAв/tmp/mac, неproductdependency. Дополнительный `tests/tuglab/ui-lifecycle.cjs` проверяетrealspike death/respawnheldinput. ФинальнаяQA/CIartifact вработе.
+
+Generateddist-tuglab/dist-lab и.cache/tuglab-qa игнорируютсяGit. СерверныйAPIне нужен; Caddyготоваясхема docs/deploy/tuglab-vps.md, productionнеизменён. DNSresolved83.217.202.233, HTTPSTLSпоканеуспешен. Androiddeviceнепроверен.

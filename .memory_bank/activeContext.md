@@ -15,6 +15,8 @@
 
 - Этап3 закрыт: opt-in BonkLab/исходная карта/stock FA/пассивный B/орбы/шипы/общий респаун/пауза и Step. `6f80929` + `8ba429b`, 177/177 tests, typechecks/npmtest PASS; исходные общие сборки PASS. Независимые spec/quality APPROVED после двух переходных исправлений. `.4` начата: UI/рендер/отдельная оболочка.
 
+- Этап4 закрыт: тот же main/input/renderer/panel/toolbar, отдельная TugLab оболочка и сборка, opt-in WASD, параметры сцепок, B/линия/миникарта. `7f3823e` + `8a3b976`; 182tests и builds PASS, dev/static/stock browser smoke PASS; independent spec/quality APPROVED после сброса held input при респауне. `.5` начата — финальная QA/guide/artifact. Игра локально на :5174/tuglab.html или static :5184/, HTTPS-host ещё не опубликован.
+
 ## U2 TugLab — сохранённый контекст паузы для обновления
 
 - Оператор уточнил минимальный объём: сохранить оригинальную сцену BonkLab с генератором препятствий и существующее управление bonk-race. Код переиспользовать по максимуму, переделывать минимум.
