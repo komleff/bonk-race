@@ -287,16 +287,18 @@ export class BonkLab {
     }
 
     stop(): void {
+        this.listenForFocus(false);
         if (!this.running) return;
         this.running = false;
-        this.listenForFocus(false);
         console.log("[BonkLab] simulation stopped");
     }
 
     /** Пауза/одиночный шаг доступны только явно включённому TugLab. */
     pause(reason?: string): void {
         if (!this.towing) return;
-        this.stop();
+        // Пауза сохраняет обработчики фокуса; terminal stop снимает их даже без running.
+        this.running = false;
+        this.listenForFocus(true);
         this.accumulator = 0;
         this.inputX = this.inputY = this.inputMagnitude = 0;
         if (reason && !this.towing.needsRestart) this.towing.reason = reason;

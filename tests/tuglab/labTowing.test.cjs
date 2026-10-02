@@ -137,3 +137,51 @@ test('passive B drifts exactly once and keeps angular velocity beyond player lim
  near(t.towing.B.position.x,s.towing.B.position.x+20/60);near(t.towing.B.angularVelocity,10);
  near(t.towing.B.angle,s.towing.B.angle+10/60);
 });
+for (const type of ['rod','rope','spring']) {
+ for (const [key,value] of [['tow.massRatio',2],['tow.stiffness',2500],['tow.dampingRatio',0.75]]) {
+  test(`captured ${type} target survives independent ${key} edit`,()=>{
+   const lab=make(true);lab.updateParams('tow.type',type);lab.reset();lab.setTowingConnection(false);
+   lab.towing.B.position.y-=2;assert.equal(lab.setTowingConnection(true).ok,true);
+   const s=lab.getState();near(s.towing.coupling.restLength,6);
+   lab.updateParams(key,value);const t=lab.getState();
+   near(t.towing.coupling.restLength,6);near(t.towing.coupling.minLength,3);near(t.towing.coupling.maxLength,9);
+   assert.equal(t.towing.needsRestart,false);assert.equal(t.towing.reason,undefined);
+   assert.deepEqual(t.towing.B.position,s.towing.B.position);assert.deepEqual(t.towing.B.velocity,s.towing.B.velocity);
+   near(t.towing.coupling.k,key==='tow.stiffness'?2500:1250);
+   near(t.towing.coupling.c,2*(key==='tow.dampingRatio'?0.75:0.5)*Math.sqrt((key==='tow.stiffness'?2500:1250)*50));
+   lab.reset();near(lab.getState().towing.coupling.restLength,8);
+  });
+ }
+}
+test('explicit length or type edit replaces captured target with configured target',()=>{
+ for(const [key,value,want] of [['tow.length',10,10],['tow.type','spring',8]]) {
+  const lab=make(true);lab.updateParams('tow.type','rod');lab.reset();lab.setTowingConnection(false);
+  lab.towing.B.position.y-=2;assert.equal(lab.setTowingConnection(true).ok,true);
+  lab.updateParams(key,value);near(lab.getState().towing.coupling.restLength,want);
+ }
+});
+for (const event of ['blur','visibilitychange']) {
+ test(`paused runtime clears newly supplied input on ${event} before Step`,()=>{
+  const win=new EventTarget(),doc=new EventTarget();doc.hidden=false;global.window=win;global.document=doc;
+  let lab;
+  try {
+   lab=make(true);live(lab);lab.pause();const s=lab.getState();lab.setInput(0,-1,1);
+   if(event==='blur') win.dispatchEvent(new Event(event));
+   else {doc.hidden=true;doc.dispatchEvent(new Event(event));}
+   near(lab.getState().inputMagnitude,0);assert.ok(!lab.isRunning);
+   doc.hidden=false;doc.dispatchEvent(new Event('visibilitychange'));assert.ok(!lab.isRunning);
+   assert.equal(lab.stepOnce(),true);const t=lab.getState();near(t.vy,0);near(t.y,s.y);near(t.towing.B.velocity.y,0);
+   assert.ok(t.towing.paused);assert.deepEqual(lab.getInterpolatedState(0),t);
+  } finally {lab?.stop();delete global.window;delete global.document;}
+ });
+}
+test('terminal stop detaches focus listeners even while runtime is paused',()=>{
+ const win=new EventTarget(),doc=new EventTarget();doc.hidden=false;global.window=win;global.document=doc;
+ let lab;
+ try {
+  lab=make(true);live(lab);lab.pause();lab.stop();lab.setInput(0,-1,1);
+  win.dispatchEvent(new Event('blur'));doc.hidden=true;doc.dispatchEvent(new Event('visibilitychange'));
+  near(lab.getState().inputMagnitude,1);assert.ok(!lab.isRunning);
+  lab.resume();lab.pause();win.dispatchEvent(new Event('blur'));near(lab.getState().inputMagnitude,0);
+ } finally {lab?.stop();delete global.window;delete global.document;}
+});

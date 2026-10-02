@@ -89,8 +89,15 @@ export class LabTowing {
       : key in ranges && typeof value === 'number' && Number.isFinite(value) && value >= ranges[key][0] && value <= ranges[key][1];
     if (!valid) return false;
     this.params[key] = value as number | string;
-    const connected = this.coupling.connected;
-    this.coupling = createCoupling(this.config()); this.coupling.connected = connected;
+    const previous = this.coupling;
+    this.coupling = createCoupling(this.config());
+    this.coupling.connected = previous.connected;
+    if (key !== 'tow.length' && key !== 'tow.type') {
+      // Независимые настройки массы/пружины сохраняют фактическую длину захвата.
+      this.coupling.restLength = previous.restLength;
+      this.coupling.minLength = previous.minLength;
+      this.coupling.maxLength = previous.maxLength;
+    }
     this.refresh(a); this.updateGeometry(a);
     if (!this.validGeometry(a, arena)) this.fail('Геометрия состава несовместима с настройками: нужен Restart');
     return true;
