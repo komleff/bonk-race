@@ -3,7 +3,7 @@ import type { TugConfig, ValidationResult } from '../types';
 export const defaultConfig: Readonly<TugConfig> = Object.freeze(defaults as TugConfig);
 export const configRanges = {
   massRatio: [0.1, 10], radiusB: [2, 12], forwardForce: [0, 400000], reverseForce: [0, 200000],
-  lateralForce: [0, 160000], yawTorque: [0, 300000], length: [4, 24], springFrequency: [0.2, 3],
+  lateralForce: [0, 160000], yawTorque: [0, 300000], length: [4, 24], springFrequency: [0.2, 3], springStiffness: [0, 2000000],
   springDamping: [0, 1.5], springMinRatio: [0, 0.9], springMaxRatio: [1.1, 2], restitution: [0, 1],
   maxObstacles: [0, 30], stickDeadzone: [0, 0.9], stickRadius: [48, 140], seed: [0, 4294967295],
 } as const;
@@ -22,7 +22,7 @@ export function validateConfig(value: unknown): ValidationResult {
     if (typeof current === 'number' && (current < min || current > max)) errors.push(`${key}: допустимо ${min}–${max}`);
   }
   for (const key of ['massA', 'radiusA', 'inertiaFactor', 'springReferenceMass', 'yawLimit', 'yawDampingTime',
-    'lateralComfort', 'maxPositionBias', 'rodRelativeTolerance', 'rodMaxSweep', 'maxAdaptiveSubsteps', 'normalEpsilon', 'maxValidatedSpeed', 'captureMinLength', 'captureMaxLength',
+    'lateralComfort', 'maxPositionBias', 'rodRelativeTolerance', 'rodMaxSweep', 'maxAdaptiveSubsteps', 'maxContactEvents', 'springMaxStep', 'normalEpsilon', 'maxValidatedSpeed', 'captureMinLength', 'captureMaxLength',
     'captureMaxSpeed', 'baySpeed', 'bayAngularSpeed', 'bayHoldTime'] as const) {
     if (candidate[key] !== defaultConfig[key]) errors.push(`${key}: фиксировано ${defaultConfig[key]}`);
   }

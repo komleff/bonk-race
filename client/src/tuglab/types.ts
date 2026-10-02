@@ -14,7 +14,14 @@ export interface CouplingState {
   length: number; restLength: number; minLength: number; maxLength: number;
   k: number; c: number; lastNormal: Vec2; accumulatedImpulse: number;
 }
-export interface CircleObstacle { id: string; position: Vec2; radius: number }
+export interface CircleObstacle { id: string; position: Vec2; radius: number; restitution?: number }
+export interface Bounds { minX: number; maxX: number; minY: number; maxY: number }
+// Callback меняет только скорости пробных тел; внешняя история запрещена, поскольку попытка может повторяться.
+export type ApplyVelocity = (a: BodyState, b: BodyState, subDt: number) => void;
+export interface AdvanceResult {
+  A: BodyState; B: BodyState; coupling: CouplingState; contacts: ContactEvent[];
+  diagnostics: Diagnostics; stopReason?: string;
+}
 export interface Bay { position: Vec2; radius: number; holdTime: number }
 export interface Diagnostics {
   couplingImpulse: number; rodError: number; outsideSpeedRange: boolean; solverSubsteps?: number;
@@ -31,11 +38,11 @@ export interface TugConfig {
   massA: number; radiusA: number; inertiaFactor: number; massRatio: number; radiusB: number;
   forwardForce: number; reverseForce: number; lateralForce: number; yawTorque: number;
   couplingType: CouplingType; attachmentA: Attachment; attachmentB: Attachment; length: number;
-  springFrequency: number; springDamping: number; springReferenceMass: number;
+  springFrequency: number; springStiffness: number; springDamping: number; springReferenceMass: number;
   springMinRatio: number; springMaxRatio: number; restitution: number;
   fa: boolean; enginesEnabled: boolean; yawLimit: number; yawDampingTime: number; lateralComfort: number;
   tickRate: number; substeps: number; solverIterations: number; maxPositionBias: number;
-  rodRelativeTolerance: number; rodMaxSweep: number; maxAdaptiveSubsteps: number;
+  rodRelativeTolerance: number; rodMaxSweep: number; maxAdaptiveSubsteps: number; maxContactEvents: number; springMaxStep: number;
   normalEpsilon: number; maxValidatedSpeed: number; maxObstacles: number;
   captureMinLength: number; captureMaxLength: number; captureMaxSpeed: number;
   baySpeed: number; bayAngularSpeed: number; bayHoldTime: number;

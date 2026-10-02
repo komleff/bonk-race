@@ -7,11 +7,10 @@ export interface CouplingGeometry {
   radialVelocity: number; relativeSpeed: number; inverseMass: number;
 }
 export function createCoupling(config: TugConfig): CouplingState {
-  const frequency = 2 * Math.PI * config.springFrequency;
   return { type: config.couplingType, connected: true, attachmentA: config.attachmentA, attachmentB: config.attachmentB,
     length: config.length, restLength: config.length, minLength: config.length * config.springMinRatio,
-    maxLength: config.length * config.springMaxRatio, k: config.springReferenceMass * frequency * frequency,
-    c: 2 * config.springDamping * config.springReferenceMass * frequency,
+    maxLength: config.length * config.springMaxRatio, k: config.springStiffness,
+    c: 2 * config.springDamping * Math.sqrt(config.springStiffness * config.springReferenceMass),
     lastNormal: { x: -1, y: 0 }, accumulatedImpulse: 0 };
 }
 export function attachmentState(body: BodyState, attachment: Attachment): AttachmentState {
@@ -51,6 +50,10 @@ export function rodStepLimit(a: BodyState, b: BodyState, coupling: CouplingState
 }
 export function solveRod(a: BodyState, b: BodyState, coupling: CouplingState, dt: number, config: TugConfig): number {
   if (!coupling.connected || coupling.type !== 'rod') return 0;
+  return solveDistance(a, b, coupling, dt, config, coupling.restLength);
+}
+function solveDistance(a: BodyState, b: BodyState, coupling: CouplingState, dt: number, config: TugConfig,
+  target: number, direction: 'both' | 'pull' | 'push' = 'both'): number {
   const geometry = couplingGeometry(a, b, coupling);
   coupling.lastNormal = geometry.normal;
   // Импульс прикладывается по текущей геометрии: так сохраняется полный угловой импульс.
@@ -74,10 +77,31 @@ export function solveRod(a: BodyState, b: BodyState, coupling: CouplingState, dt
   // При слишком большом интервале локальная ветвь решения теряется; вызывающий код дробит шаг.
   if (!(derivative < 0)) return 0;
   const bias = Math.max(-config.maxPositionBias, Math.min(config.maxPositionBias,
-    (geometry.distance - coupling.restLength) / dt));
-  const targetDistance = geometry.distance - bias * dt;
+    (geometry.distance - target) / dt));
+  const targetDistance = direction === 'both' ? geometry.distance - bias * dt : target;
   const impulse = -(endDistance - targetDistance) / derivative;
+  if ((direction === 'pull' && impulse <= 0) || (direction === 'push' && impulse >= 0)) return 0;
   applyCouplingImpulse(a, b, geometry, impulse);
   coupling.accumulatedImpulse += impulse;
   return impulse;
+}
+
+// Сила пружины применяется один раз за подшаг, отдельно от итераций жёстких ограничений.
+export function applySpring(a: BodyState, b: BodyState, coupling: CouplingState, dt: number): number {
+  if (!coupling.connected || coupling.type !== 'spring') return 0;
+  const geometry = couplingGeometry(a, b, coupling);
+  const impulse = (coupling.k * (geometry.distance - coupling.restLength) + coupling.c * geometry.radialVelocity) * dt;
+  applyCouplingImpulse(a, b, geometry, impulse);
+  coupling.accumulatedImpulse += impulse;
+  return impulse;
+}
+export function solveCoupling(a: BodyState, b: BodyState, coupling: CouplingState, dt: number, config: TugConfig): void {
+  if (!coupling.connected) return;
+  if (coupling.type === 'rod') { solveRod(a, b, coupling, dt, config); return; }
+  if (coupling.type === 'rope') {
+    solveDistance(a, b, coupling, dt, config, coupling.restLength, 'pull');
+  } else {
+    solveDistance(a, b, coupling, dt, config, coupling.maxLength, 'pull');
+    if (coupling.minLength > 0) solveDistance(a, b, coupling, dt, config, coupling.minLength, 'push');
+  }
 }
