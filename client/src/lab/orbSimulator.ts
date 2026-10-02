@@ -19,6 +19,8 @@ export interface OrbTickConfig {
     restitution: number;
     passageRestitution: number;
     spikeKill: boolean;
+    /** Коррекция орбов не сдвигает жёсткий состав при буксировке. */
+    preserveBodyPositions?: boolean;
 }
 
 /**
@@ -32,6 +34,7 @@ export function tickOrbs(
     obstacles: ArenaObject[],
     wallBounds: IWallBounds,
     config: OrbTickConfig,
+    additionalBodies: readonly ICircleBody[] = [],
 ): void {
     const { collisionConfig, dragK, restitution, passageRestitution, spikeKill } = config;
     // 1. Торможение + интеграция позиции для живых орбов
@@ -86,7 +89,15 @@ export function tickOrbs(
             resolveWallCollision(ob, wallBounds, restitution);
 
             // Столкновение орб-игрок
-            resolveCircleCircleCollision(ob, playerBody, restitution, collisionConfig);
+            for (const body of [playerBody, ...additionalBodies]) {
+                const beforeX = body.x, beforeY = body.y;
+                resolveCircleCircleCollision(ob, body, restitution, collisionConfig);
+                if (config.preserveBodyPositions) {
+                    // Переносим полную относительную коррекцию в орб; импульс учитывает обе массы.
+                    ob.x -= body.x - beforeX; ob.y -= body.y - beforeY;
+                    body.x = beforeX; body.y = beforeY;
+                }
+            }
 
             // Столкновения орб-орб
             for (let j = i + 1; j < orbBodies.length; j++) {

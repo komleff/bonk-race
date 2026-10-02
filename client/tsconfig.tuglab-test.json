@@ -1,8 +1,8 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022", "module": "CommonJS", "lib": ["ES2022"],
+    "target": "ES2022", "module": "CommonJS", "lib": ["ES2022", "DOM"],
     "noEmit": false, "rootDir": "..", "outDir": "../.cache/tuglab-tests"
   },
-  "include": ["src/tuglab/types.ts", "src/tuglab/config/**/*.ts", "src/tuglab/physics/**/*.ts"]
+  "include": ["src/tuglab/types.ts", "src/tuglab/config/**/*.ts", "src/tuglab/physics/**/*.ts", "src/lab/BonkLab.ts"]
 }

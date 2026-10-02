@@ -5,6 +5,8 @@
  * импортировать облегчённые типы без подключения всего модуля-оркестратора.
  */
 
+import type { TowingSnapshot } from "../tuglab/labTowing";
+
 import type { Arena } from "@bonk-race/shared";
 
 // ─── SandboxOrb ──────────────────────────────────────────────────────────────
@@ -24,6 +26,7 @@ export interface SandboxOrb {
 // ─── SandboxState ────────────────────────────────────────────────────────────
 
 export interface SandboxState {
+    towing?: TowingSnapshot;
     // Персонаж
     x: number;
     y: number;
