@@ -32,6 +32,7 @@ export interface LabInputState {
 
 export interface LabInputConfig {
     /** Dead zone threshold — magnitudes below this are treated as zero. Default 0.05 */
+    keyboard?: boolean;
     deadZone: number;
     /** Max radius in pixels for touch joystick. Default 100 */
     maxRadius: number;
@@ -78,6 +79,26 @@ export class LabInput {
         baseScreenY: 0,
     };
 
+    // Клавиатура включается только для TugLab.
+    private keys = new Set<string>();
+    private readonly onKeyDown = (e: KeyboardEvent): void => {
+        if (!this.config.keyboard || this.hasUIFocus() || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (!this.isDirectionKey(e.code)) return;
+        // После очистки автоповтор старого удержания не возвращает тягу.
+        if (e.repeat && !this.keys.has(e.code)) return;
+        e.preventDefault();
+        this.keys.add(e.code);
+        this.updateKeyboardState();
+    };
+    private readonly onKeyUp = (e: KeyboardEvent): void => {
+        if (!this.keys.delete(e.code)) return;
+        e.preventDefault();
+        this.updateKeyboardState();
+    };
+    private readonly onBlur = (): void => { this.clear(); };
+    private readonly onVisibility = (): void => { if (document.hidden) this.clear(); };
+    private readonly onFocus = (): void => { if (this.hasUIFocus()) this.clear(); };
+
     // --- Bound handlers ---
     private _onMouseDown: (e: MouseEvent) => void;
     private _onMouseMove: (e: MouseEvent) => void;
@@ -98,7 +119,15 @@ export class LabInput {
         this._onTouchStart = this.onTouchStart.bind(this);
         this._onTouchMove = this.onTouchMove.bind(this);
         this._onTouchEnd = this.onTouchEnd.bind(this);
-        this._onTouchCancel = this.onTouchEnd.bind(this); // same logic
+        this._onTouchCancel = this.config.keyboard ? () => this.clear() : this.onTouchEnd.bind(this);
+
+        if (this.config.keyboard) {
+            window.addEventListener("keydown", this.onKeyDown);
+            window.addEventListener("keyup", this.onKeyUp);
+            window.addEventListener("blur", this.onBlur);
+            document.addEventListener("visibilitychange", this.onVisibility);
+            document.addEventListener("focusin", this.onFocus);
+        }
 
         // Attach
         canvas.addEventListener("mousedown", this._onMouseDown);
@@ -125,7 +154,7 @@ export class LabInput {
         this.charScreenY = y;
         this.charScreenPosSet = true;
         // Пересчитать направление мыши, если кнопка зажата
-        if (this.mouseDown) {
+        if (this.mouseDown && !this.keys.size) {
             this.updateMouseState();
         }
     }
@@ -139,7 +168,44 @@ export class LabInput {
         window.removeEventListener("touchmove", this._onTouchMove);
         window.removeEventListener("touchend", this._onTouchEnd);
         window.removeEventListener("touchcancel", this._onTouchCancel);
+        window.removeEventListener("keydown", this.onKeyDown);
+        window.removeEventListener("keyup", this.onKeyUp);
+        window.removeEventListener("blur", this.onBlur);
+        document.removeEventListener("visibilitychange", this.onVisibility);
+        document.removeEventListener("focusin", this.onFocus);
+        this.clear();
+    }
+
+    /** Снять все удержанные источники при паузе, рестарте или потере фокуса. */
+    clear(): void {
+        this.mouseDown = false;
+        this.touchId = null;
+        this.keys.clear();
         this.clearState();
+    }
+
+    private hasUIFocus(): boolean {
+        const active = document.activeElement;
+        return !!active && (active as HTMLElement).tagName !== "BODY" && active !== this.canvas;
+    }
+
+    private isDirectionKey(code: string): boolean {
+        return ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"].includes(code);
+    }
+
+    private updateKeyboardState(): void {
+        if (!this.keys.size) {
+            if (this.touchId !== null) this.updateTouchState();
+            else if (this.mouseDown) this.updateMouseState();
+            else this.clearState();
+            return;
+        }
+        const held = (a: string, b: string) => Number(this.keys.has(a) || this.keys.has(b));
+        const x = held("KeyD", "ArrowRight") - held("KeyA", "ArrowLeft");
+        const y = held("KeyS", "ArrowDown") - held("KeyW", "ArrowUp");
+        const length = Math.hypot(x, y);
+        this.applyState(length ? x / length : 0, length ? y / length : 0,
+            length ? 1 : 0, 0, 0, false, 0, 0);
     }
 
     // ========== Mouse handlers ==========
@@ -166,11 +232,12 @@ export class LabInput {
         this.mouseDown = false;
         // If no touch active either, clear state
         if (this.touchId === null) {
-            this.clearState();
+            this.updateKeyboardState();
         }
     }
 
     private updateMouseState(): void {
+        if (this.keys.size) { this.updateKeyboardState(); return; }
         // Направление от экранной позиции персонажа к курсору.
         // Если setCharacterScreenPos() не вызывался — fallback на центр canvas.
         const rect = this.canvas.getBoundingClientRect();
@@ -244,7 +311,7 @@ export class LabInput {
         this.touchId = null;
         // If mouse not held either, clear
         if (!this.mouseDown) {
-            this.clearState();
+            this.updateKeyboardState();
         }
     }
 
@@ -258,6 +325,7 @@ export class LabInput {
     }
 
     private updateTouchState(): void {
+        if (this.keys.size) { this.updateKeyboardState(); return; }
         const dx = this.touchCurrentX - this.touchBaseX;
         const dy = this.touchCurrentY - this.touchBaseY;
         const dist = Math.hypot(dx, dy);

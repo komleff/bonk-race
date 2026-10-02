@@ -104,13 +104,15 @@ function ImportModal({
 
 export interface LabToolbarProps {
     lab: BonkLab;
+    towing?: boolean;
+    onClearInput?: () => void;
     /** Called when params are changed externally (reset/import/preset) so panel can sync */
     onParamsChanged?: () => void;
     /** Incremented when user changes a param via LabPanel slider — marks preset as Custom */
     externalParamChange?: number;
 }
 
-export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToolbarProps) {
+export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing = false, onClearInput }: LabToolbarProps) {
     // Inject styles once
     useEffect(() => {
         injectStyles("lab-toolbar-styles", toolbarCss);
@@ -135,12 +137,14 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
 
     // Timer — poll elapsed time from lab state
     const [elapsed, setElapsed] = useState(0);
+    const [towState, setTowState] = useState(() => lab.getState().towing);
     useEffect(() => {
         const id = setInterval(() => {
             setElapsed(lab.getState().elapsedTime);
+            if (towing) setTowState(lab.getState().towing);
         }, 100);
         return () => clearInterval(id);
-    }, [lab]);
+    }, [lab, towing]);
 
     // Modal state
     const [showExport, setShowExport] = useState(false);
@@ -148,11 +152,12 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
 
     // ── Restart (countdown управляется BonkLab.start()) ──
     const handleRestart = useCallback(() => {
+        onClearInput?.();
         lab.stop();
         lab.reset();
         lab.start();
         setElapsed(0);
-    }, [lab]);
+    }, [lab, onClearInput]);
 
     // ── Seed ──
     const handleSeedChange = useCallback(
@@ -160,17 +165,21 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
             const v = parseInt((e.target as HTMLInputElement).value, 10);
             if (!isNaN(v)) {
                 setSeed(v);
+                onClearInput?.();
                 lab.regenerateArena(v, density);
+                if (towing) lab.start();
             }
         },
-        [lab, density],
+        [lab, density, towing, onClearInput],
     );
 
     const handleRandomSeed = useCallback(() => {
         const newSeed = Math.floor(Math.random() * 999999);
         setSeed(newSeed);
+        onClearInput?.();
         lab.regenerateArena(newSeed, density);
-    }, [lab, density]);
+        if (towing) lab.start();
+    }, [lab, density, towing, onClearInput]);
 
     // ── Density ──
     const handleDensityChange = useCallback(
@@ -178,12 +187,14 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
             const v = parseFloat((e.target as HTMLInputElement).value);
             if (!isNaN(v)) {
                 setDensity(v);
+                onClearInput?.();
                 lab.updateParams("arena.objectDensity", v);
+                if (towing) lab.start();
                 setActivePreset(-1);
                 onParamsChanged?.();
             }
         },
-        [lab, onParamsChanged],
+        [lab, onParamsChanged, towing, onClearInput],
     );
 
     // ── Reset params to defaults + BonkRace v0.3 preset ──
@@ -203,9 +214,11 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
         const restoredDensity = (lab.params["arena.objectDensity"] as number) ?? 5.0;
         setDensity(restoredDensity);
         setActivePreset(DEFAULT_PRESET_IDX);
+        onClearInput?.();
         lab.reset();
+        if (towing) lab.start();
         onParamsChanged?.();
-    }, [lab, defaults, onParamsChanged]);
+    }, [lab, defaults, onParamsChanged, towing, onClearInput]);
 
     // ── Export (full config) ──
     const getExportJson = useCallback((): string => {
@@ -235,7 +248,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
             setActivePreset(-1);
             onParamsChanged?.();
         },
-        [lab, defaults, onParamsChanged],
+        [lab, defaults, onParamsChanged, towing, onClearInput],
     );
 
     // ── Presets ──
@@ -251,7 +264,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
 
             // First reset all params to defaults
             for (const [key, val] of Object.entries(defaults)) {
-                lab.updateParams(key, val);
+                if (!towing || !key.startsWith("tow.")) lab.updateParams(key, val);
             }
 
             // Then apply preset overrides
@@ -262,16 +275,17 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
             // Sync toolbar density from restored/overridden value
             setDensity((lab.params["arena.objectDensity"] as number) ?? 5.0);
             setActivePreset(idx);
+            if (towing) { onClearInput?.(); lab.reset(); lab.start(); }
             onParamsChanged?.();
         },
-        [lab, defaults, onParamsChanged],
+        [lab, defaults, onParamsChanged, towing, onClearInput],
     );
 
     return (
         <Fragment>
             <div class="lab-toolbar">
                 {/* Title */}
-                <span class="lab-toolbar-title">BonkLab <span style="opacity:0.5;font-size:0.75em">v{__APP_VERSION__}</span></span>
+                <span class="lab-toolbar-title">{towing ? "TugLab" : "BonkLab"} <span style="opacity:0.5;font-size:0.75em">v{towing ? "0.1.0" : __APP_VERSION__}</span></span>
 
                 <div class="lab-tb-sep" />
 
@@ -289,6 +303,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
                     <input
                         type="number"
                         class="lab-tb-seed-input"
+                        aria-label="Seed"
                         value={seed}
                         onInput={handleSeedChange}
                     />
@@ -304,6 +319,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
                     </span>
                     <input
                         type="range"
+                        aria-label="Насыщенность арены"
                         min="0.1"
                         max="25.0"
                         step="0.1"
@@ -323,7 +339,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
                     Сброс
                 </button>
 
-                {/* Export */}
+                {!towing && <Fragment>
+                {/* Экспорт */}
                 <button class="lab-tb-btn" onClick={() => setShowExport(true)}>
                     Экспорт
                 </button>
@@ -333,10 +350,11 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
                     Импорт
                 </button>
 
+                </Fragment>}
                 <div class="lab-tb-sep" />
 
-                {/* Presets */}
-                <select class="lab-tb-select" value={activePreset} onChange={handlePreset}>
+                {/* Пресеты */}
+                <select class="lab-tb-select" aria-label="Пресет движения" value={activePreset} onChange={handlePreset}>
                     <option value={-1}>
                         {activePreset === -1 ? "Custom" : "Пресеты..."}
                     </option>
@@ -346,7 +364,18 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange }: LabToo
                         </option>
                     ))}
                 </select>
+                {towing && towState && <div class="tug-actions">
+                    <button class="lab-tb-btn" onClick={() => { onClearInput?.(); towState.paused ? lab.resume() : lab.pause(); setTowState(lab.getState().towing); }} disabled={towState.needsRestart}>{towState.paused ? "Продолжить" : "Пауза"}</button>
+                    <button class="lab-tb-btn" disabled={!towState.paused || towState.needsRestart} onClick={() => { onClearInput?.(); lab.stepOnce(); setTowState(lab.getState().towing); }}>Step</button>
+                    <button class="lab-tb-btn" onClick={() => { onClearInput?.(); lab.setTowingConnection(!towState.coupling.connected); setTowState(lab.getState().towing); }}>{towState.coupling.connected ? "Расцепить" : "Сцепить"}</button>
+                </div>}
+                {towing && <span class="tug-build" title="Commit сборки">{__TUGLAB_COMMIT__}</span>}
             </div>
+            {towing && towState && <div class="tug-status" aria-live="polite">
+                {{ rod: "Штанга", rope: "Трос", spring: "Пружина" }[towState.coupling.type]} · {towState.distance.toFixed(2)} м · {towState.coupling.connected ? "соединено" : "расцеплено"}
+                {towState.paused && " · пауза"}
+                {towState.reason && <span role="alert"> · {towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</span>}
+            </div>}
 
             {/* Export modal */}
             {showExport && (
