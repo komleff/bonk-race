@@ -123,3 +123,9 @@ Memory Bank/Beads и три независимых final review ведёт PM. �
 [Первый actual CI](https://github.com/komleff/bonk-race/actions/runs/37047921348) для head `16158ea` PASS на Ubuntu/Node 20; PR merge artifact `58440a51` содержит index/assets/SOURCE_SHA, tar SHA-256 616b089d5a806305a3522b9eb0d7adaaaa5c81e9e32df10bfa4db78652a37983 проверен. Исторические фразы «CI ещё не проверен» выше относятся к моменту QA commit. Последующие runs видны в PR checks; эти результаты не заменяют Android/production.
 
 Advisory: mapUnchanged в QA JSON пока не участвует в aggregate PASS, задача `bonk-race-551`. Все 63 actual карты true, текущая evidence сохранения карты достоверна. Внешние этапы `.6/.7` остаются NOT TESTED. [Самопроверка PM](u2-tuglab-pm-self-check.md) описывает триаж и завершение.
+
+## Актуальная схема размещения теста (3 октября 2026)
+
+Оператор согласовал GitHub Pages существующего репозитория: /bonk-race/tuglab/ рядом с BonkLab в корне общего артефакта. Прежний отдельный VPS вариант заменён; исходники остаются в bonk-race. Подготовка workflow и проверка общего артефакта ведутся в bonk-race-553. Фактическая публикация/откат .7 и физический Android .6 ещё не подтверждены. GitHub environment разрешает deployment только из main после операторского merge; PR build-only не публикует сайт.
+
+Подготовка Pages принята scoped review: shared/lab/tug builds и единый каталог, browser stock root (towing=false) и /tuglab/ (towing=true), HTML/JS200, pageerror0/requestfailed0, существующая numeric регрессия8/8 PASS. PyYAML6.0.3 parse PASS; GitHub Actions проверяет workflow после push. Runtime/физика в этой правке не менялись, broad QA не повторялась. PR build получает только read-права и не может отменить main deployment; main deploy остаётся единственным publisher. Фактическая публикация ещё ожидает merge.

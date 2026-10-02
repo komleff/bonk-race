@@ -5,20 +5,41 @@ on:
     branches: [main]
     paths:
       - 'client/src/lab/**'
+      - 'client/src/tuglab/**'
       - 'client/lab.html'
+      - 'client/tuglab.html'
       - 'client/vite.config.lab.ts'
+      - 'client/vite.config.tuglab.ts'
       - 'shared/src/**'
       - 'config/balance.json'
       - 'version.json'
-  workflow_dispatch: # manual trigger
+      - 'package.json'
+      - '*/package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-lab.yml'
+  pull_request:
+    branches: [main, docs/u2-tuglab-spec-v0.1]
+    paths:
+      - 'client/src/lab/**'
+      - 'client/src/tuglab/**'
+      - 'client/lab.html'
+      - 'client/tuglab.html'
+      - 'client/vite.config.lab.ts'
+      - 'client/vite.config.tuglab.ts'
+      - 'shared/src/**'
+      - 'config/balance.json'
+      - 'version.json'
+      - 'package.json'
+      - '*/package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-lab.yml'
+  workflow_dispatch: # Ручная публикация разрешена только из main.
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref == 'refs/heads/main' && 'production' || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,16 +59,23 @@ jobs:
 
       - run: npm run build:lab --workspace=client
 
-      # Rename lab.html → index.html for GitHub Pages
+      - run: npm run build:tuglab
+
+      # Обе сборки закончены: очистка dist-lab больше не удалит TugLab.
       - run: mv client/dist-lab/lab.html client/dist-lab/index.html
+      - run: mv client/dist-tuglab client/dist-lab/tuglab
 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: client/dist-lab
 
   deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
