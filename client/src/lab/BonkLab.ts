@@ -42,6 +42,8 @@ import type {
 } from "@bonk-race/shared";
 import type { SandboxOrb, SandboxState } from "./labTypes";
 export type { SandboxOrb, SandboxState } from "./labTypes";
+import { LabTowing, TOW_DEFAULTS } from "../tuglab/labTowing";
+import type { BodyState, CaptureResult } from "../tuglab/types";
 import { tickOrbs } from "./orbSimulator";
 import { resolveSpikeCollision } from "./spikeResolver";
 import { generateArena } from "@bonk-race/shared";
@@ -132,12 +134,19 @@ export class BonkLab {
 
     /** Все настраиваемые параметры, делегированные paramManager */
     get params(): Record<string, number | boolean | string> {
-        return this.paramManager.params;
+        return this.towing ? { ...this.paramManager.params, ...this.towing.params } : this.paramManager.params;
     }
 
     // Сохранено для будущего использования в LabRenderer
     readonly canvas: HTMLCanvasElement;
     private running = false;
+    private towing?: LabTowing;
+    private prevB?: BodyState;
+    private started = false;
+    private readonly onBlur = (): void => { this.pause("Потеря фокуса: нажмите Продолжить"); };
+    private readonly onHidden = (): void => {
+        if (typeof document !== "undefined" && document.hidden) this.onBlur();
+    };
     private accumulator = 0;
 
     // Предыдущее состояние для интерполяции между тиками физики
@@ -208,7 +217,7 @@ export class BonkLab {
     /** Истинные значения по умолчанию (balance.json + переопределения BonkLab, до применения стартового пресета) */
     private readonly trueDefaults: Record<string, number | boolean | string>;
 
-    constructor(canvas: HTMLCanvasElement) {
+    constructor(canvas: HTMLCanvasElement, options?: { towing?: boolean }) {
         this.canvas = canvas;
 
         // Разрешить balance.json через общий парсер конфигурации
@@ -233,7 +242,7 @@ export class BonkLab {
         // Построить плоские параметры из значений по умолчанию balance.json + переопределения
         this.paramManager.params = this.paramManager.buildFlatParams(this.lastDensity);
         // Сохранить снимок истинных значений по умолчанию до применения стартового пресета
-        this.trueDefaults = { ...this.params };
+        this.trueDefaults = { ...this.params, ...(options?.towing ? TOW_DEFAULTS : {}) };
 
         // Сгенерировать начальную арену (использовать lastDensity для соответствия значению UI по умолчанию)
         this.arena = this.buildArena(42, this.lastDensity);
@@ -246,6 +255,10 @@ export class BonkLab {
         // Поместить персонажа на точку спауна
         this.x = this.arena.spawnPoint.x;
         this.y = this.arena.spawnPoint.y;
+        if (options?.towing) {
+            this.towing = new LabTowing(this.towingBodyA());
+            this.resetTowing();
+        }
         // Инициализировать prev-состояние, чтобы интерполяция не зависела от порядка вызова start()
         this.syncPrevState();
 
@@ -262,20 +275,93 @@ export class BonkLab {
 
     start(): void {
         if (this.running) return;
+        if (this.towing && this.started) { this.resume(); return; }
+        if (this.towing?.needsRestart) return;
+        this.started = true;
         this.startCountdown = COUNTDOWN_TOTAL_S;
         this.running = true;
+        this.listenForFocus(true);
         this.accumulator = 0;
         this.syncPrevState();
         console.log(`[BonkLab] simulation started (countdown ${COUNTDOWN_TOTAL_S.toFixed(1)}s)`);
     }
 
     stop(): void {
+        this.listenForFocus(false);
         if (!this.running) return;
         this.running = false;
         console.log("[BonkLab] simulation stopped");
     }
 
+    /** Пауза/одиночный шаг доступны только явно включённому TugLab. */
+    pause(reason?: string): void {
+        if (!this.towing) return;
+        // Пауза сохраняет обработчики фокуса; terminal stop снимает их даже без running.
+        this.running = false;
+        this.listenForFocus(true);
+        this.accumulator = 0;
+        this.inputX = this.inputY = this.inputMagnitude = 0;
+        if (reason && !this.towing.needsRestart) this.towing.reason = reason;
+        this.syncPrevState();
+    }
+
+    resume(): void {
+        if (!this.towing || this.towing.needsRestart || this.running) return;
+        if (!this.started) { this.start(); return; }
+        this.towing.reason = undefined;
+        this.running = true;
+        this.accumulator = 0;
+        this.syncPrevState();
+        this.listenForFocus(true);
+    }
+
+    stepOnce(): boolean {
+        if (!this.towing || this.running || this.towing.needsRestart) return false;
+        this.tick(FIXED_DT);
+        this.accumulator = 0;
+        this.syncPrevState();
+        return !this.towing.needsRestart;
+    }
+
+    setTowingConnection(connected: boolean): CaptureResult {
+        if (!this.towing) return { ok: false, reason: "Буксировка не включена", distance: 0, relativeSpeed: 0 };
+        return this.towing.setConnection(connected, this.towingBodyA());
+    }
+
+    private listenForFocus(enabled: boolean): void {
+        if (!this.towing) return;
+        if (typeof window !== "undefined") {
+            if (enabled) window.addEventListener("blur", this.onBlur);
+            else window.removeEventListener("blur", this.onBlur);
+        }
+        if (typeof document !== "undefined") {
+            if (enabled) document.addEventListener("visibilitychange", this.onHidden);
+            else document.removeEventListener("visibilitychange", this.onHidden);
+        }
+    }
+
+    private towingBodyA(): BodyState {
+        const radius = this.slimeConfig.geometry.baseRadiusM;
+        return { position: { x: this.x, y: this.y }, velocity: { x: this.vx, y: this.vy },
+            angle: this.angle, angularVelocity: this.angVel, mass: this.mass, radius,
+            inertia: this.slimeConfig.geometry.inertiaFactor * this.mass * radius * radius };
+    }
+
+    private applyTowingA(a: BodyState): void {
+        this.x = a.position.x; this.y = a.position.y;
+        this.vx = a.velocity.x; this.vy = a.velocity.y;
+        this.angle = a.angle; this.angVel = a.angularVelocity;
+    }
+
+    private resetTowing(): void {
+        if (!this.towing) return;
+        const a = this.towing.reset(this.towingBodyA(), this.arena);
+        if (a) this.applyTowingA(a);
+        else this.pause();
+    }
+
     reset(): void {
+        if (this.towing) { this.stop(); this.started = false; }
         this.x = this.arena.spawnPoint.x;
         this.y = this.arena.spawnPoint.y;
         this.vx = 0;
@@ -310,6 +396,7 @@ export class BonkLab {
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
         // Поддерживать синхронизацию ссылки на орбы в paramManager
         this.paramManager.orbs = this.orbs;
+        this.resetTowing();
         // Синхронизировать prev-состояние, чтобы интерполяция не дёргала после сброса
         this.syncPrevState();
         console.log("[BonkLab] state reset");
@@ -348,6 +435,18 @@ export class BonkLab {
     }
 
     updateParams(key: string, value: number | boolean | string): void {
+        if (key.startsWith("tow.")) {
+            if (this.towing?.update(key, value, this.towingBodyA(), this.arena)) {
+                if (this.towing.needsRestart) this.pause();
+                this.syncPrevState();
+            }
+            return;
+        }
+        // В TugLab пустое/нечисловое значение не должно разрушать физическое состояние.
+        if (this.towing && typeof this.params[key] === "number"
+            && (typeof value !== "number" || !Number.isFinite(value))) return;
+        if (this.towing && ["mass", "geometry.baseRadiusM", "geometry.inertiaFactor"].includes(key)
+            && (typeof value !== "number" || value <= 0)) return;
         const effect = this.paramManager.update(key, value);
         if (effect.massChanged) {
             this.mass = this.paramManager.mass;
@@ -357,6 +456,18 @@ export class BonkLab {
         }
         if (effect.regenerateArena) {
             this.regenerateArena(this.lastSeed, this.lastDensity);
+        }
+        if (this.towing) {
+            const a = this.towingBodyA();
+            this.towing.refresh(a);
+            if (!this.towing.validGeometry(a, this.arena)) {
+                this.towing.fail("Геометрия состава несовместима с настройками: нужен Restart");
+                this.pause();
+            }
+            if (this.worldPhysics.restitution < 0 || this.worldPhysics.restitution > 1) {
+                this.towing.fail("TugLab поддерживает restitution стен в диапазоне 0–1; нужен Restart после исправления");
+                this.pause();
+            }
         }
     }
 
@@ -374,6 +485,7 @@ export class BonkLab {
 
     getState(): SandboxState {
         return {
+            ...(this.towing ? { towing: this.towing.snapshot(this.towingBodyA(), !this.running) } : {}),
             x: this.x,
             y: this.y,
             vx: this.vx,
@@ -458,6 +570,10 @@ export class BonkLab {
      */
     update(frameDtSec: number): number {
         if (!this.running) return 0;
+        if (this.towing && frameDtSec > 0.25) {
+            this.pause("Большой интервал кадра: нажмите Продолжить");
+            return 0;
+        }
 
         // Ограничение dt: при табах/паузах браузер может передать огромный dt;
         // NaN/Infinity/отрицательный dt возможны при сбое performance.now()
@@ -468,6 +584,7 @@ export class BonkLab {
         while (this.accumulator >= FIXED_DT) {
             this.tick(FIXED_DT);
             this.accumulator -= FIXED_DT;
+            if (this.towing && !this.running) { this.accumulator = 0; break; }
         }
 
         return this.accumulator / FIXED_DT;
@@ -490,6 +607,10 @@ export class BonkLab {
         this.prevVy = this.vy;
         this.prevAngle = this.angle;
         this.prevAngVel = this.angVel;
+        if (this.towing) {
+            const b = this.towing.B;
+            this.prevB = { ...b, position: { ...b.position }, velocity: { ...b.velocity } };
+        }
     }
 
     /**
@@ -511,6 +632,15 @@ export class BonkLab {
         state.vy = this.prevVy + (this.vy - this.prevVy) * a;
         state.angle = lerpAngle(this.prevAngle, this.angle, a);
         state.angularVelocity = this.prevAngVel + (this.angVel - this.prevAngVel) * a;
+        if (state.towing && this.prevB) {
+            const b = state.towing.B, prev = this.prevB;
+            b.position.x = prev.position.x + (b.position.x - prev.position.x) * a;
+            b.position.y = prev.position.y + (b.position.y - prev.position.y) * a;
+            b.velocity.x = prev.velocity.x + (b.velocity.x - prev.velocity.x) * a;
+            b.velocity.y = prev.velocity.y + (b.velocity.y - prev.velocity.y) * a;
+            b.angle = lerpAngle(prev.angle, b.angle, a);
+            b.angularVelocity = prev.angularVelocity + (b.angularVelocity - prev.angularVelocity) * a;
+        }
         // Пересчитать производные поля по интерполированной позиции,
         // чтобы оверлей телеметрии не расходился с отрисованной позицией
         const interpDist = Math.max(0, this.arena.spawnPoint.y - state.y);
@@ -558,6 +688,11 @@ export class BonkLab {
                 this.correctionFy = 0;
                 this.currentZone = null;
                 this.restoreDestroyedObstacles();
+                if (this.towing) {
+                    this.inputX = this.inputY = this.inputMagnitude = 0;
+                    this.accumulator = 0;
+                    this.resetTowing();
+                }
                 // Синхронизировать prev-состояние, чтобы интерполяция не дёргала
                 // персонажа от точки смерти к точке респауна
                 this.syncPrevState();
@@ -693,6 +828,9 @@ export class BonkLab {
             angularDragK: this.worldPhysics.angularDragK,
         };
 
+        if (this.towing) {
+            if (!this.tickTowing(dt, faOutput, dragParams)) return;
+        } else {
         const integratorState = {
             x: this.x,
             y: this.y,
@@ -846,6 +984,8 @@ export class BonkLab {
         this.vx = body.vx;
         this.vy = body.vy;
 
+        }
+
         // ── 7. Время ──
         this.elapsedTime += dt;
 
@@ -871,4 +1011,78 @@ export class BonkLab {
             return; // заморозить симуляцию
         }
     }
+    private tickTowing(dt: number, faOutput: IFlightAssistOutput, drag: IWorldDragParams): boolean {
+        const towing = this.towing!;
+        const passiveConfig = { ...this.slimeConfig,
+            limits: { ...this.slimeConfig.limits, angularSpeedLimitRadps: 0 } };
+        const a = this.towingBodyA();
+        const passageRestitution = Number(this.params["worldPhysics.passageRestitution"] ?? this.worldPhysics.restitution * 0.5);
+        const result = towing.advance(a, this.arena, dt, this.worldPhysics.restitution, passageRestitution,
+            (trialA, trialB, subDt) => {
+                for (const [body, active] of [[trialA, true], [trialB, false]] as const) {
+                    let surface = this.currentSurface;
+                    if (!active) {
+                        surface = DEFAULT_SURFACE_CONFIG;
+                        for (const zone of this.arena.zones) {
+                            if (Math.hypot(body.position.x - zone.x, body.position.y - zone.y) <= zone.radius) {
+                                surface = this.zoneSurfaces[zone.type] ?? DEFAULT_SURFACE_CONFIG;
+                                break;
+                            }
+                        }
+                    }
+                    const integrated = integratePhysics({ x: body.position.x, y: body.position.y,
+                        vx: body.velocity.x, vy: body.velocity.y, angle: body.angle, angVel: body.angularVelocity },
+                        active ? faOutput : { assistFx: 0, assistFy: 0, assistTorque: 0 }, body.mass, body.inertia,
+                        active ? this.slimeConfig : passiveConfig, drag, toSurfaceParams(surface), false, 1, subDt);
+                    // Единственный drift/CCD выполняет advancePair; здесь берём только скорости.
+                    body.velocity.x = integrated.vx; body.velocity.y = integrated.vy;
+                    body.angularVelocity = integrated.angVel;
+                }
+            });
+        if (result.stopReason) { this.pause(); return false; }
+        this.applyTowingA(result.A);
+
+        let died = false;
+        for (const id of ["A", "B"] as const) {
+            const body = id === "A" ? result.A : towing.B;
+            const hit = new Set<ArenaObject>();
+            let nx = 0, ny = 0;
+            for (const contact of result.contacts) {
+                if (contact.body !== id || !contact.other.startsWith("arena:")) continue;
+                const obstacle = this.arena.obstacles[Number(contact.other.slice(6))];
+                if (obstacle?.type !== "spike" || hit.has(obstacle)) continue;
+                hit.add(obstacle); nx += contact.normal.x; ny += contact.normal.y;
+            }
+            if (hit.size === 0) continue;
+            const spike = resolveSpikeCollision(hit, nx, ny, body.velocity.x, body.velocity.y, body.mass,
+                { killOnHit: Boolean(this.params["spike.killOnHit"]), destroyOnHit: Boolean(this.params["spike.destroyOnHit"]),
+                    knockbackImpulse: Number(this.params["spike.knockbackImpulse"] ?? 30_000) }, MAX_KNOCKBACK_SPEED);
+            body.velocity = { x: spike.vx, y: spike.vy };
+            if (spike.died) {
+                died = true; this.deathX = body.position.x; this.deathY = body.position.y;
+            }
+        }
+        if (died) {
+            this.deathTimer = DEATH_FREEZE_S;
+            this.deathDistanceM = this.computeDistance();
+            this.vx = this.vy = this.angVel = 0;
+            towing.B.velocity = { x: 0, y: 0 }; towing.B.angularVelocity = 0;
+            this.inputX = this.inputY = this.inputMagnitude = 0;
+            this.syncPrevState();
+            return false;
+        }
+        const orbBody = (body: BodyState): ICircleBody => ({ x: body.position.x, y: body.position.y,
+            vx: body.velocity.x, vy: body.velocity.y, mass: body.mass, radius: body.radius });
+        const orbA = orbBody(result.A), orbB = orbBody(towing.B);
+        tickOrbs(this.orbs, dt, orbA, this.arena.obstacles,
+            { minX: -this.arena.width / 2, maxX: this.arena.width / 2, minY: -this.arena.height / 2, maxY: this.arena.height / 2 },
+            { collisionConfig: { correctionPercent: 0.8, slop: 0.001, maxCorrection: this.worldPhysics.maxPositionCorrectionM ?? 0.5 },
+                dragK: this.worldPhysics.forwardDragK, restitution: this.worldPhysics.restitution, passageRestitution,
+                spikeKill: Boolean(this.params["orbs.spikeKill"] ?? true), preserveBodyPositions: true }, [orbB]);
+        this.x = orbA.x; this.y = orbA.y; this.vx = orbA.vx; this.vy = orbA.vy;
+        towing.B.position = { x: orbB.x, y: orbB.y }; towing.B.velocity = { x: orbB.vx, y: orbB.vy };
+        towing.updateGeometry(this.towingBodyA());
+        return true;
+    }
+
 }

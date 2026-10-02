@@ -48,3 +48,12 @@ __pycache__/
 # Temp files
 tmp_*.md
 setup-bash.ps1
+
+# Скомпилированное ядро тестов TugLab
+.cache/tuglab-tests/
+
+# Сборки и артефакты браузерной проверки лабораторий
+client/dist-tuglab/
+client/dist-lab/
+dist-lab/
+.cache/tuglab-qa/

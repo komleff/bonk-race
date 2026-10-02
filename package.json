@@ -1,6 +1,6 @@
 {
   "name": "bonk-race",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "workspaces": [
     "client",
@@ -19,7 +19,14 @@
     "test": "npm --workspaces --if-present test",
     "sync-version": "node scripts/sync-version.js",
     "check-version": "node scripts/check-version.js",
-    "postinstall": "node scripts/install-hooks.js"
+    "postinstall": "node scripts/install-hooks.js",
+    "test:tuglab": "tsc -p client/tsconfig.tuglab-test.json && node --test tests/tuglab/*.test.cjs",
+    "typecheck:tuglab": "tsc -p client/tsconfig.tuglab-test.json --noEmit",
+    "dev:tuglab": "npm run dev:tuglab --workspace=client",
+    "build:tuglab": "npm run build:tuglab --workspace=client",
+    "test:tuglab:ui": "node tests/tuglab/ui-smoke.cjs",
+    "qa:tuglab:matrix": "tsc -p client/tsconfig.tuglab-test.json && node tests/tuglab/qa-matrix.cjs",
+    "qa:tuglab:browser": "node tests/tuglab/qa-browser.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

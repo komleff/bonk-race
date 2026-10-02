@@ -1,13 +1,15 @@
 {
   "name": "@bonk-race/client",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "build:lab": "vite build --config vite.config.lab.ts"
+    "build:lab": "vite build --config vite.config.lab.ts",
+    "dev:tuglab": "vite --config vite.config.tuglab.ts --host 0.0.0.0 --port 5174 --strictPort --open /tuglab.html",
+    "build:tuglab": "vite build --config vite.config.tuglab.ts"
   },
   "dependencies": {
     "@preact/signals": "^2.5.1",

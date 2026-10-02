@@ -50,3 +50,21 @@ cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts
 - Track ID validation: DANGEROUS_KEYS blocklist + regex `^[a-z0-9\-_.]+$/i` + max 128 chars
 - `stringHash()` — generic hash for seeds and daily rotation
 - TICK_RATE constant in trackPresets.ts (used for both physics and inactivity threshold)
+
+## U2 TugLab — checkpoint, ещё без игровой интеграции
+
+- Исходники: `client/src/tuglab/{types.ts,config/,physics/}`. Отдельный TypeScript-конфиг `client/tsconfig.tuglab-test.json` и тесты `tests/tuglab/*.test.cjs`. Новые зависимости не добавлены.
+- Проверки: `npm run typecheck:tuglab`, `npm run test:tuglab` (32/32 PASS на checkpoint `1bd985d`). Существующая сборка и тесты также проходят по отчёту Developer.
+- Репозиторий в рабочей ветке: версия 0.6.1 по политике PATCH. Готовой точки входа/сборки TugLab пока нет; трос, пружина, CCD, UI и публикация не реализованы.
+
+## TugLab — самостоятельная оболочка (3 октября 2026)
+
+Существующие продуктовые зависимости, без добавлений. `npm run dev:tuglab` открывает LAN `0.0.0.0:5174/tuglab.html`; `npm run build:tuglab` выдаёт `client/dist-tuglab/index.html` с базой `./`. Версия приложения 0.1.0 плюс SHA, репозиторий 0.6.1. Тот же `lab/main` выбирает опцию по `data-mode="towing"`; обычный `lab.html` сохраняет штатный путь. Stock browser smoke проверил отсутствие towing/WASD, сохранение export/import и немедленный штатный numeric input.
+
+`test:tuglab` — 182 проверки physics/runtime/LabInput. `qa:tuglab:matrix` — 63 игровых и 42 изолированных прогона. `qa:tuglab:browser` — собственный временный HTTP, root/nested/stock, PNG и локальные 120 секунд RAF; `TUGLAB_PERF_SECONDS=0` оставляет smoke. Результаты в игнорируемой `.cache/tuglab-qa/`.
+
+Browser QA использует внешний Playwright/Chrome: `PLAYWRIGHT_MODULE`, `CHROME_PATH`, `TUGLAB_URL`. Продуктовая зависимость не добавляется. `test:tuglab:ui`, `tests/tuglab/ui-lifecycle.cjs` и `tests/tuglab/ui-numeric.cjs` проверяют реальный ввод, смерть/респаун и посимвольный numeric draft. Tow draft принимается по blur/Enter; промежуточный текст не меняет модель, slider/quick и reset/preset синхронизируют draft/error. Эти checks включены в существующий browser step нового readonly workflow.
+
+CI `TugLab checks and artifact` только проверяет и выдаёт tar/SHA/source manifest/QA evidence, без публикации и secrets. Run 37047921348 для HEAD `16158ea` прошёл на Node 20/Linux. Действующий workflow BonkLab не изменён. Generated dist/cache игнорируются Git, серверный API не нужен.
+
+Схема Caddy: `docs/deploy/tuglab-vps.md`, production не изменён. DNS 83.217.202.233 готов, HTTPS ещё не опубликован. Реальный Android отдельно, touch emulation не считается устройством.

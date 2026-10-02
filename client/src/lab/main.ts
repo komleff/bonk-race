@@ -7,9 +7,13 @@ import { LabRenderer, CHAR_SCREEN_Y_RATIO, type TrailPattern } from "./LabRender
 import { TelemetryHUD } from "./TelemetryHUD";
 import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
+import tuglabCss from "./ui/tuglab.css?raw";
+import { injectStyles } from "../ui/utils/injectStyles";
 import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
 const root = document.getElementById("lab-root")!;
+const towing = root.dataset.mode === "towing";
+if (towing) { document.body.dataset.labMode = "towing"; injectStyles("tuglab-styles", tuglabCss); }
 
 // Создать canvas — заполняет область видимости (правый край зарезервирован для панели параметров)
 const canvas = document.createElement("canvas");
@@ -35,19 +39,30 @@ root.appendChild(uiContainer);
 
 
 // Инициализация основных систем
-const lab = new BonkLab(canvas);
+const lab = new BonkLab(canvas, towing ? { towing: true } : undefined);
 
 // Применить пресет "BonkRace v0.3" при запуске — казуальные аркадные гонки
 for (const [key, val] of Object.entries(PRESETS[DEFAULT_PRESET_IDX].values)) {
     lab.updateParams(key, val);
 }
 
-const input = new LabInput(canvas);
+const input = new LabInput(canvas, { keyboard: towing });
 const renderer = new LabRenderer(canvas);
 const hud = new TelemetryHUD();
+if (towing) lab.reset();
 
 // Обработка изменения размера окна
 function onResize(): void {
+    if (towing) {
+        const toolbarHeight = toolbarContainer.querySelector(".lab-toolbar")?.getBoundingClientRect().height ?? 56;
+        const statusHeight = toolbarContainer.querySelector(".tug-status")?.getBoundingClientRect().height ?? 24;
+        const top = toolbarHeight + statusHeight;
+        document.body.style.setProperty("--toolbar-height", `${toolbarHeight}px`);
+        document.body.style.setProperty("--lab-top", `${top}px`);
+        canvas.style.top = `${top}px`;
+        canvas.style.height = `calc(100dvh - ${top}px)`;
+        canvas.style.width = uiContainer.querySelector(".lab-panel") ? "calc(100vw - 320px)" : "100vw";
+    }
     renderer.resize();
 }
 window.addEventListener("resize", onResize);
@@ -61,6 +76,8 @@ function renderToolbar(): void {
     render(
         h(LabToolbar, {
             lab,
+            towing,
+            onClearInput: towing ? () => { input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail(); } : undefined,
             onParamsChanged: () => renderPanel(),
             externalParamChange: paramChangeCounter,
         }),
@@ -73,6 +90,8 @@ function renderPanel(): void {
     render(
         h(LabPanel, {
             lab,
+            towing,
+            onPanelVisibilityChanged: onResize,
             syncTrigger,
             onParamChanged: () => {
                 paramChangeCounter++;
@@ -86,6 +105,13 @@ function renderPanel(): void {
 // Первоначальная отрисовка
 renderToolbar();
 renderPanel();
+const layoutObserver = towing ? new ResizeObserver(onResize) : null;
+if (layoutObserver) {
+    toolbarContainer.querySelectorAll(".lab-toolbar, .tug-status").forEach(el => layoutObserver.observe(el));
+    onResize();
+}
+let wasPaused = lab.getState().towing?.paused ?? false;
+let wasRespawning = false;
 
 // Доступ из консоли разработчика
 (window as unknown as Record<string, unknown>).__bonkLab = lab;
@@ -119,6 +145,18 @@ function frame(): void {
     // Шагнуть физику и получить alpha для интерполяции
     // (update() сам проверяет running и ограничивает dt)
     const alpha = lab.update(frameDt);
+    if (towing) {
+        const state = lab.getState();
+        const paused = state.towing!.paused;
+        const respawning = state.deathTimer > 0 || state.respawnCountdown > 0;
+        // Снять удержание также в заморозке смерти и на границе выхода из Go!.
+        if ((paused && !wasPaused) || respawning || wasRespawning) {
+            input.clear();
+            lab.setInput(0, 0, 0);
+        }
+        wasPaused = paused;
+        wasRespawning = respawning;
+    }
 
     // Обновить нормализацию из текущих параметров
     renderer.setNormalization(
@@ -162,6 +200,7 @@ rafId = requestAnimationFrame(frame);
 // Очистка при горячей перезагрузке — предотвращение устаревших листенеров/циклов при HMR Vite
 if (import.meta.hot) {
     import.meta.hot.dispose(() => {
+        layoutObserver?.disconnect();
         lab.stop();
         input.destroy();
         cancelAnimationFrame(rafId!);

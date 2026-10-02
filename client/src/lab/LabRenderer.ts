@@ -230,6 +230,7 @@ export class LabRenderer {
         this.drawWalls(ctx, state);
         this.drawObstacles(ctx, state);
         this.drawOrbs(ctx, state);
+        if (state.towing) this.drawTowing(ctx, state);
 
         // Trail: записываем точку и рисуем
         const now = performance.now();
@@ -954,6 +955,39 @@ export class LabRenderer {
 
     // ── Миникарта ─────────────────────────────────────────────────────────────
 
+    /** Крепления вычисляются из одного интерполированного снимка A/B. */
+    private drawTowing(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const { B, coupling } = state.towing!;
+        const attachment = (x: number, y: number, angle: number, radius: number, end: string) => {
+            const offset = end === "nose" ? radius : -radius;
+            return { x: x + Math.cos(angle) * offset, y: y + Math.sin(angle) * offset };
+        };
+        const a = attachment(state.x, state.y, state.angle, state.radius, coupling.attachmentA);
+        const b = attachment(B.position.x, B.position.y, B.angle, B.radius, coupling.attachmentB);
+        ctx.save();
+        if (coupling.connected) {
+            ctx.strokeStyle = coupling.type === "rod" ? "#ffdd77" : coupling.type === "rope" ? "#dddddd" : "#ff88dd";
+            ctx.lineWidth = coupling.type === "rod" ? 4 / this.scale : 2 / this.scale;
+            if (coupling.type === "rope") ctx.setLineDash([6 / this.scale, 4 / this.scale]);
+            ctx.beginPath(); ctx.moveTo(a.x, a.y);
+            if (coupling.type === "spring") {
+                const dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy) || 1;
+                for (let i = 1; i < 16; i++) {
+                    const offset = (i % 2 ? 1 : -1) * 4 / this.scale;
+                    ctx.lineTo(a.x + dx * i / 16 - dy / length * offset, a.y + dy * i / 16 + dx / length * offset);
+                }
+            }
+            ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+        }
+        ctx.fillStyle = "#ddaa55"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2 / this.scale;
+        ctx.beginPath(); ctx.arc(B.position.x, B.position.y, B.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(B.position.x, B.position.y);
+        ctx.lineTo(B.position.x + Math.cos(B.angle) * B.radius, B.position.y + Math.sin(B.angle) * B.radius); ctx.stroke();
+        ctx.font = `${12 / this.scale}px sans-serif`; ctx.textAlign = "center";
+        ctx.fillStyle = "white"; ctx.fillText("B", B.position.x, B.position.y + 4 / this.scale);
+        ctx.restore();
+    }
+
     private drawMinimap(
         ctx: CanvasRenderingContext2D,
         state: SandboxState,
@@ -1038,6 +1072,12 @@ export class LabRenderer {
         ctx.arc(toMX(state.x), toMY(state.y), 3, 0, Math.PI * 2);
         ctx.fillStyle = "#44aaff";
         ctx.fill();
+
+        if (state.towing) {
+            ctx.beginPath();
+            ctx.arc(toMX(state.towing.B.position.x), toMY(state.towing.B.position.y), 4, 0, Math.PI * 2);
+            ctx.strokeStyle = "#ddaa55"; ctx.lineWidth = 2; ctx.stroke();
+        }
 
         // Прямоугольник обзора (асимметричный: камера помещает персонажа на 65% от верха)
         const vpHalfW = canvasW / (2 * this.scale);
