@@ -115,3 +115,11 @@ PNG 1280×720 и 1024×600 самостоятельно просмотрены: 
 Самостоятельный архив: `.cache/tuglab-qa/tuglab-static-9c00742.tar.gz`, **61298 bytes**, SHA-256 `0825121c38ad02144f83a146c406666179633bfcabc7d4e53149e3722d374f61`. Он содержит только `index.html` и `assets/tuglab-BpjnhLVV.js`; SHA продукта виден в UI. JS 211.69 kB, gzip 60.74 kB. Архив/PNG/сырые evidence намеренно не включены в Git. Отдельный CI workflow создаёт собственный архив с `SOURCE_SHA.txt` и проверочной суммой, upload artifact, без secrets/publish. Его actual GitHub run ещё не проверен.
 
 Memory Bank/Beads и три независимых final review ведёт PM. Состояние физического Android, публикации и отката не изменено: задачи `.6` и `.7` внешние. [Схема отдельного хоста](../deploy/tuglab-vps.md) описывает последующие действия, но не доказывает публикацию. Здесь не заявляется полное закрытие исходного неизменённого ТЗ.
+
+## Финальная правка UI и actual CI
+
+Численная/120с evidence выше относится к неизменной физике checkpoint `9c00742`. Whole-branch review обнаружил ошибку обычного посимвольного numeric ввода, пропущенную атомарным fill. В `8205235` исправлен весь класс пяти tow полей: draft не меняет модель, commit по blur/Enter, slider/quick/reset/preset синхронизируют draft/error. Реальный RED/GREEN 8 cases и независимый scoped re-review 8/8 PASS; stock numeric input сохранён. Новый ui-numeric regression включён в existing CI browser step.
+
+[Первый actual CI](https://github.com/komleff/bonk-race/actions/runs/37047921348) для head `16158ea` PASS на Ubuntu/Node 20; PR merge artifact `58440a51` содержит index/assets/SOURCE_SHA, tar SHA-256 616b089d5a806305a3522b9eb0d7adaaaa5c81e9e32df10bfa4db78652a37983 проверен. Исторические фразы «CI ещё не проверен» выше относятся к моменту QA commit. Последующие runs видны в PR checks; эти результаты не заменяют Android/production.
+
+Advisory: mapUnchanged в QA JSON пока не участвует в aggregate PASS, задача `bonk-race-551`. Все 63 actual карты true, текущая evidence сохранения карты достоверна. Внешние этапы `.6/.7` остаются NOT TESTED. [Самопроверка PM](u2-tuglab-pm-self-check.md) описывает триаж и завершение.

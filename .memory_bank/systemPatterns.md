@@ -95,3 +95,7 @@
 `BonkLab(canvas,{towing:true})` включает `LabTowing`; безoption старый путь сохранён. ТолькоB/сцепка имеют дополнительное постоянное состояние; A берётся из штатных полей. Sections1–3 FA/история/зоны общие раз/maintick, motion4–6 ветвится. `integratePhysics` в callback отдаёт только скорости, drift/CCD одинобщий. B имеет свой drag/зону, без FA/angularclamp. Исходные Arena ID используются дляspikes, finish поA, смерть любого→общийrespawn. Орбы шагают одинраз; opt-in позиционнаякоррекция уходитворб, mass-dependent импульсы сохранены. Они остаютсяdiscrete contacts.
 
 `pause` сохраняетblur/hidden handlers, очищаетinput; terminalstop снимаетhandlers дажеpaused. `stepOnce` синхронизируетprevA/B. Live независимые mass/radius/k/damping сохраняютcapturedtarget; явные length/type иRestart используютconfiguredtarget. Capture 2–12м и≤2м/с включаетвращение. При невозможнойгеометрии settingsсохраняются, positions/mapне меняются, нуженmanualRestart.
+
+## TugLab: редактируемые числа
+
+У tow числовых полей текстовый draft отделён от принятой модели. onInput сохраняет текст; blur/Enter валидирует и принимает число. Промежуточное/пустое/недопустимое значение сохраняет прежнюю модель. Slider/quick и внешний syncTrigger reset/preset синхронизируют draft/error через useLayoutEffect, чтобы отложенная синхронизация не затирала следующий ввод. Stock BonkLab сохраняет прежний немедленный numeric onInput. Проверка реальных клавиш ui-numeric входит в existing browser CI step.

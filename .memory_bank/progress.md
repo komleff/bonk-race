@@ -2,6 +2,14 @@
 
 Отслеживание статуса задач.
 
+## U2 TugLab — локальная поставка принята (3 октября 2026)
+
+- Этапы 1–5 готовы: оригинальный BonkLab плюс прицеп, три сцепки/длина/k, отдельная статическая оболочка. Оператор подтвердил ручную desktop-игру.
+- QA `16158ea`: 182 tests, 63 игровых + 42 изолированных, static/UI/lifecycle/120с RAF PASS. Первый actual GitHub CI PASS, самостоятельный архив проверен.
+- Final review: architecture/physics и security/build APPROVED на `16158ea`. Quality F1/F2 исправлены в `8205235`; scoped re-review APPROVED, independent keystroke 8/8 PASS. Физика не менялась; широкий review не повторялся.
+- По запросу оператора самопроверка PM_ERR/DOC_PR: `bonk-race-550`, отчёт в docs. PR body актуализирован; избыточный review effort признан. QA advisory map invariant отложен `bonk-race-551`, без нового fix/review цикла.
+- `.5` закрыта; `.6` Android и `.7` production/HTTPS/rollback открыты, parent остаётся in_progress. DNS готов, сайт не опубликован. Ветка/worktree/сервер 5174 сохраняются, merge только оператор.
+
 ## U2 TugLab — возобновлено после обновления
 
 - Закрыта задача аудита `bonk-race-tow-reuse`; задачи2–5 и план заменены минимальным расширением существующего BonkLab. Оригинальные сцена/контент/управление сохраняются, новая группа параметров прицепа и сцепки.

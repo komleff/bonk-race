@@ -2,6 +2,15 @@
 
 Текущее состояние проекта и фокус работы.
 
+## U2 TugLab — локальная поставка и самопроверка PM (3 октября 2026)
+
+- Пользователь поиграл на `http://localhost:5174/tuglab.html` и подтвердил «отлично», «все ок». Оригинальная сцена/генератор/управление сохранены. Это ручное desktop-подтверждение, не Android или production.
+- QA checkpoint `16158ea`: 182 tests, 63 игровых и 42 изолированных прогона, браузерная/static/lifecycle проверка и реальный 120с headless RAF PASS; tick P95 0.90 мс на указанном Mac. Руководство и приёмка в docs; скорости до 2000 м/с не объявлены полностью физически валидированными.
+- Actual CI [37047921348](https://github.com/komleff/bonk-race/actions/runs/37047921348) PASS, standalone artifact скачан и SHA-256 проверен. Architecture/physics и security/build APPROVED на `16158ea`; quality нашёл BLOCKER обычного набора tow чисел и принял исправление на `8205235`. UI fix `8205235`: все пять tow numeric drafts принимаются по blur/Enter, F1/F2 закрыты. Адресный re-review тем же reviewer APPROVED, собственный keystroke 8/8 PASS. Физические blobs не менялись.
+- По запросу оператора прочитаны PM_ERR/DOC_PR в соседнем u2 и актуальные указатели. [Самопроверка PM](../docs/reports/u2-tuglab-pm-self-check.md), Beads `bonk-race-550`: избыточный review effort и устаревший PR body. PR обновлён; новые широкие review не запускаются. Advisory mapUnchanged отложен в `bonk-race-551`, он не блокирует текущую игру.
+- Прошлый exec dev process исчез; сервер восстановлен на том же 5174 (session42089), HTTP200. Worktree сохраняется для игры/PR. Исходный checkout и пользовательский stash не изменены.
+- `.6` Android и `.7` production HTTPS/доставка/откат остаются открытыми; merge только оператор.
+
 ## U2 TugLab — работа возобновлена
 
 - Оператор написал «продолжай» после обновления VS Code/Codex; пауза завершена. Начаты аудит минимального переиспользования и независимый review checkpoint ядра.
