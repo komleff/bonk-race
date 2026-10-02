@@ -111,6 +111,7 @@ if (layoutObserver) {
     onResize();
 }
 let wasPaused = lab.getState().towing?.paused ?? false;
+let wasRespawning = false;
 
 // Доступ из консоли разработчика
 (window as unknown as Record<string, unknown>).__bonkLab = lab;
@@ -145,9 +146,16 @@ function frame(): void {
     // (update() сам проверяет running и ограничивает dt)
     const alpha = lab.update(frameDt);
     if (towing) {
-        const paused = lab.getState().towing!.paused;
-        if (paused && !wasPaused) input.clear();
+        const state = lab.getState();
+        const paused = state.towing!.paused;
+        const respawning = state.deathTimer > 0 || state.respawnCountdown > 0;
+        // Снять удержание также в заморозке смерти и на границе выхода из Go!.
+        if ((paused && !wasPaused) || respawning || wasRespawning) {
+            input.clear();
+            lab.setInput(0, 0, 0);
+        }
         wasPaused = paused;
+        wasRespawning = respawning;
     }
 
     // Обновить нормализацию из текущих параметров
