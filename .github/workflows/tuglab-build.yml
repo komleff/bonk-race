@@ -1,0 +1,65 @@
+name: TugLab checks and artifact
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install repository dependencies
+        run: npm ci
+      - name: Check physics and stock regressions
+        run: |
+          npm run build
+          npm run test:tuglab
+          npm run typecheck:tuglab
+          npm run qa:tuglab:matrix
+          npm test
+          npm run build:lab --workspace=client
+          npm run check-version
+          npm run build:tuglab
+      - name: Install external browser QA tool
+        run: |
+          npm install --prefix "$RUNNER_TEMP/tuglab-browser" --no-save --package-lock=false playwright@1.63.0
+          "$RUNNER_TEMP/tuglab-browser/node_modules/.bin/playwright" install --with-deps chromium
+          echo "PLAYWRIGHT_MODULE=$RUNNER_TEMP/tuglab-browser/node_modules/playwright" >> "$GITHUB_ENV"
+      - name: Check standalone resources and browser controls
+        env:
+          TUGLAB_PERF_SECONDS: '0'
+          TUGLAB_HEADLESS: '1'
+          TUGLAB_URL: http://127.0.0.1:5194
+        run: |
+          export CHROME_PATH="$(node -e 'console.log(require(process.env.PLAYWRIGHT_MODULE).chromium.executablePath())')"
+          npm run qa:tuglab:browser
+          python3 -m http.server 5194 --bind 127.0.0.1 --directory client/dist-tuglab > "$RUNNER_TEMP/tuglab-http.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          node -e 'const url=process.env.TUGLAB_URL; (async()=>{for(let i=0;i<50;i++){try{if((await fetch(url)).ok)return;}catch{} await new Promise(r=>setTimeout(r,100));}process.exit(1)})()'
+          npm run test:tuglab:ui
+          node tests/tuglab/ui-lifecycle.cjs
+      - name: Package standalone output
+        run: |
+          printf '%s\n' "$GITHUB_SHA" > client/dist-tuglab/SOURCE_SHA.txt
+          tar -czf tuglab-static.tar.gz -C client/dist-tuglab .
+          sha256sum tuglab-static.tar.gz > tuglab-static.tar.gz.sha256
+      - name: Upload standalone game and QA evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tuglab-static-${{ github.sha }}
+          path: |
+            tuglab-static.tar.gz
+            tuglab-static.tar.gz.sha256
+            .cache/tuglab-qa/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
