@@ -25,3 +25,39 @@ test('rod permits relative body rotation and transfers an external trailer impul
   for(let i=0;i<60;i++)w=stepWorld(w,input,c).world;
   assert.ok(Math.abs(w.A.angularVelocity)>0.01);assert.ok(Math.abs(w.A.angle-w.B.angle)>0.01);
 });
+
+for(const tickRate of [30,60]) for(const length of [4,8]) for(const massRatio of [0.1,0.25,0.5,1,2,5,10]) for(const speed of [50,100]) {
+  test(`rod accepts transverse ±${speed} m/s, ${tickRate} Hz, L=${length}, B/A=${massRatio} for three seconds`,()=>{
+    const {defaultConfig}=core('config/validate.js');const {stepWorld}=core('physics/step.js');
+    const c={...defaultConfig,tickRate,length,massRatio,couplingType:'rod',enginesEnabled:false};let w=world(c);
+    w.A.velocity.y=speed;w.B.velocity.y=-speed;
+    const initial=momentum(w),initialEnergy=energy(w);
+    for(let tick=0;tick<3*tickRate;tick++) {
+      const result=stepWorld(w,input,c);
+      assert.equal(result.stopReason,undefined,`tick ${tick}: ${result.stopReason}`);
+      w=result.world;
+      assert.ok(energy(w)<=initialEnergy*1.01,`tick ${tick}: energy ratio ${energy(w)/initialEnergy}`);
+      assert.ok(w.diagnostics.rodError<=0.01*length,`tick ${tick}: error ${w.diagnostics.rodError} > ${0.01*length}`);
+      const current=momentum(w);
+      near(current.x,initial.x,1e-5*Math.max(1,Math.abs(initial.x)));
+      near(current.y,initial.y,1e-5*Math.max(1,Math.abs(initial.y)));
+      near(current.angular,initial.angular,1e-5*Math.max(1,Math.abs(initial.angular)));
+    }
+  });
+}
+test('standalone rod solver accounts for transverse drift before bodies move',()=>{
+  const {defaultConfig}=core('config/validate.js');const {solveRod,couplingGeometry}=core('physics/coupling.js');const {driftBody}=core('physics/body.js');
+  const c={...defaultConfig,tickRate:30,length:4,couplingType:'rod',enginesEnabled:false},w=world(c),h=1/120;
+  w.A.velocity.y=100;w.B.velocity.y=-100;const initial=momentum(w);
+  for(let i=0;i<c.solverIterations;i++)solveRod(w.A,w.B,w.coupling,h,c);
+  driftBody(w.A,h);driftBody(w.B,h);
+  assert.ok(Math.abs(couplingGeometry(w.A,w.B,w.coupling).distance-4)<=0.04);
+  near(momentum(w).angular,initial.angular,1e-5*Math.abs(initial.angular));
+});
+test('unsolved rod step reports a stop and keeps the original world atomically',()=>{
+  const {defaultConfig}=core('config/validate.js');const {stepWorld}=core('physics/step.js');
+  const c={...defaultConfig,couplingType:'rod',enginesEnabled:false};const w=world(c);
+  w.A.velocity.y=1e12;w.B.velocity.y=-1e12;
+  const snapshot=structuredClone(w), result=stepWorld(w,{...input,toggleFA:true},c);
+  assert.ok(result.stopReason);assert.strictEqual(result.world,w);assert.deepEqual(w,snapshot);
+});

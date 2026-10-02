@@ -22,7 +22,7 @@ export function validateConfig(value: unknown): ValidationResult {
     if (typeof current === 'number' && (current < min || current > max)) errors.push(`${key}: допустимо ${min}–${max}`);
   }
   for (const key of ['massA', 'radiusA', 'inertiaFactor', 'springReferenceMass', 'yawLimit', 'yawDampingTime',
-    'lateralComfort', 'maxPositionBias', 'normalEpsilon', 'maxValidatedSpeed', 'captureMinLength', 'captureMaxLength',
+    'lateralComfort', 'maxPositionBias', 'rodRelativeTolerance', 'rodMaxSweep', 'maxAdaptiveSubsteps', 'normalEpsilon', 'maxValidatedSpeed', 'captureMinLength', 'captureMaxLength',
     'captureMaxSpeed', 'baySpeed', 'bayAngularSpeed', 'bayHoldTime'] as const) {
     if (candidate[key] !== defaultConfig[key]) errors.push(`${key}: фиксировано ${defaultConfig[key]}`);
   }

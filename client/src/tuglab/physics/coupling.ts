@@ -40,14 +40,43 @@ export function applyCouplingImpulse(a: BodyState, b: BodyState, geometry: Coupl
   applyImpulse(a, vector, geometry.a.arm);
   applyImpulse(b, { x: -vector.x, y: -vector.y }, geometry.b.arm);
 }
+// Ограничиваем поворот плеч и их относительное перемещение, не скорость физических тел.
+export function rodStepLimit(a: BodyState, b: BodyState, coupling: CouplingState, config: TugConfig): number {
+  if (!coupling.connected || coupling.type !== 'rod') return Infinity;
+  const relativeSpeedBound = Math.hypot(b.velocity.x - a.velocity.x, b.velocity.y - a.velocity.y)
+    + Math.abs(a.angularVelocity) * a.radius + Math.abs(b.angularVelocity) * b.radius;
+  const sweepRate = Math.max(relativeSpeedBound / coupling.restLength,
+    Math.abs(a.angularVelocity), Math.abs(b.angularVelocity));
+  return sweepRate > 0 ? config.rodMaxSweep / sweepRate : Infinity;
+}
 export function solveRod(a: BodyState, b: BodyState, coupling: CouplingState, dt: number, config: TugConfig): number {
   if (!coupling.connected || coupling.type !== 'rod') return 0;
   const geometry = couplingGeometry(a, b, coupling);
   coupling.lastNormal = geometry.normal;
-  // Исправляем дрейф ограниченной скоростью: перемещение центров напрямую изменило бы угловой импульс.
+  // Импульс прикладывается по текущей геометрии: так сохраняется полный угловой импульс.
+  // Предсказываем именно конечные крепления, включая поворот плеч за подшаг.
+  const predict = (body: BodyState, attachment: Attachment): AttachmentState => attachmentState({
+    ...body, position: { x: body.position.x + body.velocity.x * dt, y: body.position.y + body.velocity.y * dt },
+    angle: body.angle + body.angularVelocity * dt,
+  }, attachment);
+  const endA = predict(a, coupling.attachmentA), endB = predict(b, coupling.attachmentB);
+  const dx = endB.position.x - endA.position.x, dy = endB.position.y - endA.position.y;
+  const endDistance = Math.hypot(dx, dy);
+  if (endDistance < config.normalEpsilon) return 0;
+  const endNormal = { x: dx / endDistance, y: dy / endDistance };
+  const spinA = cross(geometry.a.arm, geometry.normal) / a.inertia;
+  const spinB = cross(geometry.b.arm, geometry.normal) / b.inertia;
+  const inverseLinearMass = 1 / a.mass + 1 / b.mass;
+  const derivative = dt * dot(endNormal, {
+    x: -geometry.normal.x * inverseLinearMass + spinA * endA.arm.y + spinB * endB.arm.y,
+    y: -geometry.normal.y * inverseLinearMass - spinA * endA.arm.x - spinB * endB.arm.x,
+  });
+  // При слишком большом интервале локальная ветвь решения теряется; вызывающий код дробит шаг.
+  if (!(derivative < 0)) return 0;
   const bias = Math.max(-config.maxPositionBias, Math.min(config.maxPositionBias,
     (geometry.distance - coupling.restLength) / dt));
-  const impulse = (geometry.radialVelocity + bias) / geometry.inverseMass;
+  const targetDistance = geometry.distance - bias * dt;
+  const impulse = -(endDistance - targetDistance) / derivative;
   applyCouplingImpulse(a, b, geometry, impulse);
   coupling.accumulatedImpulse += impulse;
   return impulse;

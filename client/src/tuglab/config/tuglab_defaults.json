@@ -6,6 +6,7 @@
   "springMinRatio": 0.5, "springMaxRatio": 1.5, "restitution": 0.1,
   "fa": false, "enginesEnabled": true, "yawLimit": 1.3962634015954636, "yawDampingTime": 1,
   "lateralComfort": 4, "tickRate": 60, "substeps": 4, "solverIterations": 8,
+  "rodRelativeTolerance": 0.01, "rodMaxSweep": 0.1, "maxAdaptiveSubsteps": 128,
   "maxPositionBias": 2, "normalEpsilon": 0.000001, "maxValidatedSpeed": 100, "maxObstacles": 30,
   "captureMinLength": 2, "captureMaxLength": 12, "captureMaxSpeed": 2,
   "baySpeed": 0.5, "bayAngularSpeed": 0.08726646259971647, "bayHoldTime": 2,

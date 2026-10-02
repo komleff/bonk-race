@@ -17,7 +17,7 @@ export interface CouplingState {
 export interface CircleObstacle { id: string; position: Vec2; radius: number }
 export interface Bay { position: Vec2; radius: number; holdTime: number }
 export interface Diagnostics {
-  couplingImpulse: number; rodError: number; outsideSpeedRange: boolean;
+  couplingImpulse: number; rodError: number; outsideSpeedRange: boolean; solverSubsteps?: number;
 }
 export interface WorldState {
   A: BodyState; B: BodyState; coupling: CouplingState;
@@ -35,6 +35,7 @@ export interface TugConfig {
   springMinRatio: number; springMaxRatio: number; restitution: number;
   fa: boolean; enginesEnabled: boolean; yawLimit: number; yawDampingTime: number; lateralComfort: number;
   tickRate: number; substeps: number; solverIterations: number; maxPositionBias: number;
+  rodRelativeTolerance: number; rodMaxSweep: number; maxAdaptiveSubsteps: number;
   normalEpsilon: number; maxValidatedSpeed: number; maxObstacles: number;
   captureMinLength: number; captureMaxLength: number; captureMaxSpeed: number;
   baySpeed: number; bayAngularSpeed: number; bayHoldTime: number;
