@@ -46,6 +46,7 @@ jobs:
           trap 'kill "$server_pid"' EXIT
           node -e 'const url=process.env.TUGLAB_URL; (async()=>{for(let i=0;i<50;i++){try{if((await fetch(url)).ok)return;}catch{} await new Promise(r=>setTimeout(r,100));}process.exit(1)})()'
           npm run test:tuglab:ui
+          node tests/tuglab/ui-numeric.cjs
           node tests/tuglab/ui-lifecycle.cjs
       - name: Package standalone output
         run: |

@@ -27,11 +27,14 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || '/tmp/bonk-tuglab-
  await page.keyboard.up('w');
  const seedBefore = await page.evaluate(() => JSON.stringify(window.__bonkLab.getState().arena.obstacles));
  await page.getByLabel('Масса B / A', { exact: true }).fill('2');
+ await page.getByLabel('Масса B / A', { exact: true }).press('Enter');
  assert.equal(await page.evaluate(() => window.__bonkLab.params['tow.massRatio']), 2);
  await page.getByLabel('Жёсткость k').fill('');
+ await page.getByLabel('Жёсткость k').press('Enter');
  assert.equal(await page.evaluate(() => window.__bonkLab.params['tow.stiffness']), 1250);
  assert.ok(await page.getByRole('alert').count());
  await page.getByLabel('Жёсткость k').fill('2400');
+ await page.getByLabel('Жёсткость k').press('Enter');
  assert.equal(await page.evaluate(() => window.__bonkLab.params['tow.stiffness']), 2400);
  assert.equal(await page.evaluate(() => JSON.stringify(window.__bonkLab.getState().arena.obstacles)), seedBefore);
  await page.getByRole('button', { name: 'Restart', exact: true }).click();

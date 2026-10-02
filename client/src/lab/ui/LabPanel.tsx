@@ -6,7 +6,7 @@
  */
 
 import { Fragment } from "preact";
-import { useState, useEffect, useCallback } from "preact/hooks";
+import { useState, useEffect, useLayoutEffect, useCallback } from "preact/hooks";
 import { injectStyles } from "../../ui/utils/injectStyles";
 import type { BonkLab } from "../BonkLab";
 import panelCss from "./lab-panel.css?raw";
@@ -45,13 +45,25 @@ function ParamSlider({
     def,
     value,
     onChange,
+    syncTrigger,
 }: {
     def: ParamDef;
     value: number | boolean | string;
     onChange: (key: string, val: number | boolean | string) => void;
+    syncTrigger?: number;
 }) {
     const [tooltipOpen, setTooltipOpen] = useState(false);
     const [numberError, setNumberError] = useState("");
+    const towNumber = def.key.startsWith("tow.") && typeof value === "number";
+    const [numberDraft, setNumberDraft] = useState(String(value));
+
+    // Внешний reset/preset отменяет черновик даже при неизменном принятом числе.
+    useLayoutEffect(() => {
+        if (towNumber) {
+            setNumberDraft(String(value));
+            setNumberError("");
+        }
+    }, [value, syncTrigger, towNumber]);
 
     // Выбор цвета
     if (def.isColor) {
@@ -221,19 +233,39 @@ function ParamSlider({
     const numValue = typeof value === "number" ? value : 0;
     const step = def.step ?? autoStep(def.min ?? 0, def.max ?? 100);
 
+    const acceptTowNumber = (v: number) => {
+        setNumberDraft(String(v));
+        setNumberError("");
+        onChange(def.key, v);
+    };
+
     const handleSlider = (e: Event) => {
         const v = parseFloat((e.target as HTMLInputElement).value);
-        if (!isNaN(v)) onChange(def.key, v);
+        if (!isNaN(v)) {
+            if (towNumber) acceptTowNumber(v);
+            else onChange(def.key, v);
+        }
+    };
+
+    const commitTowNumber = (e: Event) => {
+        const raw = (e.target as HTMLInputElement).value;
+        const v = Number(raw);
+        if (!raw.trim() || !Number.isFinite(v) || v < (def.min ?? -Infinity) || v > (def.max ?? Infinity)) {
+            setNumberError(`Введите число от ${def.min} до ${def.max}; прежнее значение сохранено.`);
+            return;
+        }
+        acceptTowNumber(v);
     };
 
     const handleNumber = (e: Event) => {
         const raw = (e.target as HTMLInputElement).value;
-        const towNumber = def.key.startsWith("tow.");
-        const v = towNumber ? Number(raw) : parseFloat(raw);
-        if (towNumber && (!raw.trim() || !Number.isFinite(v) || v < (def.min ?? -Infinity) || v > (def.max ?? Infinity))) {
-            setNumberError(`Введите число от ${def.min} до ${def.max}; прежнее значение сохранено.`);
+        if (towNumber) {
+            // Префиксы вроде пустой строки и «0.» не должны менять модель или курсор.
+            setNumberDraft(raw);
+            setNumberError("");
             return;
         }
+        const v = parseFloat(raw);
         setNumberError("");
         if (!isNaN(v)) {
             // Ограничить диапазоном если min/max определены
@@ -285,15 +317,22 @@ function ParamSlider({
                     min={def.min}
                     max={def.max}
                     step={step}
-                    value={formatValue(numValue, step)}
+                    value={towNumber ? numberDraft : formatValue(numValue, step)}
                     onInput={handleNumber}
+                    onBlur={towNumber ? commitTowNumber : undefined}
+                    onKeyDown={towNumber ? (e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            (e.target as HTMLInputElement).blur();
+                        }
+                    } : undefined}
                     disabled={def.locked}
                 />
                 {def.unit && <span class="lab-param-unit">{def.unit}</span>}
             </div>
             {numberError && <div class="tug-error" role="alert">{numberError}</div>}
             {def.quickValues && <div class="tug-quick-masses">{def.quickValues.map(v =>
-                <button type="button" onClick={() => { setNumberError(""); onChange(def.key, v); }} aria-label={`Масса B / A = ${v}`}>{v}</button>
+                <button type="button" onClick={() => acceptTowNumber(v)} aria-label={`Масса B / A = ${v}`}>{v}</button>
             )}</div>}
             {def.min !== undefined && def.max !== undefined && (
                 <div class="lab-param-range">
@@ -310,12 +349,14 @@ function PanelGroup({
     onToggle,
     values,
     onChange,
+    syncTrigger,
 }: {
     group: GroupDef;
     expanded: boolean;
     onToggle: () => void;
     values: Record<string, number | boolean | string>;
     onChange: (key: string, val: number | boolean | string) => void;
+    syncTrigger?: number;
 }) {
     return (
         <div class="lab-group">
@@ -336,6 +377,7 @@ function PanelGroup({
                             def={p}
                             value={values[p.key] ?? 0}
                             onChange={onChange}
+                            syncTrigger={syncTrigger}
                         />
                     ))}
                 </div>
@@ -463,6 +505,7 @@ export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onP
                             onToggle={() => toggleGroup(i)}
                             values={values}
                             onChange={handleChange}
+                            syncTrigger={syncTrigger}
                         />
                     ))}
                 </div>
