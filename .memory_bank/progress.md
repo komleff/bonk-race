@@ -2,6 +2,11 @@
 
 Отслеживание статуса задач.
 
+## TugLab — публичный тест доступен (3 октября 2026)
+
+- PR35 и PR36 merged по прямому согласованию оператора. Pages CI37055835128 build/deploy SUCCESS на main958329c; root BonkLab и /tuglab/ HTTPS/browser PASS, собственные JS200, pageerror0.
+- bonk-race-tug закрыта после merge35, bonk-race-553 закрыта после подготовки. .7: публикация подтверждена, rollback остаётся follow-up; .6 Android не выполнялась. Parent не объявлен полностью завершённым по исходным внешним AC.
+
 ## TugLab — GitHub Pages (3 октября 2026)
 
 - Согласована публикация /bonk-race/tuglab/ через существующий workflow и единый артефакт. Исходники/ветка остаются в bonk-race, отдельного репозитория нет.
