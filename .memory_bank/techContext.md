@@ -50,3 +50,9 @@ cd server && npx ts-node-dev -r tsconfig-paths/register src/meta/server.ts
 - Track ID validation: DANGEROUS_KEYS blocklist + regex `^[a-z0-9\-_.]+$/i` + max 128 chars
 - `stringHash()` — generic hash for seeds and daily rotation
 - TICK_RATE constant in trackPresets.ts (used for both physics and inactivity threshold)
+
+## U2 TugLab — checkpoint, ещё без игровой интеграции
+
+- Исходники: `client/src/tuglab/{types.ts,config/,physics/}`. Отдельный TypeScript-конфиг `client/tsconfig.tuglab-test.json` и тесты `tests/tuglab/*.test.cjs`. Новые зависимости не добавлены.
+- Проверки: `npm run typecheck:tuglab`, `npm run test:tuglab` (32/32 PASS на checkpoint `1bd985d`). Существующая сборка и тесты также проходят по отчёту Developer.
+- Репозиторий в рабочей ветке: версия 0.6.1 по политике PATCH. Готовой точки входа/сборки TugLab пока нет; трос, пружина, CCD, UI и публикация не реализованы.
