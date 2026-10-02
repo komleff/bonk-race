@@ -2,11 +2,12 @@
 
 Текущее состояние проекта и фокус работы.
 
-## TugLab — согласованная публикация GitHub Pages
+## TugLab — опубликован в GitHub Pages (3 октября 2026)
 
-- Оператор согласовал короткое решение и написал «ок, приступай»: исходники в bonk-race, существующий Pages workflow размещает TugLab в /bonk-race/tuglab/ общего артефакта с BonkLab. Новый repo не создаётся; worktree остаётся рабочей папкой той же ветки.
-- bonk-race-553: подготовка принята scoped review APPROVED, блокеров0. deploy-lab.yml собирает root BonkLab + /tuglab/ одного artifact; PR build-only с изолированной concurrency, deploy/OIDC только main. Shared/lab/tug builds, YAML parse, assembled HTTP/browser обоих адресов и numeric8/8 PASS. Изменены только workflow и документация; игровой код не менялся. Remote CI запускается после push; результат фиксируется в PR. Старый отдельный VPS этап отменён; .7 актуализирована на Pages, зависимость от физического Android снята по цели размещения теста, .6 не объявляется выполненной.
-- Прочитана фактическая защита GitHub environment github-pages: единственная разрешённая deployment branch main. Агенты не меняют защиту/не merge; после review и push оператор должен merge текущий stacked PR. Публичный TugLab ещё не объявляется доступным.
+- После конкретного предложения merge #35, base #36 на main, merge #36 и проверки Pages оператор повторно написал «ок, приступай». Это прямое согласование данного release, не изменение общей политики merge. PR35 merged 2860d9c, PR36 merged 958329c; прямого push main или изменения защиты не было.
+- Existing Pages production [CI37055835128](https://github.com/komleff/bonk-race/actions/runs/37055835128) SUCCESS, build/deploy. Рабочие публичные адреса: https://komleff.github.io/bonk-race/ и https://komleff.github.io/bonk-race/tuglab/. Реальные HTTPS HTML/JS200, Chrome154 browser pageerror0, BonkLab towing=false, TugLab towing=true. Исходники остаются в bonk-race; worktree — папка того же repo.
+- Подготовка bonk-race-553 закрыта; PR combined artifact CI37055256302 и TugLab CI37055256135 SUCCESS. Публикация части .7 подтверждена, полноценный rollback ещё не выполнен; .7 остаётся in_progress для follow-up. Android .6 отдельно, не объявлен выполненным. Новых широких review/physics QA не было.
+- Локальная игра localhost:5174/tuglab.html сохранена. Текущий worktree переведён в docs/tuglab-pages-live от опубликованного origin/main только для фиксации результата; исходный checkout и пользовательский stash не тронуты.
 
 ## TugLab — исправление ошибки границ работы (3 октября 2026)
 

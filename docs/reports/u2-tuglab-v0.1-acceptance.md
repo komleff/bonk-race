@@ -108,7 +108,7 @@ PNG 1280×720 и 1024×600 самостоятельно просмотрены: 
 | 22 | Исключено оператором | Импорт не входит в TugLab; invalid live numeric edits проверены отдельно |
 | 23 | PASS | 30/60/120 render interval state equality; isolated 30/60 COM/energy metrics≤5% |
 | 24 | PASS desktop | Два PNG + реальный layout и runtime interpolation fixtures; Android отдельно |
-| 25 | NOT TESTED | Production hostname/HTTPS/rollback не выполнялись агентом; отдельный внешний этап |
+| 25 | HTTPS PASS; rollback NOT TESTED | Согласованный Pages /bonk-race/tuglab/ опубликован, root/nested browser и JS200; полноценный rollback отдельный follow-up |
 
 ## Артефакт и внешние этапы
 
@@ -129,3 +129,9 @@ Advisory: mapUnchanged в QA JSON пока не участвует в aggregate 
 Оператор согласовал GitHub Pages существующего репозитория: /bonk-race/tuglab/ рядом с BonkLab в корне общего артефакта. Прежний отдельный VPS вариант заменён; исходники остаются в bonk-race. Подготовка workflow и проверка общего артефакта ведутся в bonk-race-553. Фактическая публикация/откат .7 и физический Android .6 ещё не подтверждены. GitHub environment разрешает deployment только из main после операторского merge; PR build-only не публикует сайт.
 
 Подготовка Pages принята scoped review: shared/lab/tug builds и единый каталог, browser stock root (towing=false) и /tuglab/ (towing=true), HTML/JS200, pageerror0/requestfailed0, существующая numeric регрессия8/8 PASS. PyYAML6.0.3 parse PASS; GitHub Actions проверяет workflow после push. Runtime/физика в этой правке не менялись, broad QA не повторялась. PR build получает только read-права и не может отменить main deployment; main deploy остаётся единственным publisher. Фактическая публикация ещё ожидает merge.
+
+## Фактическая публикация Pages (3 октября 2026)
+
+После прямой команды оператора выполнить предложенные merge/publish действия PR35 и PR36 объединены; main SHA 958329c4efe2db3910b2df0fb7eeeefe3d817cc3. Содержимое файлов main совпадает с проверенным candidate9f1928a. [Production Pages CI37055835128](https://github.com/komleff/bonk-race/actions/runs/37055835128) SUCCESS для build и deploy. Реальные HTTPS /bonk-race/ и /bonk-race/tuglab/ HTML+свои JS200; Chrome154 pageerrors=[] для обеих, stock towing=false, Tug towing=true, canvas загружен. Прежние записи «ожидает merge» выше являются историей подготовки. Полноценный откат и физический Android не объявлены проверенными; .7/.6 остаются отдельными follow-up.
+
+Дополнительный existing numeric runner на публичном HTTPS не дошёл до UI: несколько отдельных Chrome запусков остановились в page.goto с net::ERR_SOCKET_NOT_CONNECTED, в том числе на root. Стабильный curl200 и ранее завершённый browser root+nested PASS сохранены как отдельные наблюдения; удалённые numeric проверки не засчитаны. Числовой ввод подтверждён локальным assembled artifact и PR CI; продукт или тесты ради этой сетевой ошибки не менялись.
