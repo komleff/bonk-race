@@ -1,6 +1,8 @@
 import defaults from '../config/tuglab_defaults.json';
 import type { Attachment, BodyState, CouplingState, TugConfig, Vec2 } from '../types';
 import { applyImpulse, cross, dot } from './body';
+// Накопители принадлежат одной пробе при неизменных положениях креплений.
+export interface CouplingImpulses { pull: number; push: number }
 export interface AttachmentState { arm: Vec2; position: Vec2; velocity: Vec2 }
 export interface CouplingGeometry {
   a: AttachmentState; b: AttachmentState; distance: number; normal: Vec2;
@@ -53,7 +55,7 @@ export function solveRod(a: BodyState, b: BodyState, coupling: CouplingState, dt
   return solveDistance(a, b, coupling, dt, config, coupling.restLength);
 }
 function solveDistance(a: BodyState, b: BodyState, coupling: CouplingState, dt: number, config: TugConfig,
-  target: number, direction: 'both' | 'pull' | 'push' = 'both'): number {
+  target: number, direction: 'both' | 'pull' | 'push' = 'both', impulses?: CouplingImpulses): number {
   const geometry = couplingGeometry(a, b, coupling);
   coupling.lastNormal = geometry.normal;
   // Импульс прикладывается по текущей геометрии: так сохраняется полный угловой импульс.
@@ -79,8 +81,13 @@ function solveDistance(a: BodyState, b: BodyState, coupling: CouplingState, dt: 
   const bias = Math.max(-config.maxPositionBias, Math.min(config.maxPositionBias,
     (geometry.distance - target) / dt));
   const targetDistance = direction === 'both' ? geometry.distance - bias * dt : target;
-  const impulse = -(endDistance - targetDistance) / derivative;
-  if ((direction === 'pull' && impulse <= 0) || (direction === 'push' && impulse >= 0)) return 0;
+  let impulse = -(endDistance - targetDistance) / derivative;
+  if (direction !== 'both') {
+    const previous = impulses?.[direction] ?? 0;
+    const total = direction === 'pull' ? Math.max(0, previous + impulse) : Math.min(0, previous + impulse);
+    impulse = total - previous;
+    if (impulses) impulses[direction] = total;
+  }
   applyCouplingImpulse(a, b, geometry, impulse);
   coupling.accumulatedImpulse += impulse;
   return impulse;
@@ -95,13 +102,14 @@ export function applySpring(a: BodyState, b: BodyState, coupling: CouplingState,
   coupling.accumulatedImpulse += impulse;
   return impulse;
 }
-export function solveCoupling(a: BodyState, b: BodyState, coupling: CouplingState, dt: number, config: TugConfig): void {
+export function solveCoupling(a: BodyState, b: BodyState, coupling: CouplingState, dt: number, config: TugConfig,
+  impulses: CouplingImpulses = { pull: 0, push: 0 }): void {
   if (!coupling.connected) return;
   if (coupling.type === 'rod') { solveRod(a, b, coupling, dt, config); return; }
   if (coupling.type === 'rope') {
-    solveDistance(a, b, coupling, dt, config, coupling.restLength, 'pull');
+    solveDistance(a, b, coupling, dt, config, coupling.restLength, 'pull', impulses);
   } else {
-    solveDistance(a, b, coupling, dt, config, coupling.maxLength, 'pull');
-    if (coupling.minLength > 0) solveDistance(a, b, coupling, dt, config, coupling.minLength, 'push');
+    solveDistance(a, b, coupling, dt, config, coupling.maxLength, 'pull', impulses);
+    if (coupling.minLength > 0) solveDistance(a, b, coupling, dt, config, coupling.minLength, 'push', impulses);
   }
 }

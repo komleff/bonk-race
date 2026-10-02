@@ -72,3 +72,13 @@ for(const massRatio of [0.1,0.25,0.5,1,2,5,10]) test(`spring stays finite at max
   for(let i=0;i<90;i++){const r=stepWorld(w,input,c);assert.equal(r.stopReason,undefined,`tick ${i}`);w=r.world;
     assert.ok(w.coupling.length>=4-1e-5&&w.coupling.length<=12+1e-5);for(const b of [w.A,w.B])assert.ok(Number.isFinite(b.angularVelocity));}
 });
+test('rope iteration can remove its speculative tension but cannot accumulate a pushing impulse',()=>{
+  const {solveCoupling}=core('physics/coupling.js');const c={...defaultConfig,couplingType:'rope'};const w=world(c);
+  const impulses={pull:0,push:0};w.B.velocity.x=-100;
+  solveCoupling(w.A,w.B,w.coupling,1/240,c,impulses);near(w.A.velocity.x,-50,1e-8);
+  w.B.velocity.x+=100;
+  solveCoupling(w.A,w.B,w.coupling,1/240,c,impulses);
+  near(w.A.velocity.x,0,1e-8);near(w.B.velocity.x,0,1e-8);near(impulses.pull,0,1e-6);
+  w.B.velocity.x=10;solveCoupling(w.A,w.B,w.coupling,1/240,c,impulses);
+  near(w.A.velocity.x,0,1e-8);near(w.B.velocity.x,10,1e-8);near(impulses.pull,0,1e-6);
+});

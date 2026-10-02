@@ -106,3 +106,27 @@ test('finite inputs whose relative geometry overflows cannot return a NaN coupli
   const w=pair();w.A.position.x=1e308;w.B.position.x=-1e308;
   const r=advance(w.A,w.B,w.coupling,1/60,{...config,substeps:1},[]);assert.ok(r.stopReason);assert.strictEqual(r.A,w.A);assert.strictEqual(r.coupling,w.coupling);
 });
+for(const tickRate of [30,60]) for(const massRatio of [0.1,1,10]) for(const touching of [false,true]) {
+  test(`slack rope leaves earlier ${touching?'initial':'swept'} impact unchanged at ${tickRate} Hz and mass ratio ${massRatio}`,()=>{
+    const c={...config,couplingType:'rope',tickRate,massRatio};const w=world(c);
+    w.B.position.x=touching?-19.95:-19.7;w.B.velocity.x=-100;
+    const obstacle={id:'early',position:{x:touching?-27.95:-27.71,y:0},radius:2};
+    const snapshot=structuredClone(w);const r=advance(w.A,w.B,w.coupling,1/tickRate,c,[obstacle]);
+    assert.equal(r.stopReason,undefined);near(r.A.velocity.x,0,1e-8);near(r.B.velocity.x,100,1e-8);
+    near(r.A.position.x,0,1e-8);near(r.B.position.x,(touching?-19.95:-19.72)+100/tickRate,1e-8);
+    near(r.diagnostics.couplingImpulse,0,1e-8);near(r.contacts[0].impulse,2000000*massRatio,1e-6);assert.deepEqual(w,snapshot);
+  });
+}
+test('accepted taut-rope impulse before a later impact remains physical after that impact',()=>{
+  const c={...config,couplingType:'rope'};const w=world(c);w.B.velocity.x=-100;
+  const r=advance(w.A,w.B,w.coupling,1/60,c,[{id:'late',position:{x:-28.01,y:0},radius:2}]);
+  assert.equal(r.stopReason,undefined);near(r.A.velocity.x,-50,1e-8);near(r.B.velocity.x,50,1e-8);
+  near(r.A.position.x,-50/60,1e-8);near(r.B.position.x,-20.02+50/60,1e-8);near(r.diagnostics.couplingImpulse,500000,1e-5);
+});
+for(const gap of [0,0.005]) test(`constraint-created ${gap===0?'zero-time':'earlier'} contact retries only its speculative horizon`,()=>{
+  const c={...config,couplingType:'rope',substeps:1};const w=world(c);w.B.position.x=-19.7;w.B.velocity.x=-100;
+  const r=advance(w.A,w.B,w.coupling,1/60,c,[{id:'blockingA',position:{x:-8-gap,y:0},radius:2}]);
+  assert.equal(r.stopReason,undefined);near(r.A.position.x,-gap,1e-5);near(r.B.position.x,-20-gap,1e-5);
+  near(r.A.velocity.x,0,1e-5);near(r.B.velocity.x,0,1e-5);
+  assert.ok(r.contacts.some(e=>e.body==='A'&&e.other==='blockingA'));
+});
