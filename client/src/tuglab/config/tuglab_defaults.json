@@ -1,0 +1,13 @@
+{
+  "massA": 10000, "radiusA": 6, "inertiaFactor": 0.5, "massRatio": 1, "radiusB": 6,
+  "forwardForce": 200000, "reverseForce": 100000, "lateralForce": 80000, "yawTorque": 150000,
+  "couplingType": "spring", "attachmentA": "tail", "attachmentB": "nose", "length": 8,
+  "springFrequency": 0.8, "springDamping": 0.5, "springReferenceMass": 5000,
+  "springMinRatio": 0.5, "springMaxRatio": 1.5, "restitution": 0.1,
+  "fa": false, "enginesEnabled": true, "yawLimit": 1.3962634015954636, "yawDampingTime": 1,
+  "lateralComfort": 4, "tickRate": 60, "substeps": 4, "solverIterations": 8,
+  "maxPositionBias": 2, "normalEpsilon": 0.000001, "maxValidatedSpeed": 100, "maxObstacles": 30,
+  "captureMinLength": 2, "captureMaxLength": 12, "captureMaxSpeed": 2,
+  "baySpeed": 0.5, "bayAngularSpeed": 0.08726646259971647, "bayHoldTime": 2,
+  "scene": "introduction", "seed": 1, "stickDeadzone": 0.1, "stickRadius": 70
+}
