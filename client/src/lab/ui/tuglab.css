@@ -43,3 +43,14 @@ body[data-lab-mode="towing"] .tug-settings-controls .lab-tb-seed-input { flex: 1
 @media (max-width: 899px) {
   body[data-lab-mode="towing"] .lab-panel { width: 100vw; }
 }
+
+/* Космический тормоз доступен независимо от открытой панели параметров. */
+.space-flight-controls { position: fixed; right: 12px; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 100; display: flex; gap: 8px; }
+body[data-space-mode="true"] .space-flight-controls .lab-tb-btn { min-width: 80px; min-height: 48px; touch-action: none; }
+body[data-space-mode="true"] .tug-density .lab-param-info { align-self: flex-start; }
+
+/* Область касания шире дорожки; прежние оболочки сохраняют свои слайдеры. */
+body[data-space-mode="true"] .lab-param-slider { height: 44px; background: transparent; touch-action: pan-y; }
+body[data-space-mode="true"] .lab-param-slider::-webkit-slider-runnable-track { height: 4px; background: #333; border-radius: 2px; }
+body[data-space-mode="true"] .lab-param-slider::-webkit-slider-thumb { margin-top: -4px; }
+body[data-space-mode="true"] .lab-param-slider::-moz-range-track { height: 4px; background: #333; border-radius: 2px; }

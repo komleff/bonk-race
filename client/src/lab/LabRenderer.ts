@@ -19,6 +19,7 @@ import {
 } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
 import { lerpColor, hslToHex, getDriftAngle } from "./colorUtils";
+import { spaceFieldCenter, SPACE_FIELD_INFO } from "../u2taglab/fields";
 
 // ─── Константы ───────────────────────────────────────────────────────────────
 
@@ -141,6 +142,12 @@ export class LabRenderer {
 
     // ── Публичный API ─────────────────────────────────────────────────────────
 
+    setViewRange(range: number): void {
+        if (!Number.isFinite(range) || range <= 0 || Math.abs(range - this.viewRange) < 0.5) return;
+        this.viewRange = range;
+        this.resize();
+    }
+
     setArrowScale(scale: number): void {
         this.arrowScale = scale;
     }
@@ -226,9 +233,11 @@ export class LabRenderer {
         // ── Рисуем слои от заднего к переднему ──
         this.drawGrid(ctx, state);
         this.drawZones(ctx, state);
+        if (state.spaceWorld) this.drawSpaceFields(ctx, state);
         this.drawSpawnAndFinish(ctx, state);
         this.drawWalls(ctx, state);
-        this.drawObstacles(ctx, state);
+        if (state.spaceWorld) this.drawSpaceWorld(ctx, state);
+        else this.drawObstacles(ctx, state);
         this.drawOrbs(ctx, state);
         if (state.towing) this.drawTowing(ctx, state);
 
@@ -384,6 +393,75 @@ export class LabRenderer {
     }
 
     // ── Слой: Орбы ──────────────────────────────────────────────────────────
+
+    private drawSpaceFields(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const world = state.spaceWorld!;
+        for (const field of world.fields) {
+            const center = spaceFieldCenter(field, world.time), r = field.radius, info = SPACE_FIELD_INFO[field.kind];
+            const mechanical = field.kind === "plasma" || field.kind === "resistive";
+            ctx.save(); ctx.translate(center.x, center.y);
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+            for (const [position, alpha] of [[0, "2e"], [0.25, "27"], [0.5, "17"], [0.75, "07"], [1, "00"]] as const) {
+                gradient.addColorStop(position, info.color + alpha);
+            }
+            ctx.fillStyle = gradient; ctx.strokeStyle = info.color; ctx.lineWidth = 1.5 / this.scale;
+            if (!mechanical) ctx.setLineDash([8 / this.scale, 6 / this.scale]);
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = info.color; ctx.font = `${13 / this.scale}px sans-serif`; ctx.textAlign = "center";
+            ctx.fillText(info.label + (field.kind === "plasma" && field.topology === "vortex" ? " · вихрь" : ""), 0, -r * 0.65);
+            ctx.font = `${11 / this.scale}px sans-serif`;
+            ctx.fillText(field.kind === "plasma" ? `${field.pressure} Па · LAB` : field.kind === "resistive"
+                ? `${field.resistiveK} Н·с/м³ · LAB` : "визуально", 0, -r * 0.65 + 17 / this.scale);
+            if (field.kind === "plasma") {
+                if (field.topology === "vortex") {
+                    ctx.beginPath(); ctx.arc(0, 0, r * 0.25, 0.15, Math.PI * 1.8); ctx.stroke();
+                    const end = Math.PI * 1.8;
+                    ctx.translate(Math.cos(end) * r * 0.25, Math.sin(end) * r * 0.25); ctx.rotate(end + Math.PI / 2);
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-12 / this.scale, -7 / this.scale);
+                    ctx.moveTo(0, 0); ctx.lineTo(-12 / this.scale, 7 / this.scale); ctx.stroke();
+                } else {
+                    const angle = Math.atan2(field.direction.y, field.direction.x), length = r * 0.22;
+                    ctx.rotate(angle); ctx.beginPath(); ctx.moveTo(-length, 0); ctx.lineTo(length, 0);
+                    ctx.lineTo(length - 12 / this.scale, -7 / this.scale); ctx.moveTo(length, 0);
+                    ctx.lineTo(length - 12 / this.scale, 7 / this.scale); ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+    }
+
+    private drawSpaceWorld(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const world = state.spaceWorld!;
+        for (const object of world.statics) {
+            const { x, y } = object.position, r = object.radius;
+            const station = object.kind === "station";
+            ctx.save(); ctx.translate(x, y);
+            ctx.fillStyle = station ? "#152a36" : "#322b25";
+            ctx.strokeStyle = station ? "#63c9e5" : "#b48b62";
+            ctx.lineWidth = 2 / this.scale;
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, r * (station ? 0.55 : 0.75), 0, 2 * Math.PI); ctx.stroke();
+            const spokes = station ? 4 : 8;
+            for (let i = 0; i < spokes; i++) {
+                const angle = i * 2 * Math.PI / spokes;
+                ctx.beginPath(); ctx.moveTo(Math.cos(angle) * r * 0.2, Math.sin(angle) * r * 0.2);
+                ctx.lineTo(Math.cos(angle) * r * 0.94, Math.sin(angle) * r * 0.94); ctx.stroke();
+            }
+            ctx.font = `${14 / this.scale}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = station ? "#8cdeef" : "#d0a780";
+            ctx.fillText(station ? "СТАНЦИЯ" : "ЗАБРОШЕННАЯ ПЛАТФОРМА", 0, -r - 12 / this.scale);
+            ctx.restore();
+        }
+        for (const body of world.asteroids) {
+            const r = body.radius;
+            ctx.save(); ctx.translate(body.position.x, body.position.y); ctx.rotate(body.angle);
+            ctx.fillStyle = "#4c515b"; ctx.strokeStyle = "#91969e"; ctx.lineWidth = 1.5 / this.scale;
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = "#343842";
+            ctx.beginPath(); ctx.arc(-r * 0.25, -r * 0.18, r * 0.25, 0, 2 * Math.PI); ctx.stroke();
+            ctx.beginPath(); ctx.arc(r * 0.33, r * 0.2, r * 0.16, 0, 2 * Math.PI); ctx.stroke();
+            ctx.restore();
+        }
+    }
 
     private drawOrbs(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         for (const orb of state.orbs) {
@@ -996,7 +1074,7 @@ export class LabRenderer {
     ): void {
         const size = MINIMAP_SIZE;
         const mx = canvasW - size - MINIMAP_MARGIN;
-        const my = canvasH - size - MINIMAP_MARGIN;
+        const my = state.spaceWorld ? MINIMAP_MARGIN : canvasH - size - MINIMAP_MARGIN;
 
         // Фон
         ctx.fillStyle = MINIMAP_BG;
@@ -1034,7 +1112,7 @@ export class LabRenderer {
         }
 
         // Препятствия
-        for (const obs of state.arena.obstacles) {
+        for (const obs of state.spaceWorld ? [] : state.arena.obstacles) {
             if (obs.alive === false) continue;
             ctx.beginPath();
             ctx.arc(toMX(obs.x), toMY(obs.y), Math.max(obs.radius * ms, 1.5), 0, Math.PI * 2);
@@ -1042,6 +1120,14 @@ export class LabRenderer {
             ctx.globalAlpha = 0.6;
             ctx.fill();
             ctx.globalAlpha = 1;
+        }
+
+        if (state.spaceWorld) {
+            for (const object of [...state.spaceWorld.statics, ...state.spaceWorld.asteroids]) {
+                ctx.beginPath(); ctx.arc(toMX(object.position.x), toMY(object.position.y), Math.max(object.radius * ms, 1.5), 0, Math.PI * 2);
+                ctx.fillStyle = object.kind === "station" ? "#63c9e5" : object.kind === "derelict" ? "#b48b62" : "#91969e";
+                ctx.fill();
+            }
         }
 
         // Орбы (маленькие голубые точки)

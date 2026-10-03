@@ -6,7 +6,10 @@ import { Fragment } from "preact";
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "preact/hooks";
 import { injectStyles } from "../../ui/utils/injectStyles";
 import { LabPanel } from "./LabPanel";
+import { createSpaceShareUrl } from "../../u2taglab/share";
 import { createShareUrl, validateShareSnapshot } from "../../tuglab/share";
+import { createSpaceProfile, SPACE_SOURCE } from "../../u2taglab/profile";
+import { SPACE_FIELD_INFO } from "../../u2taglab/fields";
 import type { BonkLab } from "../BonkLab";
 import toolbarCss from "./lab-toolbar.css?raw";
 import { PRESETS, DEFAULT_PRESET_IDX } from "./presets";
@@ -119,6 +122,8 @@ export interface LabToolbarProps {
 }
 
 export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing = false, onClearInput, syncTrigger, onPanelVisibilityChanged, startupError, onStartupRecovered }: LabToolbarProps) {
+    const space = lab.isSpace;
+    const [fa, setFa] = useState(() => Boolean(lab.params["space.fa"]));
     // Inject styles once
     useEffect(() => {
         injectStyles("lab-toolbar-styles", toolbarCss);
@@ -144,24 +149,27 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     }, [externalParamChange]);
 
     // Seed & density state
-    const [seed, setSeed] = useState(() => towing ? lab.exportShareSnapshot().seed : 42);
-    const [density, setDensity] = useState(() => towing ? lab.exportShareSnapshot().density : 5.0);
+    const [seed, setSeed] = useState(() => towing ? lab.getScenarioInfo().seed : 42);
+    const [density, setDensity] = useState(() => towing ? lab.getScenarioInfo().density : 5.0);
 
     const [panelOpen, setPanelOpen] = useState(false);
     const [shareLink, setShareLink] = useState("");
     const [shareNotice, setShareNotice] = useState("");
     const [shareError, setShareError] = useState("");
+    const [worldHelp, setWorldHelp] = useState("");
     const launchError = startupError ?? "";
     useLayoutEffect(() => {
         if (towing && panelOpen) {
-            const snapshot = lab.exportShareSnapshot();
+            const snapshot = lab.getScenarioInfo();
             setSeed(snapshot.seed); setDensity(snapshot.density); setActivePreset(matchingPreset());
+            if (space) setFa(Boolean(lab.params["space.fa"]));
         }
     }, [panelOpen, syncTrigger, externalParamChange]);
     const handleShare = async () => {
         setShareNotice(""); setShareError("");
         try {
-            const link = createShareUrl(location.href, validateShareSnapshot(lab.exportShareSnapshot(), defaults));
+            const link = space ? createSpaceShareUrl(location.href, lab.exportSpaceShareSnapshot())
+                : createShareUrl(location.href, validateShareSnapshot(lab.exportShareSnapshot(), defaults));
             setShareLink(link);
             try {
                 await navigator.clipboard.writeText(link);
@@ -177,6 +185,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
         const id = setInterval(() => {
             setElapsed(lab.getState().elapsedTime);
             if (towing) setTowState(lab.getState().towing);
+            if (space) setFa(Boolean(lab.params["space.fa"]));
         }, 100);
         return () => clearInterval(id);
     }, [lab, towing]);
@@ -241,6 +250,10 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     // ── Reset params to defaults + BonkRace v0.3 preset ──
     const handleResetParams = useCallback(() => {
         const wasRunning = lab.isRunning;
+        if (space) {
+            onClearInput?.(); lab.resetSpaceParams(); if (wasRunning) lab.start();
+            setDensity(lab.getScenarioInfo().density); setFa(true); onParamsChanged?.(); return;
+        }
         if (towing) {
             const snapshot = lab.exportShareSnapshot();
             const params = { ...defaults, ...PRESETS[DEFAULT_PRESET_IDX].values };
@@ -348,16 +361,26 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     if (towing && towState) {
         const settings = <div class="tug-settings-controls">
             <div class="lab-tb-seed-group"><label for="tug-seed">Seed:</label>
+                {space && <button class="lab-param-info" aria-label="Справка: Seed" aria-expanded={worldHelp === "seed"} onClick={() => setWorldHelp(worldHelp === "seed" ? "" : "seed")}>i</button>}
                 <input id="tug-seed" type="number" class="lab-tb-seed-input" aria-label="Seed" min="0" max="4294967295" value={seed} onInput={handleSeedChange} />
                 <button class="lab-tb-btn" onClick={handleRandomSeed}>Rnd</button></div>
+            {space && worldHelp === "seed" && <p>Seed — целое число 0–4294967295. Внутренний генератор повторяет размещение объектов, начальные движения и поля. Изменение запускает новый мир с временем 0; число само по себе не задаёт физические настройки.</p>}
             <label class="tug-density">Насыщенность: {density.toFixed(1)}
+                {space && <button type="button" class="lab-param-info" aria-label="Справка: Насыщенность" aria-expanded={worldHelp === "density"} onClick={() => setWorldHelp(worldHelp === "density" ? "" : "density")}>i</button>}
                 <input type="range" aria-label="Насыщенность арены" min="0.1" max="25" step="0.1" value={density} onInput={handleDensityChange} /></label>
-            <select class="lab-tb-select" aria-label="Пресет движения" value={activePreset} onChange={handlePreset}>
+            {space && worldHelp === "density" && <p>LAB-множитель 0.1–25: меняет число станций, платформ, астероидов и полей. Большая насыщенность оставляет меньше свободного пространства. Пересоздаёт мир из текущего seed и обнуляет время. Размеры статичных объектов — runtime U2; массы и радиусы астероидов — общий 2D-каталог LAB.</p>}
+            {!space && <select class="lab-tb-select" aria-label="Пресет движения" value={activePreset} onChange={handlePreset}>
                 <option value={-1}>Custom</option>{PRESETS.map((preset, i) => <option key={i} value={i}>{preset.label}</option>)}
-            </select>
+            </select>}
+            {space && <p>{SPACE_SOURCE.mass}<br />Космический мир: 6000×18000 м, станции, платформы, подвижные астероиды и локальные поля. Вне полей — вакуум.<br />Мышь/тач/WASD задают мировой курс и тягу. Space или кнопка «Тормоз» — двигательный тормоз.</p>}
+            {space && <details><summary>Поля: законы и границы модели</summary>
+                <p>Плавный smoothstep по расстоянию до края — LAB. Дрейф геометрии задан seed и временем симуляции. Поля не меняют тягу, FA, топливо или параметры друг друга.</p>
+                {Object.entries(SPACE_FIELD_INFO).map(([key, info]) => <p key={key}><strong>{info.label}.</strong> {info.description}</p>)}
+            </details>}
             <div class="tug-settings-actions"><button class="lab-tb-btn" onClick={handleResetParams}>Сброс</button>
                 <button class="lab-tb-btn" onClick={handleShare}>Поделиться</button></div>
-            <span class="tug-build">TugLab v0.1.1 · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
+            {space && <button class="lab-tb-btn" onClick={() => { lab.updateParams("tow.radiusB", createSpaceProfile().radiusB); onParamsChanged?.(); }}>Радиус B по ТТХ</button>}
+            <span class="tug-build">{space ? "U2TagLab v0.1.0 · расчётный профиль" : "TugLab v0.1.1"} · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
             {shareError && <p role="alert">{shareError}</p>}
         </div>;
         return <Fragment>
@@ -378,6 +401,11 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 {towState.paused && " · пауза"}
                 {towState.reason && <span role="alert"> · {towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</span>}
             </div>
+            {space && <div class="space-flight-controls">
+                <button class="lab-tb-btn" aria-label="Flight Assist" aria-pressed={fa}
+                    onClick={() => { const enabled = !Boolean(lab.params["space.fa"]); lab.setSpaceFA(enabled); setFa(enabled); onParamsChanged?.(); }}>FA {fa ? "ON" : "OFF"}</button>
+                <button class="lab-tb-btn space-brake" aria-label="Тормоз" onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); lab.setSpaceBrake(true); }}
+                onPointerUp={() => lab.setSpaceBrake(false)} onPointerCancel={() => lab.setSpaceBrake(false)} onLostPointerCapture={() => lab.setSpaceBrake(false)} onBlur={() => lab.setSpaceBrake(false)}>Тормоз</button></div>}
             <LabPanel lab={lab} towing panelOpen={panelOpen} onOpenChange={setPanelOpen} settingsContent={settings}
                 syncTrigger={syncTrigger} onPanelVisibilityChanged={onPanelVisibilityChanged} onParamChanged={onParamsChanged} />
             {shareLink && <div class="lab-modal-backdrop"><div class="lab-modal" role="dialog" aria-label="Поделиться заездом">

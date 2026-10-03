@@ -1,6 +1,6 @@
 {
   "name": "@bonk-race/client",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "build:lab": "vite build --config vite.config.lab.ts",
     "dev:tuglab": "vite --config vite.config.tuglab.ts --host 0.0.0.0 --port 5174 --strictPort --open /tuglab.html",
-    "build:tuglab": "vite build --config vite.config.tuglab.ts"
+    "build:tuglab": "vite build --config vite.config.tuglab.ts",
+    "dev:u2taglab": "vite --config vite.config.u2taglab.ts --host 0.0.0.0 --port 5175 --strictPort",
+    "build:u2taglab": "vite build --config vite.config.u2taglab.ts"
   },
   "dependencies": {
     "@preact/signals": "^2.5.1",

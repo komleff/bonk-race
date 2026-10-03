@@ -24,10 +24,12 @@ jobs:
           npm run test:tuglab
           npm run typecheck:tuglab
           npm run qa:tuglab:matrix
+          npm run qa:u2taglab:matrix
           npm test
           npm run build:lab --workspace=client
           npm run check-version
           npm run build:tuglab
+          npm run build:u2taglab
       - name: Install external browser QA tool
         run: |
           npm install --prefix "$RUNNER_TEMP/tuglab-browser" --no-save --package-lock=false playwright@1.63.0
@@ -41,6 +43,7 @@ jobs:
         run: |
           export CHROME_PATH="$(node -e 'console.log(require(process.env.PLAYWRIGHT_MODULE).chromium.executablePath())')"
           npm run qa:tuglab:browser
+          npm run qa:u2taglab:browser
           python3 -m http.server 5194 --bind 127.0.0.1 --directory client/dist-tuglab > "$RUNNER_TEMP/tuglab-http.log" 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid"' EXIT
@@ -53,6 +56,9 @@ jobs:
           printf '%s\n' "$GITHUB_SHA" > client/dist-tuglab/SOURCE_SHA.txt
           tar -czf tuglab-static.tar.gz -C client/dist-tuglab .
           sha256sum tuglab-static.tar.gz > tuglab-static.tar.gz.sha256
+          printf '%s\n' "$GITHUB_SHA" > client/dist-u2taglab/SOURCE_SHA.txt
+          tar -czf u2taglab-static.tar.gz -C client/dist-u2taglab .
+          sha256sum u2taglab-static.tar.gz > u2taglab-static.tar.gz.sha256
       - name: Upload standalone game and QA evidence
         uses: actions/upload-artifact@v4
         with:
@@ -61,6 +67,17 @@ jobs:
             tuglab-static.tar.gz
             tuglab-static.tar.gz.sha256
             .cache/tuglab-qa/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload U2TagLab standalone game and QA evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: u2taglab-static-${{ github.sha }}
+          path: |
+            u2taglab-static.tar.gz
+            u2taglab-static.tar.gz.sha256
+            .cache/u2taglab-qa/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

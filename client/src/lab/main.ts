@@ -9,11 +9,14 @@ import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
 import tuglabCss from "./ui/tuglab.css?raw";
 import { injectStyles } from "../ui/utils/injectStyles";
+import { decodeSpaceShareFragment } from "../u2taglab/share";
 import { decodeShareFragment } from "../tuglab/share";
 import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
 const root = document.getElementById("lab-root")!;
-const towing = root.dataset.mode === "towing";
+const space = root.dataset.mode === "space";
+const towing = space || root.dataset.mode === "towing";
+if (space) document.body.dataset.spaceMode = "true";
 if (towing) { document.body.dataset.labMode = "towing"; injectStyles("tuglab-styles", tuglabCss); }
 
 // Создать canvas — заполняет область видимости (правый край зарезервирован для панели параметров)
@@ -40,21 +43,28 @@ root.appendChild(uiContainer);
 
 
 // Инициализация основных систем
-const lab = new BonkLab(canvas, towing ? { towing: true } : undefined);
+const lab = new BonkLab(canvas, towing ? { towing: true, space } : undefined);
 
 // Применить пресет "BonkRace v0.3" при запуске — казуальные аркадные гонки
-for (const [key, val] of Object.entries(PRESETS[DEFAULT_PRESET_IDX].values)) {
+if (!space) for (const [key, val] of Object.entries(PRESETS[DEFAULT_PRESET_IDX].values)) {
     lab.updateParams(key, val);
 }
 
 const input = new LabInput(canvas, { keyboard: towing });
 const renderer = new LabRenderer(canvas);
 const hud = new TelemetryHUD();
+const onBrakeKey = (event: KeyboardEvent) => {
+    if (!space || event.code !== "Space") return;
+    if (event.type === "keydown" && document.activeElement !== document.body && document.activeElement !== canvas) return;
+    event.preventDefault(); lab.setSpaceBrake(event.type === "keydown");
+};
+if (space) { window.addEventListener("keydown", onBrakeKey); window.addEventListener("keyup", onBrakeKey); }
 if (towing) lab.reset();
 let startupError = "";
 const sharedLaunch = towing && location.hash.length > 0;
 if (sharedLaunch) {
-    try { lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
+    try { if (space) lab.applySpaceShareSnapshot(decodeSpaceShareFragment(location.hash));
+        else lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
     catch (error) { startupError = error instanceof Error ? error.message : "Повреждённая ссылка TugLab"; lab.pause(); }
 }
 
@@ -121,7 +131,8 @@ function onShareHashChanged(): void {
     input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail();
     startupError = "";
     if (location.hash) {
-        try { lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
+        try { if (space) lab.applySpaceShareSnapshot(decodeSpaceShareFragment(location.hash));
+        else lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
         catch (error) { startupError = error instanceof Error ? error.message : "Повреждённая ссылка TugLab"; lab.pause(); }
     }
     renderPanel();
@@ -186,8 +197,8 @@ function frame(): void {
 
     // Обновить нормализацию из текущих параметров
     renderer.setNormalization(
-        lab.params["limits.speedLimitForwardMps"] as number,
-        lab.params["propulsion.thrustForwardN"] as number,
+        lab.params[space ? "space.speedLimit" : "limits.speedLimitForwardMps"] as number,
+        lab.params[space ? "space.forwardForce" : "propulsion.thrustForwardN"] as number,
     );
 
     // Конфигурация следа
@@ -207,6 +218,14 @@ function frame(): void {
 
     // Получить интерполированное состояние и отрисовать
     const state = lab.getInterpolatedState(alpha);
+    if (space && state.towing) {
+        // Сохраняем экранную опору ввода A; zoom вмещает B с запасом у всех длин сцепки.
+        const b = state.towing.B, dx = b.position.x - state.x, dy = b.position.y - state.y;
+        const shortest = Math.min(canvasRect.width, canvasRect.height);
+        renderer.setViewRange(Math.max(400, (dy + b.radius) * shortest / (0.56 * canvasRect.height),
+            (-dy + b.radius) * shortest / (1.16 * canvasRect.height),
+            (Math.abs(dx) + b.radius) * shortest / (0.88 * canvasRect.width)));
+    }
     renderer.render(state, inputState);
 
     // Отрисовать оверлей телеметрии поверх всего (экранные координаты)
@@ -229,6 +248,7 @@ if (import.meta.hot) {
         layoutObserver?.disconnect();
         window.removeEventListener("hashchange", onShareHashChanged);
         lab.stop();
+        window.removeEventListener("keydown", onBrakeKey); window.removeEventListener("keyup", onBrakeKey);
         input.destroy();
         cancelAnimationFrame(rafId!);
         window.removeEventListener("resize", onResize);
