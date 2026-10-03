@@ -1,5 +1,12 @@
 ## TugLab — usability/share, реализация
 
+## TugLab 0.1.1 — первая часть завершена, PR38 готов к передаче (3 октября 2026)
+
+- `bonk-race-554` закрыта: компактная панель 52 px, настройки в drawer, длина до100 м/ближайшие крепления и «Поделиться». Кодовый итог `2b8fb9b`; 205/205 TugLab, затронутые сборки/типизация и реальные browser-сценарии локального и собранного вложенного пути PASS.
+- Один GPT-6-Astra Reviewer: полное review обнаружило 3 Important (initial orb density, повторная ошибка ссылки, Step до первого Start), один общий fix round и scoped review [APPROVED](https://github.com/komleff/bonk-race/pull/38#issuecomment-5966788999), открытых замечаний0. Новых функций/процессной инфраструктуры не добавлено.
+- Worktree/репозиторий bonk-race сохранены; localhost:5174/tuglab.html доступен. Новый релиз ещё не опубликован: дальнейшие merge и существующий Pages deployment выполняет оператор. Финальный CI проверяется после push; результат доступен в PR38. Реальный Android и полноценный rollback остаются прежними follow-up.
+- Следующая часть `bonk-race-555`: жёсткое/одношарнирное крепления с подтягиванием обратно пропорционально массам, сохраняя центр масс. Она не начата.
+
 bonk-race-554: единый патч UI/capture/share прошёл финальные gates и self-review: 200/200 TugLab, общий npm test/build и обе оболочки/version PASS, адресные mobile/share/numeric/stock/root/nested browser PASS. Новые проверки полного snapshot/атомарности/совместимости, ближайших точек и границ всех трёх сцепок; browser QA мобильного интерфейса и независимых страниц. PM закрывает задачу после одного независимого итогового review. Новые жёсткое/одношарнирное крепления вынесены в bonk-race-555, в этот патч не входят.
 
 Round1 review: три Important исправлены; 205/205 TugLab PASS, browser regressions auto/manual mass/radius + Restart/share, repeated-invalid recovery, waiting/started Step PASS. Исправления ожидают scoped re-review; исходный генератор/решатель и pipeline не менялись.

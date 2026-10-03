@@ -1,5 +1,12 @@
 ## TugLab — компактный интерфейс и ссылки (3 октября 2026)
 
+## TugLab 0.1.1 — первая часть завершена, PR38 готов к передаче (3 октября 2026)
+
+- `bonk-race-554` закрыта: компактная панель 52 px, настройки в drawer, длина до100 м/ближайшие крепления и «Поделиться». Кодовый итог `2b8fb9b`; 205/205 TugLab, затронутые сборки/типизация и реальные browser-сценарии локального и собранного вложенного пути PASS.
+- Один GPT-6-Astra Reviewer: полное review обнаружило 3 Important (initial orb density, повторная ошибка ссылки, Step до первого Start), один общий fix round и scoped review [APPROVED](https://github.com/komleff/bonk-race/pull/38#issuecomment-5966788999), открытых замечаний0. Новых функций/процессной инфраструктуры не добавлено.
+- Worktree/репозиторий bonk-race сохранены; localhost:5174/tuglab.html доступен. Новый релиз ещё не опубликован: дальнейшие merge и существующий Pages deployment выполняет оператор. Финальный CI проверяется после push; результат доступен в PR38. Реальный Android и полноценный rollback остаются прежними follow-up.
+- Следующая часть `bonk-race-555`: жёсткое/одношарнирное крепления с подтягиванием обратно пропорционально массам, сохраняя центр масс. Она не начата.
+
 Ветка feat/tuglab-usability-share, Beads bonk-race-554. Реализованы компактные действия заезда, сворачиваемые настройки и viewport; длина 4–100 м, ближайшие нос/хвост крепления для трёх сцепок. Share передаёт полный валидируемый снимок фактического генератора/параметров и создаёт новый заезд в ожидании явного Старт. Версии 0.6.2 / TugLab 0.1.1. Финальные gates и self-review PASS, TugLab 200/200, общий npm test/build/typecheck/version PASS; mobile/share/stock/root/nested browser PASS; PR38 draft, независимое итоговое review организует PM. Не объявлять новый патч опубликованным.
 
 Round1 исправления трёх Important: автоматическая плотность синхронизирует исходные arena.orbs и живые орбы, включая mass/radius-only + Restart; ошибка ссылки теперь одна controlled parent state с явной очисткой при recovery; Step запрещён до первого Start, включая изменения настроек в ожидании, но сохранён при started countdown/паузе. Адресные RED воспроизвели все три дефекта, 205/205 TugLab и client TS/build + обе оболочки PASS; dev mobile/share и static root/nested/stock PASS. PM проводит scoped re-review тем же reviewer.
