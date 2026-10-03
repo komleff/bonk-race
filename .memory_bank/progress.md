@@ -1,3 +1,11 @@
+## TugLab 0.1.1 — релиз опубликован (3 октября 2026)
+
+- Оператор прямо уточнил: «отлично» было одобрением публикации и релиза. На этом основании PR38 merged `151eb7e` через GitHub; прямого push в main не было. Тег репозитория `v0.6.2`, версия игры `0.1.1`; [GitHub Release](https://github.com/komleff/bonk-race/releases/tag/v0.6.2) опубликован с самостоятельным архивом и контрольной суммой.
+- [Pages37112938677](https://github.com/komleff/bonk-race/actions/runs/37112938677) build/deploy SUCCESS; [main TugLab QA37112961989](https://github.com/komleff/bonk-race/actions/runs/37112961989) SUCCESS (220 tests, штатная матрица/сборки/browser). Публичная игра https://komleff.github.io/bonk-race/tuglab/ показывает `TugLab v0.1.1 · 151eb7e · BonkRace v0.6.2`. Root BonkLab и JS обеих оболочек HTTPS200, ошибок браузера0.
+- Chrome390×844: toolbar52 px/canvas766 px; захват80 м/с разрешён и100 запрещён при cap90; тела сохранены. «Поделиться» передаёт одинаковые snapshot/arena независимой странице, до Start таймер0; Start работает. Архив main151eb7e содержит тот же опубликованный JS; SHA256 скачанного release asset проверена.
+- По уточнению оператора release notes представляют первый публичный TugLab: человеческое описание игры, три сцепки, обзор настроек, управление и одинаковый заезд по ссылке. Текст опубликован в GitHub Release и сверён с Guide/paramDefs; Beads559 CLOSED.
+- Beads557 CLOSED. Новые крепления555 отдельно; настоящий Android .6 и полный rollback .7 остаются follow-up. Существующий Docker workflow падает на отсутствующем `/app/scripts/install-hooks.js`: подтверждено до релиза и сейчас, заведена558; Pages/статический архив не зависят от Docker. Локальный сервер5174 и пользовательский checkout/stash сохранены.
+
 ## TugLab — поправка порога захвата, bonk-race-556 (3 октября 2026)
 
 Порог захвата трёх сцепок теперь равен минимуму текущих линейных лимитов A вперёд/назад/вбок, включительно; угловая скорость креплений по-прежнему учитывается. Любое изменение лимита действует сразу; некорректные лимиты и превышение дают атомарный отказ. 220/220 TugLab, typecheck/build:tuglab и browser probe (80 м/с принят, 100 отклонён при cap 90) PASS. Версии 0.6.2/0.1.1 сохранены; поправка к открытому PR38 принята scoped review GPT-6-Astra: APPROVED, замечаний0 (comment5967341109). Beads556 закрыта; merge/deploy отдельно.
