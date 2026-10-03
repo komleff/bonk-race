@@ -1,3 +1,7 @@
+## TugLab 0.1.1: URL fragment
+
+Share статический, без API/ID/новых зависимостей: base64url UTF-8 JSON, fragment ≤16000 символов, JSON ≤12000; несовместимость явная. Диапазоны включают реальную схему скрытых полей и штатные preset/default, а не только slider limits. Тест ui-share.cjs использует внешний Playwright/Chrome, PNG и JSON; мобильные 360/390/412 portrait и 844×390 landscape — эмуляция, Android остаётся отдельным follow-up. Версия репозитория 0.6.2 синхронизирована штатным sync-version; версия оболочки 0.1.1. Существующий Pages pipeline сохранён.
+
 # Tech Context — BonkRace
 
 ## Структура монорепо

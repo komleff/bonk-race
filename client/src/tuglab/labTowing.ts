@@ -10,7 +10,7 @@ export const TOW_DEFAULTS: Record<string, number | string> = {
   'tow.stiffness': 1250, 'tow.dampingRatio': 0.5,
 };
 const ranges: Record<string, readonly [number, number]> = {
-  'tow.massRatio': [0.1, 10], 'tow.radiusB': [2, 60], 'tow.length': [4, 24],
+  'tow.massRatio': [0.1, 10], 'tow.radiusB': [2, 60], 'tow.length': [4, 100],
   'tow.stiffness': [0, 10000], 'tow.dampingRatio': [0, 1.5],
 };
 const clone = (b: BodyState): BodyState => ({ ...b, position: { ...b.position }, velocity: { ...b.velocity } });
@@ -94,6 +94,8 @@ export class LabTowing {
     this.coupling.connected = previous.connected;
     if (key !== 'tow.length' && key !== 'tow.type') {
       // Независимые настройки массы/пружины сохраняют фактическую длину захвата.
+      this.coupling.attachmentA = previous.attachmentA;
+      this.coupling.attachmentB = previous.attachmentB;
       this.coupling.restLength = previous.restLength;
       this.coupling.minLength = previous.minLength;
       this.coupling.maxLength = previous.maxLength;
@@ -107,21 +109,38 @@ export class LabTowing {
     this.coupling.length = g.distance; this.coupling.lastNormal = g.normal;
   }
   setConnection(connected: boolean, a: BodyState): CaptureResult {
-    const g = couplingGeometry(a, this.B, this.coupling);
-    const result: CaptureResult = { ok: true, distance: g.distance, relativeSpeed: g.relativeSpeed };
+    let candidate = { ...this.coupling };
+    let g = couplingGeometry(a, this.B, candidate);
     if (connected && !this.coupling.connected) {
-      if (this.needsRestart) result.reason = this.reason;
-      else if (g.distance < 2 || g.distance > 12) result.reason = 'Захват: расстояние креплений должно быть 2–12 м';
-      else if (g.relativeSpeed > 2) result.reason = 'Захват: скорость креплений должна быть ≤2 м/с';
-      if (result.reason) { this.reason = result.reason; return { ...result, ok: false }; }
-      this.coupling.restLength = g.distance;
-      this.coupling.minLength = g.distance * defaults.springMinRatio;
-      this.coupling.maxLength = g.distance * defaults.springMaxRatio;
+      // При равенстве сохраняем порядок: нос/нос, нос/хвост, хвост/нос, хвост/хвост.
+      let best: typeof g | undefined;
+      for (const attachmentA of ['nose', 'tail'] as const) {
+        for (const attachmentB of ['nose', 'tail'] as const) {
+          const pair = { ...this.coupling, attachmentA, attachmentB };
+          const geometry = couplingGeometry(a, this.B, pair);
+          if (!best || geometry.distance < best.distance - 1e-9) {
+            best = geometry; candidate = pair;
+          }
+        }
+      }
+      g = best!;
+      const maxLength = Number(this.params['tow.length']);
+      const reason = this.needsRestart ? this.reason
+        : g.distance < 2 || g.distance > maxLength ? `Захват: расстояние креплений должно быть 2–${maxLength} м`
+          : g.relativeSpeed > 2 ? 'Захват: скорость креплений должна быть ≤2 м/с' : undefined;
+      if (reason) {
+        this.reason = reason;
+        return { ok: false, reason, distance: g.distance, relativeSpeed: g.relativeSpeed };
+      }
+      candidate.restLength = g.distance;
+      candidate.minLength = g.distance * defaults.springMinRatio;
+      candidate.maxLength = g.distance * defaults.springMaxRatio;
     }
-    this.coupling.connected = connected; this.coupling.accumulatedImpulse = 0;
+    candidate.connected = connected; candidate.accumulatedImpulse = 0;
+    this.coupling = candidate;
     if (!this.needsRestart) this.reason = undefined;
     this.updateGeometry(a);
-    return result;
+    return { ok: true, distance: g.distance, relativeSpeed: g.relativeSpeed };
   }
   advance(a: BodyState, arena: Arena, dt: number, restitution: number, passageRestitution: number,
     applyVelocity: ApplyVelocity): AdvanceResult {

@@ -1,3 +1,7 @@
+## TugLab: полный снимок начальных условий
+
+BonkLab.exportShareSnapshot берёт lastSeed/lastDensity и orbDensityManual, полный params; arena.objectDensity синхронизируется с фактическим генератором. share.ts строго проверяет schema1/generator bonklab-arena-v1, точные ключи и типы, конечные числа/диапазоны/enums до изменений. applyShareSnapshot применяет все параметры без промежуточных генераций, один раз вызывает regenerateArena/reset и оставляет симуляцию в ожидании. Штатный нестрогий JSON import не используется. Настройки в TugLab принадлежат controlled LabPanel внутри Toolbar; layout sync выполняется до paint. На ширине <900 панель перекрывает canvas без desktop-отступа; ResizeObserver и visualViewport.resize поддерживают высоту.
+
 # System Patterns
 Архитектурные решения и паттерны проектирования.
 
@@ -94,7 +98,7 @@
 
 `BonkLab(canvas,{towing:true})` включает `LabTowing`; безoption старый путь сохранён. ТолькоB/сцепка имеют дополнительное постоянное состояние; A берётся из штатных полей. Sections1–3 FA/история/зоны общие раз/maintick, motion4–6 ветвится. `integratePhysics` в callback отдаёт только скорости, drift/CCD одинобщий. B имеет свой drag/зону, без FA/angularclamp. Исходные Arena ID используются дляspikes, finish поA, смерть любого→общийrespawn. Орбы шагают одинраз; opt-in позиционнаякоррекция уходитворб, mass-dependent импульсы сохранены. Они остаютсяdiscrete contacts.
 
-`pause` сохраняетblur/hidden handlers, очищаетinput; terminalstop снимаетhandlers дажеpaused. `stepOnce` синхронизируетprevA/B. Live независимые mass/radius/k/damping сохраняютcapturedtarget; явные length/type иRestart используютconfiguredtarget. Capture 2–12м и≤2м/с включаетвращение. При невозможнойгеометрии settingsсохраняются, positions/mapне меняются, нуженmanualRestart.
+`pause` сохраняетblur/hidden handlers, очищаетinput; terminalstop снимаетhandlers дажеpaused. `stepOnce` синхронизируетprevA/B. Live независимые mass/radius/k/damping сохраняютcapturedtarget; явные length/type иRestart используютconfiguredtarget. Capture 2–configured tow.length (до100м) и≤2м/с включаетвращение; ближайшая из четырёх пар нос/хвост выбирается детерминированно до изменения coupling. Отказ сохраняет coupling/тела; независимые изменения сохраняют выбранные крепления и фактическую рабочую длину. При невозможнойгеометрии settingsсохраняются, positions/mapне меняются, нуженmanualRestart.
 
 ## TugLab: редактируемые числа
 

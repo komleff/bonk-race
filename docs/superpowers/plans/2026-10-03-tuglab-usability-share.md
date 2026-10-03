@@ -28,7 +28,7 @@
 - `client/src/lab/ui/LabToolbar.tsx`, `LabPanel.tsx`, opt-in `tuglab.css` и `client/src/lab/main.ts`: компактные действия, сворачиваемые настройки, viewport и запуск по ссылке. Штатные CSS/компоненты менять лишь при необходимости сохранения общего пути.
 - `client/src/lab/BonkLab.ts`, при необходимости `LabParamManager.ts`: узкий экспорт/атомарное применение полного снимка действующих параметров и фактического состояния генератора.
 - Новый `client/src/tuglab/share.ts`: типизированный формат ссылки, ограниченное декодирование и строгая валидация.
-- `client/src/lab/LabTowing.ts`, `ui/paramDefs.ts`, `client/src/tuglab/config/validate.ts` и связанные объявления: длина и выбор точек существующих сцепок. Решатель физики не переделывается.
+- `client/src/tuglab/labTowing.ts`, `ui/paramDefs.ts`, `client/src/tuglab/config/validate.ts` и связанные объявления: длина и выбор точек существующих сцепок. Решатель физики не переделывается.
 - `tests/tuglab/labTowing.test.cjs`, новый тест ссылок и браузерная проверка мобильного интерфейса/обмена; существующие browser smoke при необходимости адаптировать к свёрнутым настройкам.
 - `docs/TugLab-Guide.md`, `.memory_bank/{activeContext,progress,systemPatterns,techContext}.md`: реальные изменения, ограничения и результаты. PM ведёт Beads/PR и итоговый отчёт.
 - `version.json`, синхронизируемые штатным скриптом файлы и `client/vite.config.tuglab.ts`: версии патча.

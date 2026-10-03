@@ -18,3 +18,28 @@ body[data-lab-mode="towing"] .tug-status { position: fixed; left: 0; right: 0; t
 body[data-lab-mode="towing"] #lab-canvas { touch-action: none; }
 
 body[data-lab-mode="towing"] .lab-panel-toggle--open { display: none; }
+
+/* Действия заезда остаются в одной строке; вся конфигурация находится в панели. */
+body[data-lab-mode="towing"] { margin: 0; overflow: hidden; }
+body[data-lab-mode="towing"] .lab-toolbar.tug-race-toolbar { height: 52px; min-height: 52px; flex-wrap: nowrap; padding: 4px 6px; gap: 4px; }
+body[data-lab-mode="towing"] .tug-race-toolbar .lab-tb-btn { min-width: 44px; min-height: 44px; height: 44px; padding: 0 8px; font-size: 12px; flex-shrink: 0; }
+body[data-lab-mode="towing"] .tug-race-toolbar .tug-actions { gap: 4px; }
+body[data-lab-mode="towing"] .tug-settings-toggle { margin-left: auto; }
+body[data-lab-mode="towing"] .tug-status { line-height: 18px; }
+body[data-lab-mode="towing"] .tug-status .lab-tb-timer { font-size: 12px; min-width: 0; }
+body[data-lab-mode="towing"] .lab-panel { box-sizing: border-box; }
+body[data-lab-mode="towing"] .lab-panel-header { position: sticky; top: 0; background: #1e1e2e; z-index: 1; }
+body[data-lab-mode="towing"] .lab-panel-content { flex-shrink: 0; }
+body[data-lab-mode="towing"] .lab-param-number, body[data-lab-mode="towing"] .lab-param-select { min-height: 44px; }
+body[data-lab-mode="towing"] .lab-param-info { min-width: 44px; min-height: 44px; }
+body[data-lab-mode="towing"] .lab-toggle-switch { min-width: 44px; min-height: 44px; }
+body[data-lab-mode="towing"] .lab-modal { width: min(460px, calc(100vw - 32px)); min-width: 0; box-sizing: border-box; max-height: calc(100dvh - 32px); overflow: auto; }
+body[data-lab-mode="towing"] .lab-modal textarea { width: 100%; box-sizing: border-box; }
+.tug-settings-controls { padding: 12px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #444; }
+body[data-lab-mode="towing"] .tug-settings-controls .lab-tb-seed-input { flex: 1; width: 0; min-width: 0; height: 44px; }
+.tug-density { display: flex; flex-direction: column; gap: 8px; }
+.tug-density input { min-height: 44px; width: 100%; }
+.tug-settings-actions { display: flex; gap: 8px; }
+@media (max-width: 899px) {
+  body[data-lab-mode="towing"] .lab-panel { width: 100vw; }
+}

@@ -49,6 +49,8 @@ import { resolveSpikeCollision } from "./spikeResolver";
 import { generateArena } from "@bonk-race/shared";
 import { LabParamManager } from "./LabParamManager";
 
+import { SHARE_SCHEMA, SHARE_GENERATOR, validateShareSnapshot, type ShareSnapshot } from "../tuglab/share";
+
 import balanceJson from "../../../config/balance.json";
 
 /**
@@ -273,6 +275,8 @@ export class BonkLab {
 
     // ── Публичный API ────────────────────────────────────────────────────────
 
+    get hasStarted(): boolean { return this.started; }
+
     start(): void {
         if (this.running) return;
         if (this.towing && this.started) { this.resume(); return; }
@@ -390,7 +394,7 @@ export class BonkLab {
         this.deathDistanceM = 0;
         // bestTime сохраняется между сбросами (отслеживание рекорда)
         // Сбросить автосинхронизацию плотности орбов (пользователь не устанавливал вручную через сброс)
-        this.paramManager.orbDensityManual = false;
+        if (!this.towing) this.paramManager.orbDensityManual = false;
         this.restoreDestroyedObstacles();
         // Сбросить орбы в начальное состояние из сида арены
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
@@ -534,6 +538,31 @@ export class BonkLab {
         return this.trueDefaults;
     }
 
+    /** Снимок начальных условий, без текущей траектории, скоростей и таймера. */
+    exportShareSnapshot(): ShareSnapshot {
+        if (!this.towing) throw new Error("Обмен доступен только в TugLab");
+        return { schema: SHARE_SCHEMA, generator: SHARE_GENERATOR,
+            seed: this.lastSeed, density: this.lastDensity,
+            orbDensityManual: this.paramManager.orbDensityManual,
+            params: { ...this.params, "arena.objectDensity": this.lastDensity } };
+    }
+
+    /** Сначала проверяем весь снимок; генерация и сброс выполняются ровно один раз. */
+    applyShareSnapshot(value: unknown): void {
+        if (!this.towing) throw new Error("Обмен доступен только в TugLab");
+        const snapshot = validateShareSnapshot(value, this.trueDefaults);
+        this.stop();
+        this.paramManager.orbDensityManual = true;
+        for (const [key, current] of Object.entries(snapshot.params)) {
+            if (key.startsWith("tow.")) this.towing.params[key] = current as number | string;
+            else this.paramManager.update(key, current);
+        }
+        this.mass = this.paramManager.mass;
+        this.paramManager.orbDensityManual = snapshot.orbDensityManual;
+        this.regenerateArena(snapshot.seed, snapshot.density);
+        this.pause();
+    }
+
     /** Сбросить флаг orbDensityManual (вызывается перед пакетным сбросом/применением пресета) */
     resetOrbDensityManual(): void {
         this.paramManager.orbDensityManual = false;
@@ -548,6 +577,7 @@ export class BonkLab {
     regenerateArena(seed: number, density: number): void {
         this.lastSeed = seed;
         this.lastDensity = density;
+        if (this.towing) this.paramManager.params["arena.objectDensity"] = density;
         this.arena = this.buildArena(seed, density);
         // Сохранить orbDensityManual при сбросе (regenerateArena вызывается из
         // путей updateParams, включая ручное изменение orbs.density — reset() не

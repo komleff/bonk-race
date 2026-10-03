@@ -652,7 +652,7 @@ export const TOW_GROUP: GroupDef = {
         { key: "tow.massRatio", label: "Масса B / A", min: 0.1, max: 10, step: 0.01, quickValues: [0.1, 0.25, 0.5, 1, 2, 5, 10] },
         { key: "tow.radiusB", label: "Радиус B", min: 2, max: 60, step: 1, unit: "м" },
         { key: "tow.type", label: "Сцепка", isSelect: true, options: [{ value: "rod", label: "Штанга" }, { value: "rope", label: "Трос" }, { value: "spring", label: "Пружина" }] },
-        { key: "tow.length", label: "Длина между креплениями", min: 4, max: 24, step: 0.1, unit: "м" },
+        { key: "tow.length", label: "Длина между креплениями", min: 4, max: 100, step: 0.1, unit: "м" },
         { key: "tow.stiffness", label: "Жёсткость k", min: 0, max: 10000, step: 1, unit: "Н/м" },
         { key: "tow.dampingRatio", label: "Демпфирование ζ", min: 0, max: 1.5, step: 0.01 },
     ],

@@ -1,13 +1,14 @@
 import { defineConfig } from 'vite'
 import path from 'path'
 import { execFileSync } from 'node:child_process'
+import versionJson from '../version.json'
 
 // Самостоятельный стенд со штатной точкой входа BonkLab и относительными ресурсами.
 export default defineConfig({
   base: './',
   publicDir: false,
   define: {
-    __APP_VERSION__: JSON.stringify('0.1.0'),
+    __APP_VERSION__: JSON.stringify(versionJson.version),
     __TUGLAB_COMMIT__: JSON.stringify(execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: __dirname }).toString().trim())
   },
   resolve: {
