@@ -67,12 +67,14 @@
 
 **Interfaces:** `sampleSpaceFields(world,body,simulationTime): {force:Vec2,torque:number}` семплирует A/B отдельно; состояние поля принадлежит seed/симуляции. Описания/единицы по sector_fields spec. Никаких скрытых engine multipliers.
 
-- [ ] RED: вне полей force/torque0; ResistiveMedium drag=-weight*k_R*A_eff*v_rel, falloff один раз; движущаяся геометрия поля не превращается в velocity среды; перекрытия детерминированны.
-- [ ] RED: Plasma-force по замкнутому механическому закону; тепловое/пылевое/EM поле само не меняет engine/thrust/drag. Pause/Step и раздельное A/B семплирование корректны.
-- [ ] Запустить RED; реализовать только подтверждённые механические воздействия. Замкнутый LAB pressure-law: F=w*p*pi*r²*n, p[Pa], torque0; r корабля из L/W, не collision-only override. Resistive k_R[N*s/m³]; A_eff=pi*r². Начальная pressure50Pa (0–1000), k_R0.5 (0–100); они LAB balance, не паспортные U2 значения. Smoothstep falloff один раз. Поля семплируют все подвижные тела (A/B/астероиды), статика не интегрируется. Профиль коэффициентов/эффективной площади круга явно лабораторный; thermal/dust/EM визуальные области со справкой о границах, без обещания отсутствующих систем.
-- [ ] Тесты/браузер/commit/self-review/task review. Не переносить весь thermal/energy/sensor контур U2.
+- [x] RED: вне полей force/torque0; ResistiveMedium drag=-weight*k_R*A_eff*v_rel, falloff один раз; движущаяся геометрия поля не превращается в velocity среды; перекрытия детерминированны.
+- [x] RED: Plasma-force по замкнутому механическому закону; тепловое/пылевое/EM поле само не меняет engine/thrust/drag. Pause/Step и раздельное A/B семплирование корректны.
+- [x] Запустить RED; реализовать только подтверждённые механические воздействия. Замкнутый LAB pressure-law: F=w*p*pi*r²*n, p[Pa], torque0; r корабля из L/W, не collision-only override. Resistive k_R[N*s/m³]; A_eff=pi*r². Начальная pressure50Pa (0–1000), k_R0.5 (0–100); они LAB balance, не паспортные U2 значения. Smoothstep falloff один раз. Поля семплируют все подвижные тела (A/B/астероиды), статика не интегрируется. Профиль коэффициентов/эффективной площади круга явно лабораторный; thermal/dust/EM визуальные области со справкой о границах, без обещания отсутствующих систем.
+- [x] Тесты/браузер/commit/self-review/task review. Не переносить весь thermal/energy/sensor контур U2.
 
 ## Task 4: D — интерфейс, обмен, локальная приёмка — Beads561.6/560
+
+Дополнительные поручения оператора: мини-карта сверху справа; live FA снизу справа рядом с тормозом. Расчёт пружины для текущего M300т/L680т: default270м, практический диапазон270–288м, k/ζ неизменны; rope>=288 отдельно. На120Гц peak97.79м/36.22%, mingap69.52м и0контактов/stop в проверенных разгонах/поворотах/торможениях. Критерий<=40% — LAB выбор, не универсальный оптимум. Guide и отдельный краткий расчёт должны объяснять зависимости от параметров.
 
 **Files:** Create client/src/u2taglab/share.ts и docs/U2TagLab-Guide.md; Modify existing UI/main/input/renderer точечно, scripts QA и Pages для вложенной оболочки; test u2taglab-share.test.cjs/u2taglab-ui.cjs. Version policy: BonkRace0.6.3, новая оболочкаU2TagLab0.1.0; прежний TugLab0.1.1.
 
