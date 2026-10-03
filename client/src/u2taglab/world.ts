@@ -1,6 +1,7 @@
 import { Rng, type Arena } from '@bonk-race/shared';
 import type { BodyState, CircleObstacle, Vec2 } from '../tuglab/types';
-import type { SpaceProfile } from './profile';
+import { hullCircleRadius, type SpaceProfile } from './profile';
+import { createSpaceFields, SPACE_FIELD_DEFAULTS, type SpaceField, type SpaceFieldSettings } from './fields';
 import defaults from './config/world_defaults.json';
 export { advanceSpaceWorld, type SpaceForceSampler, type SpaceAdvanceResult } from './physics/advanceWorld';
 
@@ -9,8 +10,9 @@ export interface SpaceAsteroid extends BodyState { id: string; kind: 'asteroid' 
 export interface SpaceWorld {
   seed: number; density: number; width: number; height: number; spawnPoint: Vec2; finishPoint: Vec2;
   startClearance: number; statics: SpaceStatic[]; asteroids: SpaceAsteroid[]; time: number; tick: number;
+  fields: readonly SpaceField[]; fieldShipRadii: Readonly<Record<'A' | 'B', number>>;
 }
-export interface SpaceWorldOptions { couplingLength?: number; asteroidMaxSpeed?: number }
+export interface SpaceWorldOptions { couplingLength?: number; asteroidMaxSpeed?: number; fields?: SpaceFieldSettings }
 export const SPACE_WORLD_DEFAULTS = defaults;
 
 export function createAsteroid(radius: number, position: Vec2, velocity: Vec2): BodyState {
@@ -44,7 +46,9 @@ export function createSpaceWorld(profile: SpaceProfile, seed: number, density: n
     spawnPoint: { x: 0, y: defaults.height / 2 - separation - profile.radiusB - defaults.startMargin },
     finishPoint: { x: 0, y: -defaults.height / 2 + defaults.startMargin },
     startClearance: Math.max(defaults.startClearance, profile.radiusB + defaults.bodyClearance),
-    statics: [], asteroids: [], time: 0, tick: 0 };
+    statics: [], asteroids: [], time: 0, tick: 0, fields: [],
+    fieldShipRadii: Object.freeze({ A: hullCircleRadius(profile.geometryA), B: hullCircleRadius(profile.geometryB) }) };
+  world.fields = createSpaceFields(world, options.fields ?? SPACE_FIELD_DEFAULTS);
   const rng = new Rng(seed), placed: { position: Vec2; radius: number }[] = [];
   const low = world.spawnPoint.y - Math.max(defaults.startCorridor, length), high = world.spawnPoint.y + separation;
   const free = (position: Vec2, radius: number): boolean => {

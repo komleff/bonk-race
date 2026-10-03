@@ -19,6 +19,7 @@ import {
 } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
 import { lerpColor, hslToHex, getDriftAngle } from "./colorUtils";
+import { spaceFieldCenter, SPACE_FIELD_INFO } from "../u2taglab/fields";
 
 // ─── Константы ───────────────────────────────────────────────────────────────
 
@@ -232,6 +233,7 @@ export class LabRenderer {
         // ── Рисуем слои от заднего к переднему ──
         this.drawGrid(ctx, state);
         this.drawZones(ctx, state);
+        if (state.spaceWorld) this.drawSpaceFields(ctx, state);
         this.drawSpawnAndFinish(ctx, state);
         this.drawWalls(ctx, state);
         if (state.spaceWorld) this.drawSpaceWorld(ctx, state);
@@ -391,6 +393,42 @@ export class LabRenderer {
     }
 
     // ── Слой: Орбы ──────────────────────────────────────────────────────────
+
+    private drawSpaceFields(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const world = state.spaceWorld!;
+        for (const field of world.fields) {
+            const center = spaceFieldCenter(field, world.time), r = field.radius, info = SPACE_FIELD_INFO[field.kind];
+            const mechanical = field.kind === "plasma" || field.kind === "resistive";
+            ctx.save(); ctx.translate(center.x, center.y);
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+            for (const [position, alpha] of [[0, "2e"], [0.25, "27"], [0.5, "17"], [0.75, "07"], [1, "00"]] as const) {
+                gradient.addColorStop(position, info.color + alpha);
+            }
+            ctx.fillStyle = gradient; ctx.strokeStyle = info.color; ctx.lineWidth = 1.5 / this.scale;
+            if (!mechanical) ctx.setLineDash([8 / this.scale, 6 / this.scale]);
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = info.color; ctx.font = `${13 / this.scale}px sans-serif`; ctx.textAlign = "center";
+            ctx.fillText(info.label + (field.kind === "plasma" && field.topology === "vortex" ? " · вихрь" : ""), 0, -r * 0.65);
+            ctx.font = `${11 / this.scale}px sans-serif`;
+            ctx.fillText(field.kind === "plasma" ? `${field.pressure} Па · LAB` : field.kind === "resistive"
+                ? `${field.resistiveK} Н·с/м³ · LAB` : "визуально", 0, -r * 0.65 + 17 / this.scale);
+            if (field.kind === "plasma") {
+                if (field.topology === "vortex") {
+                    ctx.beginPath(); ctx.arc(0, 0, r * 0.25, 0.15, Math.PI * 1.8); ctx.stroke();
+                    const end = Math.PI * 1.8;
+                    ctx.translate(Math.cos(end) * r * 0.25, Math.sin(end) * r * 0.25); ctx.rotate(end + Math.PI / 2);
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-12 / this.scale, -7 / this.scale);
+                    ctx.moveTo(0, 0); ctx.lineTo(-12 / this.scale, 7 / this.scale); ctx.stroke();
+                } else {
+                    const angle = Math.atan2(field.direction.y, field.direction.x), length = r * 0.22;
+                    ctx.rotate(angle); ctx.beginPath(); ctx.moveTo(-length, 0); ctx.lineTo(length, 0);
+                    ctx.lineTo(length - 12 / this.scale, -7 / this.scale); ctx.moveTo(length, 0);
+                    ctx.lineTo(length - 12 / this.scale, 7 / this.scale); ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+    }
 
     private drawSpaceWorld(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const world = state.spaceWorld!;

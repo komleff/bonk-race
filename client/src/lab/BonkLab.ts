@@ -45,6 +45,7 @@ export type { SandboxOrb, SandboxState } from "./labTypes";
 import { createSpaceProfile, hullInertia, SPACE_RANGES, spaceParams, spaceTowingProfile, type SpaceProfile } from "../u2taglab/profile";
 import { spaceEngineWrench, spaceInputFrame } from "../u2taglab/physics/flightAssist";
 import { advanceSpaceWorld, cloneSpaceWorld, createSpaceWorld, spaceWorldArena, SPACE_WORLD_DEFAULTS, type SpaceWorld } from "../u2taglab/world";
+import { sampleSpaceFieldResponse, SPACE_FIELD_DEFAULTS, validSpaceFieldSettings, type SpaceFieldSettings } from "../u2taglab/fields";
 import { LabTowing, TOW_DEFAULTS } from "../tuglab/labTowing";
 import type { BodyState, CaptureResult } from "../tuglab/types";
 import { tickOrbs } from "./orbSimulator";
@@ -142,7 +143,8 @@ export class BonkLab {
         return this.towing ? { ...this.paramManager.params, ...this.towing.params,
             ...(this.space ? { ...spaceParams(this.space), "space.fa": this.spaceFA,
                 "space.asteroidMaxSpeed": this.spaceWorldSettings.asteroidMaxSpeed,
-                "space.collisionRestitution": this.spaceWorldSettings.collisionRestitution } : {}) } : this.paramManager.params;
+                "space.collisionRestitution": this.spaceWorldSettings.collisionRestitution,
+                ...Object.fromEntries(Object.entries(this.spaceFieldSettings).map(([key, value]) => [`space.${key}`, value])) } : {}) } : this.paramManager.params;
     }
 
     // Сохранено для будущего использования в LabRenderer
@@ -152,6 +154,8 @@ export class BonkLab {
     private space?: SpaceProfile;
     private spaceWorld?: SpaceWorld;
     private spaceWorldSettings = { asteroidMaxSpeed: SPACE_WORLD_DEFAULTS.asteroidMaxSpeed, collisionRestitution: SPACE_WORLD_DEFAULTS.restitution };
+    private spaceFieldSettings: SpaceFieldSettings = { fieldsEnabled: SPACE_FIELD_DEFAULTS.fieldsEnabled,
+        fieldPressure: SPACE_FIELD_DEFAULTS.fieldPressure, resistiveK: SPACE_FIELD_DEFAULTS.resistiveK };
     private prevAsteroids?: SpaceWorld["asteroids"];
     private spaceFA = true;
     private spaceBrake = false;
@@ -309,6 +313,8 @@ export class BonkLab {
         if (!this.space || !this.towing) return;
         this.space = createSpaceProfile(); this.spaceFA = true;
         this.spaceWorldSettings = { asteroidMaxSpeed: SPACE_WORLD_DEFAULTS.asteroidMaxSpeed, collisionRestitution: SPACE_WORLD_DEFAULTS.restitution };
+        this.spaceFieldSettings = { fieldsEnabled: SPACE_FIELD_DEFAULTS.fieldsEnabled,
+            fieldPressure: SPACE_FIELD_DEFAULTS.fieldPressure, resistiveK: SPACE_FIELD_DEFAULTS.resistiveK };
         this.mass = this.space.massA; this.paramManager.mass = this.mass;
         this.paramManager.params.mass = this.mass;
         Object.assign(this.towing.params, spaceTowingProfile(this.space).defaults);
@@ -464,7 +470,7 @@ export class BonkLab {
         if (this.space) {
             this.spaceWorld = createSpaceWorld({ ...this.space, radiusB: Number(this.towing?.params["tow.radiusB"] ?? this.space.radiusB) }, seed, density,
                 { couplingLength: Number(this.towing?.params["tow.length"] ?? SPACE_WORLD_DEFAULTS.couplingLength),
-                    asteroidMaxSpeed: this.spaceWorldSettings.asteroidMaxSpeed });
+                    asteroidMaxSpeed: this.spaceWorldSettings.asteroidMaxSpeed, fields: this.spaceFieldSettings });
             return spaceWorldArena(this.spaceWorld);
         }
         const rng = new Rng(seed);
@@ -493,6 +499,14 @@ export class BonkLab {
 
     updateParams(key: string, value: number | boolean | string): void {
         if (this.space) {
+            const fieldKey = key.slice(6);
+            if (key.startsWith("space.") && Object.hasOwn(this.spaceFieldSettings, fieldKey)) {
+                const candidate = { ...this.spaceFieldSettings, [fieldKey]: value };
+                if (!validSpaceFieldSettings(candidate)) return;
+                this.spaceFieldSettings = candidate;
+                this.regenerateArena(this.lastSeed, this.lastDensity);
+                return;
+            }
             if (key === "space.asteroidMaxSpeed" || key === "space.collisionRestitution") {
                 const max = key === "space.asteroidMaxSpeed" ? SPACE_WORLD_DEFAULTS.validatedAsteroidMaxSpeed : 1;
                 if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > max) return;
@@ -1152,10 +1166,11 @@ export class BonkLab {
         const wrench = spaceEngineWrench(a, input, this.spaceFA, profile, dt);
         const towing = this.towing!;
         const result = advanceSpaceWorld(a, towing.B, towing.coupling, this.spaceWorld!, dt,
-            towing.physicsConfig(this.spaceWorldSettings.collisionRestitution), ({ id, body, subDt }) => {
-                if (id !== "A") return { force: { x: 0, y: 0 }, torque: 0 };
-                const command = spaceInputFrame(body, this.inputX, this.inputY, this.inputMagnitude, profile, this.spaceBrake);
-                return spaceEngineWrench(body, command, this.spaceFA, profile, subDt);
+            towing.physicsConfig(this.spaceWorldSettings.collisionRestitution), ({ id, body, time, subDt }) => {
+                const engine = id === "A" ? spaceEngineWrench(body,
+                    spaceInputFrame(body, this.inputX, this.inputY, this.inputMagnitude, profile, this.spaceBrake), this.spaceFA, profile, subDt)
+                    : { force: { x: 0, y: 0 }, torque: 0 };
+                return sampleSpaceFieldResponse(this.spaceWorld!, { ...body, id }, time, subDt, engine);
             });
         towing.diagnostics = result.diagnostics;
         if (result.stopReason) { towing.fail(result.stopReason); this.pause(); return false; }

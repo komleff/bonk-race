@@ -8,6 +8,7 @@ import { injectStyles } from "../../ui/utils/injectStyles";
 import { LabPanel } from "./LabPanel";
 import { createShareUrl, validateShareSnapshot } from "../../tuglab/share";
 import { createSpaceProfile, SPACE_SOURCE } from "../../u2taglab/profile";
+import { SPACE_FIELD_INFO } from "../../u2taglab/fields";
 import type { BonkLab } from "../BonkLab";
 import toolbarCss from "./lab-toolbar.css?raw";
 import { PRESETS, DEFAULT_PRESET_IDX } from "./presets";
@@ -364,7 +365,11 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
             {!space && <select class="lab-tb-select" aria-label="Пресет движения" value={activePreset} onChange={handlePreset}>
                 <option value={-1}>Custom</option>{PRESETS.map((preset, i) => <option key={i} value={i}>{preset.label}</option>)}
             </select>}
-            {space && <p>{SPACE_SOURCE.mass}<br />Временная арена: 6000×18000 м, вакуум; каталог мира и поля — следующие этапы.<br />Мышь/тач/WASD задают мировой курс и тягу. Space или кнопка «Тормоз» — двигательный тормоз.</p>}
+            {space && <p>{SPACE_SOURCE.mass}<br />Космический мир: 6000×18000 м, станции, платформы, подвижные астероиды и локальные поля. Вне полей — вакуум.<br />Мышь/тач/WASD задают мировой курс и тягу. Space или кнопка «Тормоз» — двигательный тормоз.</p>}
+            {space && <details><summary>Поля: законы и границы модели</summary>
+                <p>Плавный smoothstep по расстоянию до края — LAB. Дрейф геометрии задан seed и временем симуляции. Поля не меняют тягу, FA, топливо или параметры друг друга.</p>
+                {Object.entries(SPACE_FIELD_INFO).map(([key, info]) => <p key={key}><strong>{info.label}.</strong> {info.description}</p>)}
+            </details>}
             <div class="tug-settings-actions"><button class="lab-tb-btn" onClick={handleResetParams}>Сброс</button>
                 {!space && <button class="lab-tb-btn" onClick={handleShare}>Поделиться</button>}</div>
             {space && <button class="lab-tb-btn" onClick={() => { lab.updateParams("tow.radiusB", createSpaceProfile().radiusB); onParamsChanged?.(); }}>Радиус B по ТТХ</button>}

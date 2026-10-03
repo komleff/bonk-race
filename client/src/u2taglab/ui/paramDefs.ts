@@ -1,6 +1,7 @@
 import type { GroupDef, ParamDef } from '../../lab/ui/paramDefs';
 import { SPACE_RANGES, SPACE_SOURCE } from '../profile';
 import { SPACE_WORLD_DEFAULTS } from '../world';
+import { SPACE_FIELD_DEFAULTS, SPACE_FIELD_INFO } from '../fields';
 
 const number = (key: string, label: string, unit: string, tooltip: string, step: number): ParamDef => ({
   key, label, unit, tooltip, step, strictNumber: true, min: SPACE_RANGES[key][0], max: SPACE_RANGES[key][1],
@@ -10,7 +11,7 @@ export function spaceGroups(type: string): GroupDef[] {
     { title: 'Корабли и сцепка (SI)', params: [
       number('mass', 'Масса A', 'кг', SPACE_SOURCE.mass + ' Изменение массы меняет F/m и момент/I; силы двигателей не растут.', 1000),
       { ...number('tow.massRatio', 'Масса B / A', '×', 'B пассивен. Его масса = масса A × коэффициент. L/W Каравана сохраняются; инерция меняется пропорционально массе.', 0.01), quickValues: [0.1, 0.5, 1, 680000 / 300000, 5, 10] },
-      number('tow.radiusB', 'Радиус B', 'м', SPACE_SOURCE.inertia + ' Override меняет круг и плечо крепления B; инерция по L/W остаётся прежней. «Радиус B по ТТХ» возвращает 44.769 м.', 0.1),
+      number('tow.radiusB', 'Радиус B', 'м', SPACE_SOURCE.inertia + ' Override меняет круг и плечо крепления B; инерция и эффективная площадь полей по L/W остаются прежними. «Радиус B по ТТХ» возвращает 44.769 м.', 0.1),
       { key: 'tow.type', label: 'Сцепка', isSelect: true, options: [{ value: 'rod', label: 'Штанга' }, { value: 'rope', label: 'Трос' }, { value: 'spring', label: 'Пружина' }], tooltip: 'Два шарнира: штанга держит дистанцию; трос только тянет, при сближении провисает; пружина растягивается и сжимается. Новые жёсткие крепления — отдельный этап.' },
       { ...number('tow.length', 'Длина между креплениями', 'м', 'Трос 288–2000 м, штанга/пружина 20–2000 м. Длина между выбранными носом/хвостом, а не центрами. Изменение геометрии может требовать Restart. Трос при захвате сохраняет заданную длину и провисает.', 1), min: type === 'rope' ? 288 : 20 },
       number('tow.stiffness', 'Жёсткость k', 'Н/м', SPACE_SOURCE.coupling + ' Увеличение k ускоряет колебания. Если численный бюджет исчерпан, состав атомарно останавливается; уменьшите k и нажмите Restart.', 1000),
@@ -24,8 +25,18 @@ export function spaceGroups(type: string): GroupDef[] {
         quickValues: [0, 0.8, 0.95, 1],
         tooltip: 'Runtime U2 GameWorld: запасное значение 0.8, сектор Перекрёсток использует 0.95. Один e для A/B, астероидов, станций и стен. e=1 сохраняет энергию нормального контакта, e=0 гасит относительную нормальную скорость; импульс подвижной пары сохраняется. Станция 100×100 м / R=70.711 м, заброшенная платформа 1000×1000 м / R=707.107 м — текущие runtime baseline, не финальные размеры ассетов.' },
     ] },
+    { title: 'Локальные поля', params: [
+      { key: 'space.fieldsEnabled', label: 'Поля включены', isBoolean: true,
+        tooltip: `Вакуум вне областей: фоновые силы и сопротивление равны 0. LAB: радиусы ${SPACE_FIELD_DEFAULTS.minRadius}–${SPACE_FIELD_DEFAULTS.maxRadius} м, дрейф ${SPACE_FIELD_DEFAULTS.driftSpeed} м/с. Seed задаёт области и их дрейф; Pause останавливает общие часы мира, Step продвигает один тик, Restart возвращает начальные области. Изменение настроек полей пересоздаёт сцену из того же seed и обнуляет время. Горячие/холодные области, пыль и EM-бури только визуальны: температуры, датчиков и энергии здесь нет.` },
+      { key: 'space.fieldPressure', label: 'Давление плазменного потока (LAB)', unit: 'Па', strictNumber: true,
+        min: 0, max: SPACE_FIELD_DEFAULTS.maxPressure, step: 1,
+        tooltip: SPACE_FIELD_INFO.plasma.description + ' A/B используют r из исходных L/W, астероиды — свой радиус. Начальные 50 Па — лабораторный баланс. Силы перекрывающихся потоков складываются, плавный smoothstep вес применяется один раз.' },
+      { key: 'space.resistiveK', label: 'Сопротивление k_R (LAB)', unit: 'Н·с/м³', strictNumber: true,
+        min: 0, max: SPACE_FIELD_DEFAULTS.maxResistiveK, step: 0.1,
+        tooltip: SPACE_FIELD_INFO.resistive.description + ' Начальные 0.5 и диапазон 0–100 — лабораторный баланс. Сопротивление нескольких областей складывается; тяга и давление вместе с drag рассчитываются устойчиво на подшаге. B и астероиды не получают собственных двигателей.' },
+    ] },
     { title: 'Двигатели A', params: [
-      { key: 'space.enginesEnabled', label: 'Двигатели включены', isBoolean: true, tooltip: 'Выключает все линейные силы и момент A, включая FA и ручной тормоз. Вакуум сохраняет инерцию обоих тел; сцепка/контакты продолжают действовать.' },
+      { key: 'space.enginesEnabled', label: 'Двигатели включены', isBoolean: true, tooltip: 'Выключает собственные линейные силы и момент A, включая FA и ручной тормоз. Внешние поля, сцепка и контакты продолжают действовать; вне полей вакуум сохраняет инерцию обоих тел.' },
       number('space.forwardForce', 'Тяга вперёд', 'Н', SPACE_SOURCE.force, 10000),
       number('space.reverseForce', 'Тяга назад', 'Н', SPACE_SOURCE.force, 10000),
       number('space.lateralForce', 'Боковая тяга', 'Н', SPACE_SOURCE.force, 10000),
