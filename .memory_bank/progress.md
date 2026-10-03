@@ -1,3 +1,7 @@
+## U2TagLab — космический мир принят, начаты поля (3 октября 2026)
+
+Task2/B e0fd699 + d09b82d: seeded станции/платформы/астероиды, mass-aware CCD, общий атомарный clock и точный Restart/старт0. 272/272 tests, адресные154 и browser/typecheck PASS. GPT-6-Astra: spec APPROVED; Important дублирования устранён shared advanceCoupledInterval, scoped re-review ADDRESSED0. Beads561.4 CLOSED,561.5 IN_PROGRESS; поля следующим свежим Developer. Локальный :5175 восстановлен отдельным процессом PID99049 после воспроизведённого отказа соединения, fresh Chrome HTTP200/canvas/pageerror0. :5174 работает. Новые поручения оператора: рассчитать пружину для L (read-only анализ) и в Task4 перенести мини-карту вверх вправо, FA вниз вправо рядом с тормозом. Поля/space-share пока не готовы; merge/публикация не выполнялись. Отчёты промежуточных этапов в draft PR42.
+
 ## U2TagLab — физика принята, начат космический мир (3 октября 2026)
 
 Task1/A864165c: независимый GPT-6-Astra подтвердил Spec/QualityAPPROVED, замечаний0;245tests/typechecks/builds/browserPASS. Beads561.2/.3 CLOSED. Task2/B561.4 IN_PROGRESS: статические station100×100/derelict1000×1000 по runtimeU2, подвижные астероидыrho2500 и sphereI, общий clock/массовые контакты/CCD, seededRestart и корректная стартоваяопораA. Следующий свежий Developer получает отдельный brief; :5174/:5175 продолжают работать. Поля/share ещё не реализованы; круговая версия не объявляется завершённой/опубликованной.
