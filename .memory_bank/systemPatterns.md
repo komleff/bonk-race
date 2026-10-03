@@ -1,6 +1,6 @@
 ## Применимость свойств сцепки (уточнение4окт)
 
-Source: applySpring использует k/c только spring; rod fixed-distance bilateral impulseconstraint, rope unilateral max-distance/slack, нет физических stiffness/damping/friction/break/masslink. Task566 hide k/ζ outside spring и пересматривает общийlengthdefault; rope>=288/XL требование отменено. All newsliders CSS body[data-space-mode=true] hit44/visual4, oldBonk/Tug preserved.
+Source: applySpring использует k/c только spring; rod fixed-distance bilateral impulseconstraint, rope unilateral max-distance/slack, нет физических stiffness/damping/friction/break/masslink. Task566: k/ζ скрываются вне spring, но сохраняются в params/share. Общий начальный length288 м и диапазон20–2000 м всехтрёхтипов; rope>=288/XL требование отменено. Новаяпружина k328718.2527 Н/м, ζ1 (f.20 Гц для sourceM/L), cпо текущейμ. Переключение сохраняетвыбраннуюдлину, тип не меняет worldrecipe/clock/FA. Новыеdefaults не заменяют явно записанные значения прежних ссылок; model/generator IDs сохраняются, поскольку физическиезаконы и encoded recipe не меняются. All newsliders CSS body[data-space-mode=true] hit44/visual4, oldBonk/Tug preserved.
 
 ## U2TagLab — принятая космическая физика/мир/поля (3 октября 2026)
 
