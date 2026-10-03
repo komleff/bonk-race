@@ -26,7 +26,9 @@
     "build:tuglab": "npm run build:tuglab --workspace=client",
     "test:tuglab:ui": "node tests/tuglab/ui-smoke.cjs",
     "qa:tuglab:matrix": "tsc -p client/tsconfig.tuglab-test.json && node tests/tuglab/qa-matrix.cjs",
-    "qa:tuglab:browser": "node tests/tuglab/qa-browser.cjs"
+    "qa:tuglab:browser": "node tests/tuglab/qa-browser.cjs",
+    "dev:u2taglab": "npm run dev:u2taglab --workspace=client",
+    "build:u2taglab": "npm run build:u2taglab --workspace=client"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

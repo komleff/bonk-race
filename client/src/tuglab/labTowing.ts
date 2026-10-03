@@ -14,6 +14,12 @@ const ranges: Record<string, readonly [number, number]> = {
   'tow.stiffness': [0, 10000], 'tow.dampingRatio': [0, 1.5],
 };
 const clone = (b: BodyState): BodyState => ({ ...b, position: { ...b.position }, velocity: { ...b.velocity } });
+export interface TowingProfile {
+  defaults: Record<string, number | string>; ranges: Record<string, readonly [number, number]>;
+  inertiaB: (mass: number) => number; reducedMass?: boolean;
+  ropeMinLength: number; captureMinLength: number; clearCoupling?: boolean;
+  spawnSearch?: { depth: number; step: number; lateral: number }; maxValidatedSpeed?: number;
+}
 export interface TowingSnapshot {
   B: BodyState; coupling: CouplingState; distance: number; relativeSpeed: number;
   paused: boolean; reason?: string; needsRestart: boolean; diagnostics: Diagnostics;
@@ -21,7 +27,7 @@ export interface TowingSnapshot {
 
 // Владеет только прицепом и сцепкой: постоянной копии ведущего тела здесь нет.
 export class LabTowing {
-  readonly params = { ...TOW_DEFAULTS };
+  readonly params: Record<string, number | string>;
   B: BodyState;
   coupling: CouplingState;
   reason?: string;
@@ -29,43 +35,66 @@ export class LabTowing {
   diagnostics: Diagnostics = { couplingImpulse: 0, rodError: 0, outsideSpeedRange: false };
   private referenceMass: number;
 
-  constructor(a: BodyState) {
-    this.referenceMass = a.mass / 2;
+  constructor(a: BodyState, private readonly profile?: TowingProfile) {
+    this.params = { ...(profile?.defaults ?? TOW_DEFAULTS) };
+    this.referenceMass = this.reducedMass(a);
     this.B = this.bodyB(a);
     this.coupling = createCoupling(this.config());
   }
   private bodyB(a: BodyState): BodyState {
     const mass = a.mass * Number(this.params['tow.massRatio']), radius = Number(this.params['tow.radiusB']);
     return { position: { ...a.position }, velocity: { x: 0, y: 0 }, angle: a.angle, angularVelocity: 0,
-      mass, radius, inertia: 0.5 * mass * radius * radius };
+      mass, radius, inertia: this.profile ? this.profile.inertiaB(mass) : 0.5 * mass * radius * radius };
   }
   private config(restitution = 0.8): TugConfig {
     return { ...(defaults as TugConfig), couplingType: this.params['tow.type'] as TugConfig['couplingType'],
       length: Number(this.params['tow.length']), springStiffness: Number(this.params['tow.stiffness']),
-      springDamping: Number(this.params['tow.dampingRatio']), springReferenceMass: this.referenceMass, restitution };
+      springDamping: Number(this.params['tow.dampingRatio']), springReferenceMass: this.referenceMass, restitution,
+      maxValidatedSpeed: this.profile?.maxValidatedSpeed ?? defaults.maxValidatedSpeed };
   }
   private free(b: BodyState, arena: Arena): boolean {
     return isValidBody(b) && Math.abs(b.position.x) + b.radius <= arena.width / 2 + 1e-7
       && Math.abs(b.position.y) + b.radius <= arena.height / 2 + 1e-7
       && arena.obstacles.every(o => o.alive === false || Math.hypot(b.position.x - o.x, b.position.y - o.y) >= b.radius + o.radius - 1e-7);
   }
+  private reducedMass(a: BodyState): number {
+    const massB = a.mass * Number(this.params['tow.massRatio']);
+    return this.profile?.reducedMass ? a.mass * massB / (a.mass + massB) : a.mass / 2;
+  }
+  private clearLine(a: BodyState, b: BodyState, coupling: CouplingState, arena: Arena): boolean {
+    if (!this.profile?.clearCoupling || !coupling.connected) return true;
+    const g = couplingGeometry(a, b, coupling), start = g.a.position, end = g.b.position;
+    const dx = end.x - start.x, dy = end.y - start.y, squared = dx * dx + dy * dy;
+    return arena.obstacles.every(o => {
+      if (o.alive === false) return true;
+      const t = Math.max(0, Math.min(1, ((o.x - start.x) * dx + (o.y - start.y) * dy) / Math.max(squared, 1e-12)));
+      return Math.hypot(o.x - start.x - t * dx, o.y - start.y - t * dy) >= o.radius + 1;
+    });
+  }
   fail(reason: string): void { this.reason = reason; this.needsRestart = true; }
   refresh(a: BodyState): void {
     const actual = this.bodyB(a);
     this.B.mass = actual.mass; this.B.radius = actual.radius; this.B.inertia = actual.inertia;
+    if (this.profile?.reducedMass) {
+      this.referenceMass = this.reducedMass(a);
+      this.coupling.c = 2 * Number(this.params['tow.dampingRatio']) * Math.sqrt(this.coupling.k * this.referenceMass);
+    }
   }
   reset(a: BodyState, arena: Arena): BodyState | undefined {
-    this.referenceMass = a.mass / 2;
+    this.referenceMass = this.reducedMass(a);
     const b = this.bodyB(a), coupling = createCoupling(this.config());
     const separation = a.radius + b.radius + coupling.restLength;
     // Ищем состав только в локальной стартовой области; генератор и карта не меняются.
     const startY = Math.min(arena.spawnPoint.y, arena.height / 2 - separation - b.radius);
-    for (let offsetY = 0; offsetY <= 300; offsetY += 10) {
-      for (const offsetX of [0, -40, 40, -80, 80, -120, 120]) {
+    const search = this.profile?.spawnSearch;
+    const offsets = search ? [0, ...Array.from({ length: Math.floor(search.lateral / search.step) }, (_, i) => [(i + 1) * -search.step, (i + 1) * search.step]).flat()]
+      : [0, -40, 40, -80, 80, -120, 120];
+    for (let offsetY = 0; offsetY <= (search?.depth ?? 300); offsetY += search?.step ?? 10) {
+      for (const offsetX of offsets) {
         const candidate = clone(a);
         candidate.position = { x: arena.spawnPoint.x + offsetX, y: startY - offsetY };
         b.position = { x: candidate.position.x, y: candidate.position.y + separation };
-        if (!this.free(candidate, arena) || !this.free(b, arena)) continue;
+        if (!this.free(candidate, arena) || !this.free(b, arena) || !this.clearLine(candidate, b, coupling, arena)) continue;
         this.B = clone(b); this.coupling = coupling;
         this.reason = undefined; this.needsRestart = false;
         this.diagnostics = { couplingImpulse: 0, rodError: 0, outsideSpeedRange: false };
@@ -85,10 +114,14 @@ export class LabTowing {
       : c.type === 'rope' ? d <= c.restLength + 1e-6 : d >= c.minLength - 1e-6 && d <= c.maxLength + 1e-6;
   }
   update(key: string, value: number | boolean | string, a: BodyState, arena: Arena): boolean {
+    const ownRanges = this.profile?.ranges ?? ranges;
     const valid = key === 'tow.type' ? ['rod', 'rope', 'spring'].includes(String(value)) && typeof value === 'string'
-      : key in ranges && typeof value === 'number' && Number.isFinite(value) && value >= ranges[key][0] && value <= ranges[key][1];
-    if (!valid) return false;
+      : key in ownRanges && typeof value === 'number' && Number.isFinite(value) && value >= ownRanges[key][0] && value <= ownRanges[key][1];
+    const type = key === 'tow.type' ? value : this.params['tow.type'];
+    const length = key === 'tow.length' ? Number(value) : Number(this.params['tow.length']);
+    if (!valid || (type === 'rope' && length < (this.profile?.ropeMinLength ?? 0))) return false;
     this.params[key] = value as number | string;
+    if (this.profile?.reducedMass) this.referenceMass = this.reducedMass(a);
     const previous = this.coupling;
     this.coupling = createCoupling(this.config());
     this.coupling.connected = previous.connected;
@@ -126,16 +159,16 @@ export class LabTowing {
       g = best!;
       const maxLength = Number(this.params['tow.length']);
       const reason = this.needsRestart ? this.reason
-        : g.distance < 2 || g.distance > maxLength ? `Захват: расстояние креплений должно быть 2–${maxLength} м`
+        : g.distance < (this.profile?.captureMinLength ?? 2) || g.distance > maxLength ? `Захват: расстояние креплений должно быть 2–${maxLength} м`
           : !Number.isFinite(captureMaxSpeed) || captureMaxSpeed <= 0 ? 'Захват: недопустимые линейные лимиты скорости'
             : g.relativeSpeed > captureMaxSpeed ? `Захват: скорость креплений должна быть ≤${captureMaxSpeed} м/с` : undefined;
       if (reason) {
         this.reason = reason;
         return { ok: false, reason, distance: g.distance, relativeSpeed: g.relativeSpeed };
       }
-      candidate.restLength = g.distance;
-      candidate.minLength = g.distance * defaults.springMinRatio;
-      candidate.maxLength = g.distance * defaults.springMaxRatio;
+      candidate.restLength = candidate.type === 'rope' && this.profile ? Number(this.params['tow.length']) : g.distance;
+      candidate.minLength = candidate.restLength * defaults.springMinRatio;
+      candidate.maxLength = candidate.restLength * defaults.springMaxRatio;
     }
     candidate.connected = connected; candidate.accumulatedImpulse = 0;
     this.coupling = candidate;

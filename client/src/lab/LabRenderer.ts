@@ -141,6 +141,12 @@ export class LabRenderer {
 
     // ── Публичный API ─────────────────────────────────────────────────────────
 
+    setViewRange(range: number): void {
+        if (!Number.isFinite(range) || range <= 0 || Math.abs(range - this.viewRange) < 0.5) return;
+        this.viewRange = range;
+        this.resize();
+    }
+
     setArrowScale(scale: number): void {
         this.arrowScale = scale;
     }

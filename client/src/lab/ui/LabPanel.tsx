@@ -10,6 +10,7 @@ import { useState, useEffect, useLayoutEffect, useCallback } from "preact/hooks"
 import { injectStyles } from "../../ui/utils/injectStyles";
 import type { BonkLab } from "../BonkLab";
 import panelCss from "./lab-panel.css?raw";
+import { spaceGroups } from "../../u2taglab/ui/paramDefs";
 import { PARAM_GROUPS, TOW_GROUP, type ParamDef, type GroupDef } from "./paramDefs";
 
 // ─── Вспомогательные функции ──────────────────────────────────────────────────
@@ -54,7 +55,7 @@ function ParamSlider({
 }) {
     const [tooltipOpen, setTooltipOpen] = useState(false);
     const [numberError, setNumberError] = useState("");
-    const towNumber = def.key.startsWith("tow.") && typeof value === "number";
+    const towNumber = (def.key.startsWith("tow.") || def.key.startsWith("space.") || def.strictNumber) && typeof value === "number";
     const [numberDraft, setNumberDraft] = useState(String(value));
 
     // Внешний reset/preset отменяет черновик даже при неизменном принятом числе.
@@ -402,7 +403,7 @@ export interface LabPanelProps {
 }
 
 export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onPanelVisibilityChanged, panelOpen: controlledOpen, onOpenChange, settingsContent }: LabPanelProps) {
-    const groups = towing ? [TOW_GROUP, ...PARAM_GROUPS] : PARAM_GROUPS;
+    const groups = lab.isSpace ? spaceGroups(String(lab.params["tow.type"])) : towing ? [TOW_GROUP, ...PARAM_GROUPS] : PARAM_GROUPS;
     // Инжектируем стили один раз
     useEffect(() => {
         injectStyles("lab-panel-styles", panelCss);

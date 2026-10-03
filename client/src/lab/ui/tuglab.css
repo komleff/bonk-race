@@ -43,3 +43,6 @@ body[data-lab-mode="towing"] .tug-settings-controls .lab-tb-seed-input { flex: 1
 @media (max-width: 899px) {
   body[data-lab-mode="towing"] .lab-panel { width: 100vw; }
 }
+
+/* Космический тормоз доступен независимо от открытой панели параметров. */
+.space-brake { position: fixed; right: 12px; bottom: 18px; z-index: 100; min-width: 80px; min-height: 48px; touch-action: none; }

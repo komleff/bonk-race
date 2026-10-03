@@ -57,3 +57,6 @@ client/dist-tuglab/
 client/dist-lab/
 dist-lab/
 .cache/tuglab-qa/
+
+# Отдельная локальная сборка космического стенда.
+client/dist-u2taglab/

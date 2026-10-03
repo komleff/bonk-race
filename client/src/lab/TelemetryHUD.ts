@@ -65,9 +65,9 @@ export class TelemetryHUD {
 
         // ── Вычисление значений ──
         const speed = Math.hypot(state.vx, state.vy);
-        const speedLimit = (params["limits.speedLimitForwardMps"] as number) ?? 260;
+        const speedLimit = ((params["space.speedLimit"] ?? params["limits.speedLimitForwardMps"]) as number) ?? 260;
         const angVelDeg = Math.abs(state.angularVelocity) * RAD2DEG;
-        const angLimitDeg = ((params["limits.angularSpeedLimitRadps"] as number) || Math.PI) * RAD2DEG;
+        const angLimitDeg = (((params["space.yawLimit"] ?? params["limits.angularSpeedLimitRadps"]) as number) || Math.PI) * RAD2DEG;
 
         // Рассогласование: угол между вектором скорости и курсом персонажа
         let misalignment = 0;
@@ -79,7 +79,7 @@ export class TelemetryHUD {
             misalignment = Math.abs(diff) * RAD2DEG;
         }
 
-        const faLabel = FA_LABELS[state.faState] || state.faState;
+        const faLabel = params["space.fa"] === false ? "OFF" : FA_LABELS[state.faState] || state.faState;
         const zoneLabel = state.currentZone ? (ZONE_LABELS[state.currentZone] || state.currentZone) : "Нет";
         const timeStr = formatTime(state.elapsedTime, true);
 

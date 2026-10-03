@@ -2,6 +2,7 @@
 
 export interface ParamDef {
     quickValues?: number[];
+    strictNumber?: boolean;
     label: string;
     key: string;
     min?: number;

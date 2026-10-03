@@ -42,6 +42,8 @@ import type {
 } from "@bonk-race/shared";
 import type { SandboxOrb, SandboxState } from "./labTypes";
 export type { SandboxOrb, SandboxState } from "./labTypes";
+import { createSpaceProfile, hullInertia, SPACE_RANGES, spaceParams, spaceTowingProfile, type SpaceProfile } from "../u2taglab/profile";
+import { spaceEngineWrench, spaceInputFrame } from "../u2taglab/physics/flightAssist";
 import { LabTowing, TOW_DEFAULTS } from "../tuglab/labTowing";
 import type { BodyState, CaptureResult } from "../tuglab/types";
 import { tickOrbs } from "./orbSimulator";
@@ -136,13 +138,17 @@ export class BonkLab {
 
     /** Все настраиваемые параметры, делегированные paramManager */
     get params(): Record<string, number | boolean | string> {
-        return this.towing ? { ...this.paramManager.params, ...this.towing.params } : this.paramManager.params;
+        return this.towing ? { ...this.paramManager.params, ...this.towing.params,
+            ...(this.space ? { ...spaceParams(this.space), "space.fa": this.spaceFA } : {}) } : this.paramManager.params;
     }
 
     // Сохранено для будущего использования в LabRenderer
     readonly canvas: HTMLCanvasElement;
     private running = false;
     private towing?: LabTowing;
+    private space?: SpaceProfile;
+    private spaceFA = true;
+    private spaceBrake = false;
     private prevB?: BodyState;
     private started = false;
     private readonly onBlur = (): void => { this.pause("Потеря фокуса: нажмите Продолжить"); };
@@ -219,7 +225,7 @@ export class BonkLab {
     /** Истинные значения по умолчанию (balance.json + переопределения BonkLab, до применения стартового пресета) */
     private readonly trueDefaults: Record<string, number | boolean | string>;
 
-    constructor(canvas: HTMLCanvasElement, options?: { towing?: boolean }) {
+    constructor(canvas: HTMLCanvasElement, options?: { towing?: boolean; space?: boolean }) {
         this.canvas = canvas;
 
         // Разрешить balance.json через общий парсер конфигурации
@@ -232,6 +238,14 @@ export class BonkLab {
         this.slimeConfig.geometry.baseRadiusM = 20;
         this.worldPhysics.widthM = 800;
         this.worldPhysics.heightM = 10130;
+        if (options?.space && options.towing) {
+            this.space = createSpaceProfile();
+            this.mass = this.space.massA;
+            this.slimeConfig.geometry.baseRadiusM = this.space.radiusA;
+            this.worldPhysics.widthM = 6000; this.worldPhysics.heightM = 18000;
+            this.worldPhysics.forwardDragK = 0; this.worldPhysics.angularDragK = 0;
+            this.worldPhysics.lateralGripMultiplier = 1;
+        }
 
         // Создать менеджер параметров (владеет плоскими параметрами, патчингом вложенных конфигов, синхронизацией плотности орбов)
         this.paramManager = new LabParamManager(
@@ -244,7 +258,7 @@ export class BonkLab {
         // Построить плоские параметры из значений по умолчанию balance.json + переопределения
         this.paramManager.params = this.paramManager.buildFlatParams(this.lastDensity);
         // Сохранить снимок истинных значений по умолчанию до применения стартового пресета
-        this.trueDefaults = { ...this.params, ...(options?.towing ? TOW_DEFAULTS : {}) };
+        this.trueDefaults = { ...this.params, ...(options?.towing ? (this.space ? spaceTowingProfile(this.space).defaults : TOW_DEFAULTS) : {}) };
 
         // Сгенерировать начальную арену (использовать lastDensity для соответствия значению UI по умолчанию)
         this.arena = this.buildArena(42, this.lastDensity);
@@ -259,7 +273,7 @@ export class BonkLab {
         this.x = this.arena.spawnPoint.x;
         this.y = this.arena.spawnPoint.y;
         if (options?.towing) {
-            this.towing = new LabTowing(this.towingBodyA());
+            this.towing = new LabTowing(this.towingBodyA(), this.space ? spaceTowingProfile(this.space) : undefined);
             this.resetTowing();
         }
         // Инициализировать prev-состояние, чтобы интерполяция не зависела от порядка вызова start()
@@ -275,6 +289,23 @@ export class BonkLab {
     }
 
     // ── Публичный API ────────────────────────────────────────────────────────
+
+    get isSpace(): boolean { return !!this.space; }
+    getScenarioInfo(): { seed: number; density: number } { return { seed: this.lastSeed, density: this.lastDensity }; }
+    setSpaceFA(enabled: boolean): boolean {
+        if (!this.space || typeof enabled !== "boolean") return false;
+        this.spaceFA = enabled;
+        return true;
+    }
+    setSpaceBrake(enabled: boolean): void { this.spaceBrake = this.isSpace && enabled; }
+    resetSpaceParams(): void {
+        if (!this.space || !this.towing) return;
+        this.space = createSpaceProfile(); this.spaceFA = true;
+        this.mass = this.space.massA; this.paramManager.mass = this.mass;
+        this.paramManager.params.mass = this.mass;
+        Object.assign(this.towing.params, spaceTowingProfile(this.space).defaults);
+        this.regenerateArena(this.lastSeed, 5);
+    }
 
     get hasStarted(): boolean { return this.started; }
 
@@ -305,7 +336,7 @@ export class BonkLab {
         this.running = false;
         this.listenForFocus(true);
         this.accumulator = 0;
-        this.inputX = this.inputY = this.inputMagnitude = 0;
+        this.inputX = this.inputY = this.inputMagnitude = 0; this.spaceBrake = false;
         if (reason && !this.towing.needsRestart) this.towing.reason = reason;
         this.syncPrevState();
     }
@@ -332,7 +363,7 @@ export class BonkLab {
         if (!this.towing) return { ok: false, reason: "Буксировка не включена", distance: 0, relativeSpeed: 0 };
         const limits = [this.params["limits.speedLimitForwardMps"], this.params["limits.speedLimitReverseMps"],
             this.params["limits.speedLimitLateralMps"]];
-        const captureMaxSpeed = limits.every(value => typeof value === "number" && Number.isFinite(value) && value > 0)
+        const captureMaxSpeed = this.space ? this.space.speedLimit : limits.every(value => typeof value === "number" && Number.isFinite(value) && value > 0)
             ? Math.min(...limits as number[]) : NaN;
         return this.towing.setConnection(connected, this.towingBodyA(), captureMaxSpeed);
     }
@@ -353,7 +384,7 @@ export class BonkLab {
         const radius = this.slimeConfig.geometry.baseRadiusM;
         return { position: { x: this.x, y: this.y }, velocity: { x: this.vx, y: this.vy },
             angle: this.angle, angularVelocity: this.angVel, mass: this.mass, radius,
-            inertia: this.slimeConfig.geometry.inertiaFactor * this.mass * radius * radius };
+            inertia: this.space ? hullInertia(this.mass, this.space.geometryA) : this.slimeConfig.geometry.inertiaFactor * this.mass * radius * radius };
     }
 
     private applyTowingA(a: BodyState): void {
@@ -382,7 +413,7 @@ export class BonkLab {
         this.yawSignHistory.length = 0;
         this.inputX = 0;
         this.inputY = 0;
-        this.inputMagnitude = 0;
+        this.inputMagnitude = 0; this.spaceBrake = false;
         this.lastFaOutput = { assistFx: 0, assistFy: 0, assistTorque: 0 };
         this.lastFaState = "idle";
         this.correctionFx = 0;
@@ -423,7 +454,7 @@ export class BonkLab {
     private buildArena(seed: number, density: number): Arena {
         const rng = new Rng(seed);
         const baseRadius = this.slimeConfig.geometry.baseRadiusM;
-        return generateArena(
+        const arena = generateArena(
             {
                 seed,
                 widthM: this.worldPhysics.widthM ?? 800,
@@ -432,8 +463,8 @@ export class BonkLab {
                 pillarRadius: (this.params["arena.pillarRadius"] as number) ?? baseRadius,
                 spikeRadius: (this.params["arena.spikeRadius"] as number) ?? baseRadius,
                 passageRadius: (this.params["arena.passageRadius"] as number) ?? baseRadius,
-                passageGap: (this.params["arena.passageGap"] as number) ?? baseRadius * 2 * 1.2,
-                orbCount: (this.params["orbs.count"] as number) ?? 10,
+                passageGap: this.space ? 600 : (this.params["arena.passageGap"] as number) ?? baseRadius * 2 * 1.2,
+                orbCount: this.space ? 0 : (this.params["orbs.count"] as number) ?? 10,
                 orbMinRadius: (this.params["orbs.minRadius"] as number) ?? 5,
                 orbMaxRadius: (this.params["orbs.maxRadius"] as number) ?? 25,
                 orbDensity: (this.params["orbs.density"] as number) ?? this.mass / (Math.PI * baseRadius * baseRadius),
@@ -442,9 +473,36 @@ export class BonkLab {
             },
             rng,
         );
+        if (this.space) {
+            // Временный безопасный мир этапа A: старые поверхности и игровые эффекты исключены.
+            // Каталог станций, астероидов и полей подключается в следующие этапы через buildArena.
+            arena.zones = []; arena.orbs = [];
+            arena.obstacles = arena.obstacles.filter(o => o.y < arena.spawnPoint.y - 3000)
+                .map(o => ({ ...o, type: "pillar" as const }));
+        }
+        return arena;
     }
 
     updateParams(key: string, value: number | boolean | string): void {
+        if (this.space) {
+            if (key === "space.fa") { if (typeof value === "boolean") this.setSpaceFA(value); return; }
+            if (key === "space.enginesEnabled") { if (typeof value === "boolean") this.space.enginesEnabled = value; return; }
+            if (key === "mass" || key.startsWith("space.")) {
+                const range = SPACE_RANGES[key];
+                if (!range || typeof value !== "number" || !Number.isFinite(value) || value < range[0] || value > range[1]) return;
+                if (key === "mass") {
+                    this.space.massA = this.mass = this.paramManager.mass = value;
+                    this.paramManager.params.mass = value;
+                    this.towing!.refresh(this.towingBodyA());
+                } else {
+                    const field = key.slice(6) as keyof SpaceProfile;
+                    (this.space as unknown as Record<string, unknown>)[field] = value;
+                }
+                return;
+            }
+            if (!key.startsWith("tow.") && key !== "arena.objectDensity" && !key.startsWith("trail.")) return;
+            if (key === "arena.objectDensity" && (typeof value !== "number" || !Number.isFinite(value) || value < 0.1 || value > 25)) return;
+        }
         if (key.startsWith("tow.")) {
             if (this.towing?.update(key, value, this.towingBodyA(), this.arena)) {
                 if (this.towing.needsRestart) this.pause();
@@ -546,6 +604,7 @@ export class BonkLab {
 
     /** Снимок начальных условий, без текущей траектории, скоростей и таймера. */
     exportShareSnapshot(): ShareSnapshot {
+        if (this.space) throw new Error("Обмен U2TagLab подключается на этапе D; ссылки TugLab v1 несовместимы");
         if (!this.towing) throw new Error("Обмен доступен только в TugLab");
         return { schema: SHARE_SCHEMA, generator: SHARE_GENERATOR,
             seed: this.lastSeed, density: this.lastDensity,
@@ -555,6 +614,7 @@ export class BonkLab {
 
     /** Сначала проверяем весь снимок; генерация и сброс выполняются ровно один раз. */
     applyShareSnapshot(value: unknown): void {
+        if (this.space) throw new Error("Обмен U2TagLab подключается на этапе D; ссылки TugLab v1 несовместимы");
         if (!this.towing) throw new Error("Обмен доступен только в TugLab");
         const snapshot = validateShareSnapshot(value, this.trueDefaults);
         this.stop();
@@ -761,6 +821,18 @@ export class BonkLab {
         const slimeConfig = this.slimeConfig;
         const radius = slimeConfig.geometry.baseRadiusM;
         const inertia = slimeConfig.geometry.inertiaFactor * mass * radius * radius;
+
+        if (this.space) {
+            if (!this.tickSpace(dt)) return;
+            this.elapsedTime += dt;
+            const finish = this.arena.finishPoint;
+            if (Math.abs(this.x - finish.x) <= this.arena.width * 0.3 + radius && Math.abs(this.y - finish.y) <= 12 + radius) {
+                this.finished = true; this.finishTime = this.elapsedTime;
+                this.isNewRecord = this.bestTime === 0 || this.elapsedTime < this.bestTime;
+                if (this.isNewRecord) this.bestTime = this.elapsedTime;
+            }
+            return;
+        }
 
         // ── 1. Определение зоны (точка в окружности) ──
         this.currentZone = null;
@@ -1046,6 +1118,25 @@ export class BonkLab {
             }
             return; // заморозить симуляцию
         }
+    }
+    private tickSpace(dt: number): boolean {
+        const profile = this.space!, a = this.towingBodyA();
+        const input = spaceInputFrame(a, this.inputX, this.inputY, this.inputMagnitude, profile, this.spaceBrake);
+        const wrench = spaceEngineWrench(a, input, this.spaceFA, profile, dt);
+        const result = this.towing!.advance(a, this.arena, dt, this.worldPhysics.restitution, this.worldPhysics.restitution,
+            (trialA, _trialB, subDt) => {
+                const command = spaceInputFrame(trialA, this.inputX, this.inputY, this.inputMagnitude, profile, this.spaceBrake);
+                const engine = spaceEngineWrench(trialA, command, this.spaceFA, profile, subDt);
+                trialA.velocity.x += engine.force.x * subDt / trialA.mass;
+                trialA.velocity.y += engine.force.y * subDt / trialA.mass;
+                trialA.angularVelocity += engine.torque * subDt / trialA.inertia;
+            });
+        if (result.stopReason) { this.pause(); return false; }
+        this.applyTowingA(result.A);
+        this.lastFaOutput = { assistFx: wrench.force.x, assistFy: wrench.force.y, assistTorque: wrench.torque };
+        this.lastFaState = classifyFaState(this.inputMagnitude > 0.05, this.lastFaOutput, this.vx, this.vy, 0, 0);
+        this.currentZone = null; this.correctionFx = this.correctionFy = 0;
+        return true;
     }
     private tickTowing(dt: number, faOutput: IFlightAssistOutput, drag: IWorldDragParams): boolean {
         const towing = this.towing!;
