@@ -24,10 +24,11 @@ test('space rope minimum is enforced atomically including type switch',()=>{
  lab.updateParams('tow.type','rod');lab.updateParams('tow.length',20);const before=structuredClone(lab.getState().towing);
  lab.updateParams('tow.type','rope');assert.equal(lab.params['tow.type'],'rod');assert.deepEqual(lab.getState().towing,before);
 });
-test('long start checks entire composition and coupling clearance',()=>{
+test('long seeded start reserves entire composition and restores exact spawn',()=>{
  const lab=make();lab.updateParams('tow.length',2000);lab.updateParams('tow.radiusB',250);lab.reset();let s=lab.getState();near(s.towing.distance,2000);assert.equal(s.towing.reason,undefined);
  const a={x:s.x,y:s.y},b=s.towing.B.position;s.arena.obstacles.push({x:(a.x+b.x)/2,y:(a.y+b.y)/2,radius:120,type:'pillar',alive:true});
- lab.reset();s=lab.getState();assert.equal(s.towing.reason,undefined);assert.ok(Math.abs(s.x-a.x)>120 || Math.abs(s.y-a.y)>120);
+ lab.reset();s=lab.getState();assert.equal(s.towing.reason,undefined);near(s.x,a.x);near(s.y,a.y);near(s.y,s.arena.spawnPoint.y);near(s.distanceM,0);
+ assert.ok(s.arena.obstacles.every(o=>Math.hypot(o.x-(a.x+b.x)/2,o.y-(a.y+b.y)/2)>=o.radius+1));
 });
 test('space reconnect uses V_FA in either mode and keeps nearest attachments',()=>{
  for(const fa of [true,false]) {const lab=make();lab.setSpaceFA(fa);lab.setTowingConnection(false);lab.towing.B.velocity.x=200;

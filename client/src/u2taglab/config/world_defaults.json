@@ -1,0 +1,11 @@
+{
+  "width": 6000, "height": 18000,
+  "stationLength": 100, "stationWidth": 100,
+  "derelictLength": 1000, "derelictWidth": 1000,
+  "asteroidMinRadius": 5, "asteroidMaxRadius": 50, "asteroidDensity": 2500,
+  "asteroidMaxSpeed": 5, "validatedAsteroidMaxSpeed": 100, "restitution": 0.8,
+  "couplingLength": 288, "startMargin": 500, "startCorridor": 2000,
+  "startClearance": 350, "bodyClearance": 150, "objectGap": 80,
+  "asteroidsPerDensity": 8, "stationsPerDensity": 0.6, "derelictsPerDensity": 0.4,
+  "maxPlacementAttempts": 2000
+}

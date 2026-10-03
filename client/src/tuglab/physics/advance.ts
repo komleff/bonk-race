@@ -4,14 +4,14 @@ import { applySpring, couplingGeometry, rodStepLimit, solveCoupling } from './co
 import { firstContact, hasPenetration, resolveContact } from './contacts';
 
 const cloneBody = (body: BodyState): BodyState => ({ ...body, position: { ...body.position }, velocity: { ...body.velocity } });
-function validCoupling(coupling: CouplingState): boolean {
+export function validCoupling(coupling: CouplingState): boolean {
   return ['rod', 'rope', 'spring'].includes(coupling.type) && typeof coupling.connected === 'boolean'
     && ['nose', 'tail'].includes(coupling.attachmentA) && ['nose', 'tail'].includes(coupling.attachmentB)
     && [coupling.length, coupling.restLength, coupling.minLength, coupling.maxLength, coupling.k, coupling.c,
       coupling.lastNormal.x, coupling.lastNormal.y, coupling.accumulatedImpulse].every(Number.isFinite)
     && coupling.restLength > 0 && coupling.minLength >= 0 && coupling.maxLength >= coupling.minLength && coupling.k >= 0 && coupling.c >= 0;
 }
-function validNumerics(config: TugConfig): boolean {
+export function validNumerics(config: TugConfig): boolean {
   return [config.substeps, config.solverIterations, config.maxAdaptiveSubsteps, config.maxContactEvents]
     .every(value => Number.isInteger(value) && value > 0 && value <= 4096)
     && config.substeps <= config.maxAdaptiveSubsteps
@@ -24,7 +24,7 @@ function sameStructure(before: BodyState, after: BodyState): boolean {
   return before.position.x === after.position.x && before.position.y === after.position.y && before.angle === after.angle
     && before.mass === after.mass && before.radius === after.radius && before.inertia === after.inertia;
 }
-function couplingAccepted(result: AdvanceResult, config: TugConfig): boolean {
+export function couplingAccepted(result: AdvanceResult, config: TugConfig): boolean {
   const { A, B, coupling } = result;
   if (!isValidBody(A) || !isValidBody(B) || !validCoupling(coupling)) return false;
   const geometry = couplingGeometry(A, B, coupling);

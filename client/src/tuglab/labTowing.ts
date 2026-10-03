@@ -39,14 +39,14 @@ export class LabTowing {
     this.params = { ...(profile?.defaults ?? TOW_DEFAULTS) };
     this.referenceMass = this.reducedMass(a);
     this.B = this.bodyB(a);
-    this.coupling = createCoupling(this.config());
+    this.coupling = createCoupling(this.physicsConfig());
   }
   private bodyB(a: BodyState): BodyState {
     const mass = a.mass * Number(this.params['tow.massRatio']), radius = Number(this.params['tow.radiusB']);
     return { position: { ...a.position }, velocity: { x: 0, y: 0 }, angle: a.angle, angularVelocity: 0,
       mass, radius, inertia: this.profile ? this.profile.inertiaB(mass) : 0.5 * mass * radius * radius };
   }
-  private config(restitution = 0.8): TugConfig {
+  physicsConfig(restitution = 0.8): TugConfig {
     return { ...(defaults as TugConfig), couplingType: this.params['tow.type'] as TugConfig['couplingType'],
       length: Number(this.params['tow.length']), springStiffness: Number(this.params['tow.stiffness']),
       springDamping: Number(this.params['tow.dampingRatio']), springReferenceMass: this.referenceMass, restitution,
@@ -82,7 +82,7 @@ export class LabTowing {
   }
   reset(a: BodyState, arena: Arena): BodyState | undefined {
     this.referenceMass = this.reducedMass(a);
-    const b = this.bodyB(a), coupling = createCoupling(this.config());
+    const b = this.bodyB(a), coupling = createCoupling(this.physicsConfig());
     const separation = a.radius + b.radius + coupling.restLength;
     // Ищем состав только в локальной стартовой области; генератор и карта не меняются.
     const startY = Math.min(arena.spawnPoint.y, arena.height / 2 - separation - b.radius);
@@ -123,7 +123,7 @@ export class LabTowing {
     this.params[key] = value as number | string;
     if (this.profile?.reducedMass) this.referenceMass = this.reducedMass(a);
     const previous = this.coupling;
-    this.coupling = createCoupling(this.config());
+    this.coupling = createCoupling(this.physicsConfig());
     this.coupling.connected = previous.connected;
     if (key !== 'tow.length' && key !== 'tow.type') {
       // Независимые настройки массы/пружины сохраняют фактическую длину захвата.
@@ -179,7 +179,7 @@ export class LabTowing {
   advance(a: BodyState, arena: Arena, dt: number, restitution: number, passageRestitution: number,
     applyVelocity: ApplyVelocity): AdvanceResult {
     this.refresh(a);
-    const result = advancePair(a, this.B, this.coupling, dt, this.config(restitution),
+    const result = advancePair(a, this.B, this.coupling, dt, this.physicsConfig(restitution),
       arena.obstacles.flatMap((o, index) => o.alive === false ? [] : [{ id: `arena:${index}`,
         position: { x: o.x, y: o.y }, radius: o.radius, restitution: o.type === 'passage' ? passageRestitution : restitution }]),
       { minX: -arena.width / 2, maxX: arena.width / 2, minY: -arena.height / 2, maxY: arena.height / 2 }, applyVelocity);

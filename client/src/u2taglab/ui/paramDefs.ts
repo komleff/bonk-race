@@ -1,5 +1,6 @@
 import type { GroupDef, ParamDef } from '../../lab/ui/paramDefs';
 import { SPACE_RANGES, SPACE_SOURCE } from '../profile';
+import { SPACE_WORLD_DEFAULTS } from '../world';
 
 const number = (key: string, label: string, unit: string, tooltip: string, step: number): ParamDef => ({
   key, label, unit, tooltip, step, strictNumber: true, min: SPACE_RANGES[key][0], max: SPACE_RANGES[key][1],
@@ -14,6 +15,14 @@ export function spaceGroups(type: string): GroupDef[] {
       { ...number('tow.length', 'Длина между креплениями', 'м', 'Трос 288–2000 м, штанга/пружина 20–2000 м. Длина между выбранными носом/хвостом, а не центрами. Изменение геометрии может требовать Restart. Трос при захвате сохраняет заданную длину и провисает.', 1), min: type === 'rope' ? 288 : 20 },
       number('tow.stiffness', 'Жёсткость k', 'Н/м', SPACE_SOURCE.coupling + ' Увеличение k ускоряет колебания. Если численный бюджет исчерпан, состав атомарно останавливается; уменьшите k и нажмите Restart.', 1000),
       number('tow.dampingRatio', 'Демпфирование ζ', '', 'ζ=0: свободные колебания пружины, 0.5: начальная калибровка, 1: критическое демпфирование по μ. Действует только между телами, не является сопротивлением космоса.', 0.01),
+    ] },
+    { title: 'Космический мир', params: [
+      { key: 'space.asteroidMaxSpeed', label: 'Максимальная начальная скорость астероидов', unit: 'м/с', strictNumber: true,
+        min: 0, max: SPACE_WORLD_DEFAULTS.validatedAsteroidMaxSpeed, step: 1,
+        tooltip: 'U2 factory: радиус 5–50 м, плотность 2500 кг/м³, масса 4πr³ρ/3 и инерция 2mr²/5. Исходный диапазон скорости 0–5 м/с, omega=0. В лаборатории доступны 0–100 м/с с непрерывным поиском контактов. Изменение пересоздаёт начальный мир из того же seed и обнуляет время; вакуум не тормозит астероиды.' },
+      { key: 'space.collisionRestitution', label: 'Коэффициент столкновения', unit: '', strictNumber: true, min: 0, max: 1, step: 0.01,
+        quickValues: [0, 0.8, 0.95, 1],
+        tooltip: 'Runtime U2 GameWorld: запасное значение 0.8, сектор Перекрёсток использует 0.95. Один e для A/B, астероидов, станций и стен. e=1 сохраняет энергию нормального контакта, e=0 гасит относительную нормальную скорость; импульс подвижной пары сохраняется. Станция 100×100 м / R=70.711 м, заброшенная платформа 1000×1000 м / R=707.107 м — текущие runtime baseline, не финальные размеры ассетов.' },
     ] },
     { title: 'Двигатели A', params: [
       { key: 'space.enginesEnabled', label: 'Двигатели включены', isBoolean: true, tooltip: 'Выключает все линейные силы и момент A, включая FA и ручной тормоз. Вакуум сохраняет инерцию обоих тел; сцепка/контакты продолжают действовать.' },

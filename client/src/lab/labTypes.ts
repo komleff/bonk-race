@@ -6,6 +6,7 @@
  */
 
 import type { TowingSnapshot } from "../tuglab/labTowing";
+import type { SpaceWorld } from "../u2taglab/world";
 
 import type { Arena } from "@bonk-race/shared";
 
@@ -27,6 +28,7 @@ export interface SandboxOrb {
 
 export interface SandboxState {
     towing?: TowingSnapshot;
+    spaceWorld?: SpaceWorld;
     // Персонаж
     x: number;
     y: number;

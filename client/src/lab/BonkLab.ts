@@ -44,6 +44,7 @@ import type { SandboxOrb, SandboxState } from "./labTypes";
 export type { SandboxOrb, SandboxState } from "./labTypes";
 import { createSpaceProfile, hullInertia, SPACE_RANGES, spaceParams, spaceTowingProfile, type SpaceProfile } from "../u2taglab/profile";
 import { spaceEngineWrench, spaceInputFrame } from "../u2taglab/physics/flightAssist";
+import { advanceSpaceWorld, cloneSpaceWorld, createSpaceWorld, spaceWorldArena, SPACE_WORLD_DEFAULTS, type SpaceWorld } from "../u2taglab/world";
 import { LabTowing, TOW_DEFAULTS } from "../tuglab/labTowing";
 import type { BodyState, CaptureResult } from "../tuglab/types";
 import { tickOrbs } from "./orbSimulator";
@@ -139,7 +140,9 @@ export class BonkLab {
     /** Все настраиваемые параметры, делегированные paramManager */
     get params(): Record<string, number | boolean | string> {
         return this.towing ? { ...this.paramManager.params, ...this.towing.params,
-            ...(this.space ? { ...spaceParams(this.space), "space.fa": this.spaceFA } : {}) } : this.paramManager.params;
+            ...(this.space ? { ...spaceParams(this.space), "space.fa": this.spaceFA,
+                "space.asteroidMaxSpeed": this.spaceWorldSettings.asteroidMaxSpeed,
+                "space.collisionRestitution": this.spaceWorldSettings.collisionRestitution } : {}) } : this.paramManager.params;
     }
 
     // Сохранено для будущего использования в LabRenderer
@@ -147,6 +150,9 @@ export class BonkLab {
     private running = false;
     private towing?: LabTowing;
     private space?: SpaceProfile;
+    private spaceWorld?: SpaceWorld;
+    private spaceWorldSettings = { asteroidMaxSpeed: SPACE_WORLD_DEFAULTS.asteroidMaxSpeed, collisionRestitution: SPACE_WORLD_DEFAULTS.restitution };
+    private prevAsteroids?: SpaceWorld["asteroids"];
     private spaceFA = true;
     private spaceBrake = false;
     private prevB?: BodyState;
@@ -245,6 +251,7 @@ export class BonkLab {
             this.worldPhysics.widthM = 6000; this.worldPhysics.heightM = 18000;
             this.worldPhysics.forwardDragK = 0; this.worldPhysics.angularDragK = 0;
             this.worldPhysics.lateralGripMultiplier = 1;
+            this.worldPhysics.restitution = SPACE_WORLD_DEFAULTS.restitution;
         }
 
         // Создать менеджер параметров (владеет плоскими параметрами, патчингом вложенных конфигов, синхронизацией плотности орбов)
@@ -301,6 +308,7 @@ export class BonkLab {
     resetSpaceParams(): void {
         if (!this.space || !this.towing) return;
         this.space = createSpaceProfile(); this.spaceFA = true;
+        this.spaceWorldSettings = { asteroidMaxSpeed: SPACE_WORLD_DEFAULTS.asteroidMaxSpeed, collisionRestitution: SPACE_WORLD_DEFAULTS.restitution };
         this.mass = this.space.massA; this.paramManager.mass = this.mass;
         this.paramManager.params.mass = this.mass;
         Object.assign(this.towing.params, spaceTowingProfile(this.space).defaults);
@@ -402,6 +410,7 @@ export class BonkLab {
 
     reset(): void {
         if (this.towing) { this.stop(); this.started = false; }
+        if (this.space) this.arena = this.buildArena(this.lastSeed, this.lastDensity);
         this.x = this.arena.spawnPoint.x;
         this.y = this.arena.spawnPoint.y;
         this.vx = 0;
@@ -452,6 +461,12 @@ export class BonkLab {
 
     /** Построить арену из сида, плотности и текущих параметров */
     private buildArena(seed: number, density: number): Arena {
+        if (this.space) {
+            this.spaceWorld = createSpaceWorld({ ...this.space, radiusB: Number(this.towing?.params["tow.radiusB"] ?? this.space.radiusB) }, seed, density,
+                { couplingLength: Number(this.towing?.params["tow.length"] ?? SPACE_WORLD_DEFAULTS.couplingLength),
+                    asteroidMaxSpeed: this.spaceWorldSettings.asteroidMaxSpeed });
+            return spaceWorldArena(this.spaceWorld);
+        }
         const rng = new Rng(seed);
         const baseRadius = this.slimeConfig.geometry.baseRadiusM;
         const arena = generateArena(
@@ -463,8 +478,8 @@ export class BonkLab {
                 pillarRadius: (this.params["arena.pillarRadius"] as number) ?? baseRadius,
                 spikeRadius: (this.params["arena.spikeRadius"] as number) ?? baseRadius,
                 passageRadius: (this.params["arena.passageRadius"] as number) ?? baseRadius,
-                passageGap: this.space ? 600 : (this.params["arena.passageGap"] as number) ?? baseRadius * 2 * 1.2,
-                orbCount: this.space ? 0 : (this.params["orbs.count"] as number) ?? 10,
+                passageGap: (this.params["arena.passageGap"] as number) ?? baseRadius * 2 * 1.2,
+                orbCount: (this.params["orbs.count"] as number) ?? 10,
                 orbMinRadius: (this.params["orbs.minRadius"] as number) ?? 5,
                 orbMaxRadius: (this.params["orbs.maxRadius"] as number) ?? 25,
                 orbDensity: (this.params["orbs.density"] as number) ?? this.mass / (Math.PI * baseRadius * baseRadius),
@@ -473,18 +488,18 @@ export class BonkLab {
             },
             rng,
         );
-        if (this.space) {
-            // Временный безопасный мир этапа A: старые поверхности и игровые эффекты исключены.
-            // Каталог станций, астероидов и полей подключается в следующие этапы через buildArena.
-            arena.zones = []; arena.orbs = [];
-            arena.obstacles = arena.obstacles.filter(o => o.y < arena.spawnPoint.y - 3000)
-                .map(o => ({ ...o, type: "pillar" as const }));
-        }
         return arena;
     }
 
     updateParams(key: string, value: number | boolean | string): void {
         if (this.space) {
+            if (key === "space.asteroidMaxSpeed" || key === "space.collisionRestitution") {
+                const max = key === "space.asteroidMaxSpeed" ? SPACE_WORLD_DEFAULTS.validatedAsteroidMaxSpeed : 1;
+                if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > max) return;
+                this.spaceWorldSettings[key.slice(6) as keyof typeof this.spaceWorldSettings] = value;
+                if (key === "space.asteroidMaxSpeed") this.regenerateArena(this.lastSeed, this.lastDensity);
+                return;
+            }
             if (key === "space.fa") { if (typeof value === "boolean") this.setSpaceFA(value); return; }
             if (key === "space.enginesEnabled") { if (typeof value === "boolean") this.space.enginesEnabled = value; return; }
             if (key === "mass" || key.startsWith("space.")) {
@@ -554,6 +569,7 @@ export class BonkLab {
     getState(): SandboxState {
         return {
             ...(this.towing ? { towing: this.towing.snapshot(this.towingBodyA(), !this.running) } : {}),
+            ...(this.spaceWorld ? { spaceWorld: cloneSpaceWorld(this.spaceWorld) } : {}),
             x: this.x,
             y: this.y,
             vx: this.vx,
@@ -707,6 +723,7 @@ export class BonkLab {
             const b = this.towing.B;
             this.prevB = { ...b, position: { ...b.position }, velocity: { ...b.velocity } };
         }
+        if (this.spaceWorld) this.prevAsteroids = cloneSpaceWorld(this.spaceWorld).asteroids;
     }
 
     /**
@@ -736,6 +753,16 @@ export class BonkLab {
             b.velocity.y = prev.velocity.y + (b.velocity.y - prev.velocity.y) * a;
             b.angle = lerpAngle(prev.angle, b.angle, a);
             b.angularVelocity = prev.angularVelocity + (b.angularVelocity - prev.angularVelocity) * a;
+        }
+        if (state.spaceWorld && this.prevAsteroids) {
+            const previous = new Map(this.prevAsteroids.map(b => [b.id, b]));
+            for (const body of state.spaceWorld.asteroids) {
+                const prev = previous.get(body.id);
+                if (!prev) continue;
+                body.position.x = prev.position.x + (body.position.x - prev.position.x) * a;
+                body.position.y = prev.position.y + (body.position.y - prev.position.y) * a;
+                body.angle = lerpAngle(prev.angle, body.angle, a);
+            }
         }
         // Пересчитать производные поля по интерполированной позиции,
         // чтобы оверлей телеметрии не расходился с отрисованной позицией
@@ -1123,15 +1150,16 @@ export class BonkLab {
         const profile = this.space!, a = this.towingBodyA();
         const input = spaceInputFrame(a, this.inputX, this.inputY, this.inputMagnitude, profile, this.spaceBrake);
         const wrench = spaceEngineWrench(a, input, this.spaceFA, profile, dt);
-        const result = this.towing!.advance(a, this.arena, dt, this.worldPhysics.restitution, this.worldPhysics.restitution,
-            (trialA, _trialB, subDt) => {
-                const command = spaceInputFrame(trialA, this.inputX, this.inputY, this.inputMagnitude, profile, this.spaceBrake);
-                const engine = spaceEngineWrench(trialA, command, this.spaceFA, profile, subDt);
-                trialA.velocity.x += engine.force.x * subDt / trialA.mass;
-                trialA.velocity.y += engine.force.y * subDt / trialA.mass;
-                trialA.angularVelocity += engine.torque * subDt / trialA.inertia;
+        const towing = this.towing!;
+        const result = advanceSpaceWorld(a, towing.B, towing.coupling, this.spaceWorld!, dt,
+            towing.physicsConfig(this.spaceWorldSettings.collisionRestitution), ({ id, body, subDt }) => {
+                if (id !== "A") return { force: { x: 0, y: 0 }, torque: 0 };
+                const command = spaceInputFrame(body, this.inputX, this.inputY, this.inputMagnitude, profile, this.spaceBrake);
+                return spaceEngineWrench(body, command, this.spaceFA, profile, subDt);
             });
-        if (result.stopReason) { this.pause(); return false; }
+        towing.diagnostics = result.diagnostics;
+        if (result.stopReason) { towing.fail(result.stopReason); this.pause(); return false; }
+        towing.B = result.B; towing.coupling = result.coupling; this.spaceWorld = result.world;
         this.applyTowingA(result.A);
         this.lastFaOutput = { assistFx: wrench.force.x, assistFy: wrench.force.y, assistTorque: wrench.torque };
         this.lastFaState = classifyFaState(this.inputMagnitude > 0.05, this.lastFaOutput, this.vx, this.vy, 0, 0);

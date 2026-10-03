@@ -234,7 +234,8 @@ export class LabRenderer {
         this.drawZones(ctx, state);
         this.drawSpawnAndFinish(ctx, state);
         this.drawWalls(ctx, state);
-        this.drawObstacles(ctx, state);
+        if (state.spaceWorld) this.drawSpaceWorld(ctx, state);
+        else this.drawObstacles(ctx, state);
         this.drawOrbs(ctx, state);
         if (state.towing) this.drawTowing(ctx, state);
 
@@ -390,6 +391,39 @@ export class LabRenderer {
     }
 
     // ── Слой: Орбы ──────────────────────────────────────────────────────────
+
+    private drawSpaceWorld(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const world = state.spaceWorld!;
+        for (const object of world.statics) {
+            const { x, y } = object.position, r = object.radius;
+            const station = object.kind === "station";
+            ctx.save(); ctx.translate(x, y);
+            ctx.fillStyle = station ? "#152a36" : "#322b25";
+            ctx.strokeStyle = station ? "#63c9e5" : "#b48b62";
+            ctx.lineWidth = 2 / this.scale;
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, r * (station ? 0.55 : 0.75), 0, 2 * Math.PI); ctx.stroke();
+            const spokes = station ? 4 : 8;
+            for (let i = 0; i < spokes; i++) {
+                const angle = i * 2 * Math.PI / spokes;
+                ctx.beginPath(); ctx.moveTo(Math.cos(angle) * r * 0.2, Math.sin(angle) * r * 0.2);
+                ctx.lineTo(Math.cos(angle) * r * 0.94, Math.sin(angle) * r * 0.94); ctx.stroke();
+            }
+            ctx.font = `${14 / this.scale}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = station ? "#8cdeef" : "#d0a780";
+            ctx.fillText(station ? "СТАНЦИЯ" : "ЗАБРОШЕННАЯ ПЛАТФОРМА", 0, -r - 12 / this.scale);
+            ctx.restore();
+        }
+        for (const body of world.asteroids) {
+            const r = body.radius;
+            ctx.save(); ctx.translate(body.position.x, body.position.y); ctx.rotate(body.angle);
+            ctx.fillStyle = "#4c515b"; ctx.strokeStyle = "#91969e"; ctx.lineWidth = 1.5 / this.scale;
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = "#343842";
+            ctx.beginPath(); ctx.arc(-r * 0.25, -r * 0.18, r * 0.25, 0, 2 * Math.PI); ctx.stroke();
+            ctx.beginPath(); ctx.arc(r * 0.33, r * 0.2, r * 0.16, 0, 2 * Math.PI); ctx.stroke();
+            ctx.restore();
+        }
+    }
 
     private drawOrbs(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         for (const orb of state.orbs) {
@@ -1040,7 +1074,7 @@ export class LabRenderer {
         }
 
         // Препятствия
-        for (const obs of state.arena.obstacles) {
+        for (const obs of state.spaceWorld ? [] : state.arena.obstacles) {
             if (obs.alive === false) continue;
             ctx.beginPath();
             ctx.arc(toMX(obs.x), toMY(obs.y), Math.max(obs.radius * ms, 1.5), 0, Math.PI * 2);
@@ -1048,6 +1082,14 @@ export class LabRenderer {
             ctx.globalAlpha = 0.6;
             ctx.fill();
             ctx.globalAlpha = 1;
+        }
+
+        if (state.spaceWorld) {
+            for (const object of [...state.spaceWorld.statics, ...state.spaceWorld.asteroids]) {
+                ctx.beginPath(); ctx.arc(toMX(object.position.x), toMY(object.position.y), Math.max(object.radius * ms, 1.5), 0, Math.PI * 2);
+                ctx.fillStyle = object.kind === "station" ? "#63c9e5" : object.kind === "derelict" ? "#b48b62" : "#91969e";
+                ctx.fill();
+            }
         }
 
         // Орбы (маленькие голубые точки)
