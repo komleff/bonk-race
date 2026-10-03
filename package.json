@@ -1,6 +1,6 @@
 {
   "name": "bonk-race",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "private": true,
   "workspaces": [
     "client",
@@ -28,7 +28,10 @@
     "qa:tuglab:matrix": "tsc -p client/tsconfig.tuglab-test.json && node tests/tuglab/qa-matrix.cjs",
     "qa:tuglab:browser": "node tests/tuglab/qa-browser.cjs",
     "dev:u2taglab": "npm run dev:u2taglab --workspace=client",
-    "build:u2taglab": "npm run build:u2taglab --workspace=client"
+    "build:u2taglab": "npm run build:u2taglab --workspace=client",
+    "test:u2taglab:ui": "node tests/tuglab/u2taglab-ui.cjs",
+    "qa:u2taglab:browser": "node tests/tuglab/u2taglab-built-browser.cjs",
+    "qa:u2taglab:matrix": "tsc -p client/tsconfig.tuglab-test.json && node tests/tuglab/u2taglab-qa-matrix.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

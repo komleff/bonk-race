@@ -20,7 +20,7 @@ export const SPACE_SOURCE = {
   inertia: 'U2: I=m(L²+W²)/12; круг R=(L²+W²)/(2(L+W)) — лабораторное допущение.',
   yaw: 'Размерная M-кривая: 24°/с; расчётная alpha 24°/с². Момент от сухой массы A, без роста при изменении массы.',
   fa: 'Лабораторная адаптация: один V_FA=250 м/с, crew-g=4.5. Coast 1.5 м/с, comfort 3.5 с, emergency 0.2 с, lateral 20 м/с², yaw stop 1 с — опора U2 Стриж.',
-  coupling: 'Расчётная калибровка: f=0.15 Гц, ζ=0.5; k=μ(2πf)², c=2ζ√(kμ). Трос ≥288 м по обычной XL сетке.',
+  coupling: 'Расчётная калибровка: f=0.15 Гц, ζ=0.5; k=μ(2πf)², c=2ζ√(kμ). Пружина 270 м: измеренная LAB-калибровка для A300 т/B680 т, практический диапазон 270–288 м. Трос ≥288 м по обычной XL сетке. Длина не меняет собственные k/c/f.',
 } as const;
 export const hullInertia = (mass: number, geometry: HullGeometry): number => mass * (geometry.length ** 2 + geometry.width ** 2) / 12;
 export const hullCircleRadius = (geometry: HullGeometry): number => (geometry.length ** 2 + geometry.width ** 2) / (2 * (geometry.length + geometry.width));
@@ -55,7 +55,7 @@ export function spaceParams(profile: SpaceProfile): Record<string, number | bool
 export function spaceTowingProfile(profile: SpaceProfile): TowingProfile {
   const reducedMass = profile.massA * profile.massB / (profile.massA + profile.massB);
   return { defaults: { 'tow.massRatio': profile.massB / profile.massA, 'tow.radiusB': profile.radiusB,
-    'tow.length': 288, 'tow.type': 'spring', 'tow.stiffness': reducedMass * (2 * Math.PI * 0.15) ** 2, 'tow.dampingRatio': 0.5 },
+    'tow.length': 270, 'tow.type': 'spring', 'tow.stiffness': reducedMass * (2 * Math.PI * 0.15) ** 2, 'tow.dampingRatio': 0.5 },
     ranges: SPACE_RANGES, inertiaB: mass => hullInertia(mass, profile.geometryB), reducedMass: true,
     ropeMinLength: 288, captureMinLength: 2, clearCoupling: true, spawnSearch: { depth: 2500, step: 100, lateral: 2500 },
     maxValidatedSpeed: 1000 };

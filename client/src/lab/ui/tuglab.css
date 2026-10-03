@@ -45,4 +45,6 @@ body[data-lab-mode="towing"] .tug-settings-controls .lab-tb-seed-input { flex: 1
 }
 
 /* Космический тормоз доступен независимо от открытой панели параметров. */
-.space-brake { position: fixed; right: 12px; bottom: 18px; z-index: 100; min-width: 80px; min-height: 48px; touch-action: none; }
+.space-flight-controls { position: fixed; right: 12px; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 100; display: flex; gap: 8px; }
+body[data-space-mode="true"] .space-flight-controls .lab-tb-btn { min-width: 80px; min-height: 48px; touch-action: none; }
+body[data-space-mode="true"] .tug-density .lab-param-info { align-self: flex-start; }

@@ -6,7 +6,7 @@ const advance=(lab,n=1)=>{for(let i=0;i<n;i++)lab.update(1/60);};
 const live=lab=>{lab.start();advance(lab,240);};
 test('space starts a free large composition with source geometry and calibrated spring',()=>{
  const lab=make(),s=lab.getState();near(s.mass,300000);near(s.radius,24.879310344827587);near(s.towing.B.mass,680000);
- near(s.towing.B.inertia,791520000);near(s.towing.distance,288);near(s.towing.coupling.k,184904.0171469394);assert.equal(s.towing.reason,undefined);
+ near(s.towing.B.inertia,791520000);near(s.towing.distance,270);near(s.towing.coupling.k,184904.0171469394);assert.equal(s.towing.reason,undefined);
  assert.equal(s.orbs.length,0);assert.equal(s.arena.zones.length,0);assert.ok(s.arena.width>=6000);
 });
 test('live FA toggle keeps bodies, seed, timer, angle, input and current coupling',()=>{
@@ -21,8 +21,8 @@ test('mass edits do not add torque; radius override does not change U2 inertia',
 });
 test('space rope minimum is enforced atomically including type switch',()=>{
  const lab=make();lab.updateParams('tow.type','rope');lab.updateParams('tow.length',287);near(lab.params['tow.length'],288);
- lab.updateParams('tow.type','rod');lab.updateParams('tow.length',20);const before=structuredClone(lab.getState().towing);
- lab.updateParams('tow.type','rope');assert.equal(lab.params['tow.type'],'rod');assert.deepEqual(lab.getState().towing,before);
+ lab.updateParams('tow.type','rod');lab.updateParams('tow.length',20);
+ lab.updateParams('tow.type','rope');assert.equal(lab.params['tow.type'],'rope');near(lab.params['tow.length'],288);assert.ok(lab.getState().towing.needsRestart);
 });
 test('long seeded start reserves entire composition and restores exact spawn',()=>{
  const lab=make();lab.updateParams('tow.length',2000);lab.updateParams('tow.radiusB',250);lab.reset();let s=lab.getState();near(s.towing.distance,2000);assert.equal(s.towing.reason,undefined);
@@ -42,7 +42,7 @@ test('space bypasses legacy FA and ambient drag; B has no damping',()=>{
 });
 test('actual space thrust transfers to B and pause/step/restart remain coherent',()=>{
  const lab=make();lab.updateParams('tow.type','rod');lab.reset();live(lab);const s=lab.getState();lab.setInput(0,-1,1);advance(lab,120);let t=lab.getState();
- assert.ok(t.y<s.y-10);assert.ok(t.towing.B.velocity.y<0);assert.equal(t.towing.reason,undefined);near(t.towing.distance,288,2.88);
+ assert.ok(t.y<s.y-10);assert.ok(t.towing.B.velocity.y<0);assert.equal(t.towing.reason,undefined);near(t.towing.distance,270,2.7);
  lab.pause();t=lab.getState();lab.stepOnce();near(lab.getState().elapsedTime,t.elapsedTime+1/60);assert.deepEqual(lab.getInterpolatedState(0),lab.getState());lab.reset();near(lab.getState().elapsedTime,0);
 });
 test('space extreme solver stop is atomic, with no partial A/B update',()=>{

@@ -9,12 +9,14 @@ import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
 import tuglabCss from "./ui/tuglab.css?raw";
 import { injectStyles } from "../ui/utils/injectStyles";
+import { decodeSpaceShareFragment } from "../u2taglab/share";
 import { decodeShareFragment } from "../tuglab/share";
 import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
 const root = document.getElementById("lab-root")!;
 const space = root.dataset.mode === "space";
 const towing = space || root.dataset.mode === "towing";
+if (space) document.body.dataset.spaceMode = "true";
 if (towing) { document.body.dataset.labMode = "towing"; injectStyles("tuglab-styles", tuglabCss); }
 
 // Создать canvas — заполняет область видимости (правый край зарезервирован для панели параметров)
@@ -61,7 +63,8 @@ if (towing) lab.reset();
 let startupError = "";
 const sharedLaunch = towing && location.hash.length > 0;
 if (sharedLaunch) {
-    try { lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
+    try { if (space) lab.applySpaceShareSnapshot(decodeSpaceShareFragment(location.hash));
+        else lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
     catch (error) { startupError = error instanceof Error ? error.message : "Повреждённая ссылка TugLab"; lab.pause(); }
 }
 
@@ -128,7 +131,8 @@ function onShareHashChanged(): void {
     input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail();
     startupError = "";
     if (location.hash) {
-        try { lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
+        try { if (space) lab.applySpaceShareSnapshot(decodeSpaceShareFragment(location.hash));
+        else lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
         catch (error) { startupError = error instanceof Error ? error.message : "Повреждённая ссылка TugLab"; lab.pause(); }
     }
     renderPanel();

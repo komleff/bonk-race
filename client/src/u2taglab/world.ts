@@ -15,12 +15,14 @@ export interface SpaceWorld {
 export interface SpaceWorldOptions { couplingLength?: number; asteroidMaxSpeed?: number; fields?: SpaceFieldSettings }
 export const SPACE_WORLD_DEFAULTS = defaults;
 
-export function createAsteroid(radius: number, position: Vec2, velocity: Vec2): BodyState {
+export function createAsteroid(radius: number, position: Vec2, velocity: Vec2, massOverride?: number): BodyState {
   if (![radius, position.x, position.y, velocity.x, velocity.y].every(Number.isFinite) || radius <= 0) {
     throw new Error('Недопустимое состояние астероида');
   }
-  const mass = 4 * Math.PI * radius ** 3 * defaults.asteroidDensity / 3;
-  return { position: { ...position }, velocity: { ...velocity }, radius, mass, inertia: 2 * mass * radius ** 2 / 5,
+  // LAB-закон плоского тела: фиксированная поверхностная плотность, без зависимости от корабля.
+  const mass = massOverride ?? Math.PI * radius ** 2 * defaults.asteroidSurfaceDensity;
+  if (!Number.isFinite(mass) || mass <= 0) throw new Error('Недопустимая масса астероида');
+  return { position: { ...position }, velocity: { ...velocity }, radius, mass, inertia: 0.5 * mass * radius ** 2,
     angle: 0, angularVelocity: 0 };
 }
 export function cloneSpaceWorld(world: SpaceWorld): SpaceWorld {
@@ -49,6 +51,8 @@ export function createSpaceWorld(profile: SpaceProfile, seed: number, density: n
     statics: [], asteroids: [], time: 0, tick: 0, fields: [],
     fieldShipRadii: Object.freeze({ A: hullCircleRadius(profile.geometryA), B: hullCircleRadius(profile.geometryB) }) };
   world.fields = createSpaceFields(world, options.fields ?? SPACE_FIELD_DEFAULTS);
+  // Отдельный поток массы не расходует RNG размещения/радиуса/начальной скорости.
+  const massRng = new Rng((seed ^ 0x62d74fab) >>> 0);
   const rng = new Rng(seed), placed: { position: Vec2; radius: number }[] = [];
   const low = world.spawnPoint.y - Math.max(defaults.startCorridor, length), high = world.spawnPoint.y + separation;
   const free = (position: Vec2, radius: number): boolean => {
@@ -78,11 +82,15 @@ export function createSpaceWorld(profile: SpaceProfile, seed: number, density: n
     }
   }
   for (let i = 0; i < Math.max(1, Math.round(density * defaults.asteroidsPerDensity)); i++) {
-    const radius = rng.range(defaults.asteroidMinRadius, defaults.asteroidMaxRadius), position = place(radius, i < 6);
+    const mass = 10 ** massRng.range(Math.log10(defaults.asteroidMinMass), Math.log10(defaults.asteroidMaxMass));
+    const radius = Math.sqrt(mass / (Math.PI * defaults.asteroidSurfaceDensity));
+    // Сохраняем шаг потока геометрии, прежде расходовавшийся на независимый радиус.
+    rng.next();
+    const position = place(radius, i < 6);
     if (!position) continue;
     const speed = rng.range(0, maxSpeed), angle = rng.range(0, 2 * Math.PI);
     world.asteroids.push({ id: `asteroid:${i}`, kind: 'asteroid', ...createAsteroid(radius, position,
-      { x: speed * Math.cos(angle), y: speed * Math.sin(angle) }) });
+      { x: speed * Math.cos(angle), y: speed * Math.sin(angle) }, mass) });
   }
   return world;
 }

@@ -1074,7 +1074,7 @@ export class LabRenderer {
     ): void {
         const size = MINIMAP_SIZE;
         const mx = canvasW - size - MINIMAP_MARGIN;
-        const my = canvasH - size - MINIMAP_MARGIN;
+        const my = state.spaceWorld ? MINIMAP_MARGIN : canvasH - size - MINIMAP_MARGIN;
 
         // Фон
         ctx.fillStyle = MINIMAP_BG;

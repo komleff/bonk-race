@@ -6,6 +6,7 @@ import { Fragment } from "preact";
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "preact/hooks";
 import { injectStyles } from "../../ui/utils/injectStyles";
 import { LabPanel } from "./LabPanel";
+import { createSpaceShareUrl } from "../../u2taglab/share";
 import { createShareUrl, validateShareSnapshot } from "../../tuglab/share";
 import { createSpaceProfile, SPACE_SOURCE } from "../../u2taglab/profile";
 import { SPACE_FIELD_INFO } from "../../u2taglab/fields";
@@ -155,6 +156,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     const [shareLink, setShareLink] = useState("");
     const [shareNotice, setShareNotice] = useState("");
     const [shareError, setShareError] = useState("");
+    const [worldHelp, setWorldHelp] = useState("");
     const launchError = startupError ?? "";
     useLayoutEffect(() => {
         if (towing && panelOpen) {
@@ -166,7 +168,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     const handleShare = async () => {
         setShareNotice(""); setShareError("");
         try {
-            const link = createShareUrl(location.href, validateShareSnapshot(lab.exportShareSnapshot(), defaults));
+            const link = space ? createSpaceShareUrl(location.href, lab.exportSpaceShareSnapshot())
+                : createShareUrl(location.href, validateShareSnapshot(lab.exportShareSnapshot(), defaults));
             setShareLink(link);
             try {
                 await navigator.clipboard.writeText(link);
@@ -358,10 +361,14 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     if (towing && towState) {
         const settings = <div class="tug-settings-controls">
             <div class="lab-tb-seed-group"><label for="tug-seed">Seed:</label>
+                {space && <button class="lab-param-info" aria-label="Справка: Seed" aria-expanded={worldHelp === "seed"} onClick={() => setWorldHelp(worldHelp === "seed" ? "" : "seed")}>i</button>}
                 <input id="tug-seed" type="number" class="lab-tb-seed-input" aria-label="Seed" min="0" max="4294967295" value={seed} onInput={handleSeedChange} />
                 <button class="lab-tb-btn" onClick={handleRandomSeed}>Rnd</button></div>
+            {space && worldHelp === "seed" && <p>Seed — целое число 0–4294967295. Внутренний генератор повторяет размещение объектов, начальные движения и поля. Изменение запускает новый мир с временем 0; число само по себе не задаёт физические настройки.</p>}
             <label class="tug-density">Насыщенность: {density.toFixed(1)}
+                {space && <button type="button" class="lab-param-info" aria-label="Справка: Насыщенность" aria-expanded={worldHelp === "density"} onClick={() => setWorldHelp(worldHelp === "density" ? "" : "density")}>i</button>}
                 <input type="range" aria-label="Насыщенность арены" min="0.1" max="25" step="0.1" value={density} onInput={handleDensityChange} /></label>
+            {space && worldHelp === "density" && <p>LAB-множитель 0.1–25: меняет число станций, платформ, астероидов и полей. Большая насыщенность оставляет меньше свободного пространства. Пересоздаёт мир из текущего seed и обнуляет время. Размеры статичных объектов — runtime U2; массы и радиусы астероидов — общий 2D-каталог LAB.</p>}
             {!space && <select class="lab-tb-select" aria-label="Пресет движения" value={activePreset} onChange={handlePreset}>
                 <option value={-1}>Custom</option>{PRESETS.map((preset, i) => <option key={i} value={i}>{preset.label}</option>)}
             </select>}
@@ -371,9 +378,9 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 {Object.entries(SPACE_FIELD_INFO).map(([key, info]) => <p key={key}><strong>{info.label}.</strong> {info.description}</p>)}
             </details>}
             <div class="tug-settings-actions"><button class="lab-tb-btn" onClick={handleResetParams}>Сброс</button>
-                {!space && <button class="lab-tb-btn" onClick={handleShare}>Поделиться</button>}</div>
+                <button class="lab-tb-btn" onClick={handleShare}>Поделиться</button></div>
             {space && <button class="lab-tb-btn" onClick={() => { lab.updateParams("tow.radiusB", createSpaceProfile().radiusB); onParamsChanged?.(); }}>Радиус B по ТТХ</button>}
-            <span class="tug-build">{space ? "U2TagLab v0.1 · расчётный профиль" : "TugLab v0.1.1"} · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
+            <span class="tug-build">{space ? "U2TagLab v0.1.0 · расчётный профиль" : "TugLab v0.1.1"} · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
             {shareError && <p role="alert">{shareError}</p>}
         </div>;
         return <Fragment>
@@ -386,8 +393,6 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                         onClick={() => { onClearInput?.(); lab.stepOnce(); setTowState(lab.getState().towing); }}>Step</button>}
                     <button class="lab-tb-btn" onClick={() => { onClearInput?.(); lab.setTowingConnection(!towState.coupling.connected); setTowState(lab.getState().towing); }}>{towState.coupling.connected ? "Расцепить" : "Сцепить"}</button>
                 </div>
-                {space && <button class="lab-tb-btn" aria-label="Flight Assist" aria-pressed={fa}
-                    onClick={() => { const enabled = !Boolean(lab.params["space.fa"]); lab.setSpaceFA(enabled); setFa(enabled); onParamsChanged?.(); }}>FA {fa ? "ON" : "OFF"}</button>}
                 <button class="lab-tb-btn tug-settings-toggle" aria-label="Настройки" aria-expanded={panelOpen}
                     onClick={() => { onClearInput?.(); setPanelOpen(!panelOpen); }}>⚙</button>
             </div>
@@ -396,8 +401,11 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 {towState.paused && " · пауза"}
                 {towState.reason && <span role="alert"> · {towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</span>}
             </div>
-            {space && <button class="lab-tb-btn space-brake" aria-label="Тормоз" onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); lab.setSpaceBrake(true); }}
-                onPointerUp={() => lab.setSpaceBrake(false)} onPointerCancel={() => lab.setSpaceBrake(false)}>Тормоз</button>}
+            {space && <div class="space-flight-controls">
+                <button class="lab-tb-btn" aria-label="Flight Assist" aria-pressed={fa}
+                    onClick={() => { const enabled = !Boolean(lab.params["space.fa"]); lab.setSpaceFA(enabled); setFa(enabled); onParamsChanged?.(); }}>FA {fa ? "ON" : "OFF"}</button>
+                <button class="lab-tb-btn space-brake" aria-label="Тормоз" onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); lab.setSpaceBrake(true); }}
+                onPointerUp={() => lab.setSpaceBrake(false)} onPointerCancel={() => lab.setSpaceBrake(false)} onLostPointerCapture={() => lab.setSpaceBrake(false)} onBlur={() => lab.setSpaceBrake(false)}>Тормоз</button></div>}
             <LabPanel lab={lab} towing panelOpen={panelOpen} onOpenChange={setPanelOpen} settingsContent={settings}
                 syncTrigger={syncTrigger} onPanelVisibilityChanged={onPanelVisibilityChanged} onParamChanged={onParamsChanged} />
             {shareLink && <div class="lab-modal-backdrop"><div class="lab-modal" role="dialog" aria-label="Поделиться заездом">

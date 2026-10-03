@@ -26,7 +26,7 @@ test('seed reproduces semantic world, source geometry, ids and velocities',()=>{
  near(a.statics.find(o=>o.kind==='station').radius,Math.hypot(100,100)/2);
  near(a.statics.find(o=>o.kind==='derelict').radius,Math.hypot(1000,1000)/2);
  assert.ok(a.asteroids.length>0);assert.equal(new Set([...a.statics,...a.asteroids].map(o=>o.id)).size,a.statics.length+a.asteroids.length);
- for(const b of a.asteroids){assert.ok(b.radius>=5&&b.radius<=50);assert.ok(Math.hypot(b.velocity.x,b.velocity.y)<=5);near(b.angularVelocity,0);}
+ for(const b of a.asteroids){assert.ok(b.radius>=0.5641895835477563&&b.radius<=252.313252202016);assert.ok(Math.hypot(b.velocity.x,b.velocity.y)<=5);near(b.angularVelocity,0);}
 });
 test('selected long composition, line and initial maneuver corridor are reserved',()=>{
  for(const length of [20,288,2000])for(const radiusB of [2,250])for(const seed of [1,42,2147483647]) {
@@ -40,8 +40,8 @@ test('selected long composition, line and initial maneuver corridor are reserved
   assert.ok(high+radiusB<w.height/2);assert.ok(w.width>=6000&&w.height>=18000);
  }
 });
-test('asteroids use solid sphere mass and inertia and coast without drag',()=>{
- const b=api().createAsteroid(5,{x:200,y:0},{x:20,y:-8});near(b.mass,4*Math.PI*5**3*2500/3);near(b.inertia,2*b.mass*25/5);
+test('2D asteroid factory uses areal mass and disk inertia while vacuum preserves motion',()=>{
+ const b=api().createAsteroid(5,{x:200,y:0},{x:20,y:-8});near(b.mass,78539.81633974483);near(b.inertia,981747.7042468103);
  const s=setup();s.w.asteroids=[{id:'asteroid:0',kind:'asteroid',...b,angularVelocity:0.7}];const r=run(s,0.2);
  assert.equal(r.stopReason,undefined);near(r.world.asteroids[0].position.x,204);near(r.world.asteroids[0].position.y,-1.6);
  near(r.world.asteroids[0].velocity.x,20);near(r.world.asteroids[0].angularVelocity,0.7);near(r.world.asteroids[0].angle,0.14);
@@ -146,4 +146,50 @@ for(const type of ['rod','rope','spring'])for(const gap of [0,0.005])test(`world
  const all=api().advanceSpaceWorld(s.A,s.B,s.coupling,initialWorld,1/60,config);
  assert.equal(pair.stopReason,undefined);assert.equal(all.stopReason,undefined);assert.deepEqual(all.A,pair.A);assert.deepEqual(all.B,pair.B);
  assert.deepEqual(all.coupling,pair.coupling);assert.deepEqual(all.contacts,pair.contacts);assert.deepEqual(all.diagnostics,pair.diagnostics);
+});
+test('global asteroid catalog uses deterministic 1–200000t masses and fixed 2D area density independent of the tug',()=>{
+ const profile=createSpaceProfile();
+ for(const seed of [1,42,99]) {
+  const a=api().createSpaceWorld(profile,seed,25,{couplingLength:270});
+  assert.deepEqual(a,api().createSpaceWorld(profile,seed,25,{couplingLength:270}));
+  assert.ok(a.asteroids.some(b=>b.mass<10000));assert.ok(a.asteroids.some(b=>b.mass>20000000));
+  for(const b of a.asteroids){assert.ok(b.mass>=1000&&b.mass<=200000000);near(b.mass,1000*Math.PI*b.radius*b.radius,Math.max(1e-6,b.mass*1e-12));near(b.inertia,0.5*b.mass*b.radius*b.radius,Math.max(1e-9,b.inertia*1e-12));assert.ok(b.radius>=0.5641895835477563&&b.radius<=252.313252202016);}
+ }
+});
+test('2D asteroid factory quadruples mass when radius doubles and uses homogeneous disk inertia',()=>{
+ const a=api().createAsteroid(2,{x:0,y:0},{x:0,y:0}),b=api().createAsteroid(4,{x:0,y:0},{x:0,y:0});
+ near(a.mass,12566.370614359172);near(b.mass,50265.48245743669);near(b.mass/a.mass,4);near(a.inertia,25132.741228718345);near(b.inertia,402123.85965949355);
+});
+test('a ship imparts reciprocal momentum to a comparable moving asteroid with actual mass inertia',()=>{
+ const s=setup();s.A.position={x:0,y:0};s.A.velocity={x:100,y:0};s.A.angularVelocity=0;
+ const b=api().createAsteroid(5,{x:s.A.radius+5+0.1,y:0},{x:0,y:0},300000);assert.equal(b.mass,300000);near(b.inertia,3750000);
+ s.w.asteroids=[{id:'asteroid:equal',kind:'asteroid',...b}];s.w.fields=[];s.w.statics=[];
+ const before=momentum([s.A,s.B,...s.w.asteroids]),r=run(s),after=momentum([r.A,r.B,...r.world.asteroids]);
+ assert.equal(r.stopReason,undefined);assert.ok(r.contacts.length>0);near(r.A.velocity.x,10,1e-7);near(r.world.asteroids[0].velocity.x,90,1e-7);near(after.x,before.x,1e-5);near(after.y,before.y,1e-5);assert.ok(r.world.asteroids[0].position.x>b.position.x);
+});
+test('one shared asteroid population is independent of the selected tug mass for a fixed seed and world settings',()=>{
+ const profile=createSpaceProfile(),world=api().createSpaceWorld(profile,42,5,{couplingLength:270});
+ for(const massA of [10000,1e7]){
+  const other=api().createSpaceWorld({...profile,massA},42,5,{couplingLength:270});
+  assert.deepEqual(other.asteroids,world.asteroids,'мировой диапазон не должен пересчитываться под выбранный корабль');
+ }
+});
+for(const mass of [1000,200000000])for(const target of ['A','B','asteroid'])test(`global endpoint ${mass}kg at 100m/s has reciprocal swept ${target} contact`,()=>{
+ const s=setup(),radius=Math.sqrt(mass/(1000*Math.PI));let body=s.A;
+ if(target==='B'){s.A.position.y=1500;s.B.position={x:0,y:0};body=s.B;}
+ if(target==='asteroid'){s.A.position.y=1500;s.B.position.y=2000;body=asteroid('asteroid:target',radius,0,0);s.w.asteroids.push(body);}
+ const incoming=asteroid('asteroid:incoming',radius,-body.radius-radius-0.1,0,100,0);s.w.asteroids.unshift(incoming);
+ const before=momentum([s.A,s.B,...s.w.asteroids]),r=run(s),after=momentum([r.A,r.B,...r.world.asteroids]);
+ assert.equal(r.stopReason,undefined);assert.ok(r.contacts.length>0);near(incoming.mass,mass,mass*1e-12);
+ near(after.x,before.x,0.001);near(after.y,before.y,0.001);
+ const hit=target==='A'?r.A:target==='B'?r.B:r.world.asteroids[1];
+ near(r.world.asteroids[0].velocity.x,(mass-0.8*body.mass)*100/(mass+body.mass),1e-7);
+ near(hit.velocity.x,1.8*mass*100/(mass+body.mass),1e-7);assert.ok(hit.position.x>body.position.x);
+});
+test('minimum 0.564m asteroid cannot tunnel through another small body during a 100m/s whole-frame sweep',()=>{
+ const s=setup(),radius=0.5641895835477563;s.A.position.y=1500;s.B.position.y=2000;
+ s.w.asteroids=[asteroid('asteroid:incoming',radius,-50,0,100,0),asteroid('asteroid:target',radius,0,0)];
+ const r=run(s,1);assert.equal(r.stopReason,undefined);assert.ok(r.contacts.length>0);
+ near(r.world.asteroids[0].velocity.x,10,1e-7);near(r.world.asteroids[1].velocity.x,90,1e-7);
+ assert.ok(r.world.asteroids[1].position.x-r.world.asteroids[0].position.x>=2*radius-1e-7);
 });
