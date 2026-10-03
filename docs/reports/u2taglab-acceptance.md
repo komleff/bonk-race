@@ -1,5 +1,31 @@
 # U2TagLab 0.1.0 — локальная приёмка
 
+## Task567 — оснащённый профиль и фиксированные модули (4 октября 2026)
+
+Код `ca6e185cc66340b096bfb05f7b3afd1a83c84cf3`: A401200/B1556800 кг, геометрия60×27/120×54 м, общая начальная длина360 м. Модуль M k360000 Н/м и c710000 Н·с/м; S/M/L/XL имеют постоянныйc, выбор меняет толькоk/c, сохраняя configured/actualrest, тела, anchors, мир и время. Трос/штанга оставлены; неактивные spring-controls скрыты с сохранением значений.
+
+| Проверка | Результат |
+|---|---|
+| TDD ядра и двух найденных регрессий |4 основных RED→GREEN, затем reset-closure и conversion-back RED→GREEN; итог6/6 |
+| Адресный пакет modules/share/lifecycle/fields/physics |59/59 |
+| `npm run test:tuglab` |318/318 PASS, fail0/skip0; первоначальная317/318 обнаружила старый equal-mass assertion, исправлен на формулу с фактическими массами, повтор обоснован |
+| `npm run typecheck:tuglab`, полный client tsc в build |PASS |
+| `npm test` |PASS; унаследованные JoinTokenService default-secret предупреждения остаются в564 |
+| U2TagLab / старый TugLab / полный клиент / BonkLab builds |PASS; финальная автономная U2-сборка stampedca6e185 |
+| Source Chrome и stamped root + nested `/bonk-race/u2taglab/` |PASS/errors[]; по12 мобильных type/viewport случаев в каждой поверхности |
+| Старые TugLab UI и Share UI |PASS |
+| World QA matrix |12×120 шагов,0 stops, конечность и атомарный отказ проверены |
+| PM live LAN Chrome |Независимо прочитаны401200/1556800,360,360000/710000, schema2/геометрия120×54;errors[]; мобильный screenshot просмотрен |
+
+Для source/root/nested проверены23 spring/21 rope/rod slider targets на360/390/412/landscape, каждый≥44px; панель52px, карта сверху справа и FA/тормоз снизу. После каждого mass-slider изменения во всех12 комбинациях c остаётся750000; реальный XL select сохраняет полное состояние, c touch/manual slider меняет Custom. Все(i), restore-radius, Share через две новые страницы, Start/Pause/Step/Restart/capture и восстановление после ошибки проверены.
+
+Использована настоящая fixture schema1/disk-v2, полученная с BASE8db0e31 до изменения production: старые явные коэффициенты/массы/карта и геометрия108×48 сохраняются; после изменения массы c адаптивен. Неизменённый legacy экспорт точно schema1; после fixed/module conversion экспорт остаётся schema2 даже при обратном выборе legacy-mode, сохраняя скрытыйc. Новая schema2/fixed-v3 содержит явную геометрию, mode/c/module; повреждённые mode/preset/geometry/types/prototype/ranges/keys и поздний невозможный старт отклоняются атомарно. Полный settings reset восстанавливает новую геометрию/inertiaB closure.
+
+Developer: свежий GPT-6.1 Sol high. Quality: Spec compliant/Approved C0/I0/M1 inherited warning; Security: Approved C0/I0/M0, адресный c0/NaN/mixed-schema probe PASS. Architecture/Integration: отдельный независимый reviewer Codex/GPT-6 (конкретный вариант не раскрыт) Approved C0/I0/M0; адресные проверки legacy L/W→поля/world/Share, live whole-state сохранения module и endpoint c0/1e8 дали PASS. Новых блокирующих замечаний нет. Предыдущие записи ниже относятся к прежнему принятому профилю, их измерения нельзя приписывать новым массам.
+
+Источники подтверждены PM: remote U2 main=`252d17f`, diff с локальным0fe06927 по использованным владельцам пуст. Оснащение9т/0.5т/3т размераS — явно LAB-оценки, не завершённый рецепт. [Состав и продольный расчёт](u2taglab-fitted-modules.md) содержит48 осевых проб и границы; это отдельно от318 проверок внедрения. Физический Android, реальная прочность/нагрев и произвольный груз не проверены.
+
+
 Дата: 2026-10-04. Ветка `feat/u2taglab-space-v0.1`. Основная приёмка Task4: `bde6982c0104bc6a1c2f382a772067a2e940e593`; исправление Q1: `d3fa317`; новая калибровка Task566: `5e3be50`. Актуальная самостоятельная сборка имеет метку `5e3be50`, BonkRace0.6.3. Результат: **локальные проверки Task4, Q1 и внедрения Task566 пройдены**. Публикация и физическое Android-устройство этим отчётом не подтверждаются.
 
 ## Полученное поведение
