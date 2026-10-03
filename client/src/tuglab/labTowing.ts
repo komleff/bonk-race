@@ -108,7 +108,7 @@ export class LabTowing {
     const g = couplingGeometry(a, this.B, this.coupling);
     this.coupling.length = g.distance; this.coupling.lastNormal = g.normal;
   }
-  setConnection(connected: boolean, a: BodyState): CaptureResult {
+  setConnection(connected: boolean, a: BodyState, captureMaxSpeed: number): CaptureResult {
     let candidate = { ...this.coupling };
     let g = couplingGeometry(a, this.B, candidate);
     if (connected && !this.coupling.connected) {
@@ -127,7 +127,8 @@ export class LabTowing {
       const maxLength = Number(this.params['tow.length']);
       const reason = this.needsRestart ? this.reason
         : g.distance < 2 || g.distance > maxLength ? `Захват: расстояние креплений должно быть 2–${maxLength} м`
-          : g.relativeSpeed > 2 ? 'Захват: скорость креплений должна быть ≤2 м/с' : undefined;
+          : !Number.isFinite(captureMaxSpeed) || captureMaxSpeed <= 0 ? 'Захват: недопустимые линейные лимиты скорости'
+            : g.relativeSpeed > captureMaxSpeed ? `Захват: скорость креплений должна быть ≤${captureMaxSpeed} м/с` : undefined;
       if (reason) {
         this.reason = reason;
         return { ok: false, reason, distance: g.distance, relativeSpeed: g.relativeSpeed };

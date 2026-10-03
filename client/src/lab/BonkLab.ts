@@ -330,7 +330,11 @@ export class BonkLab {
 
     setTowingConnection(connected: boolean): CaptureResult {
         if (!this.towing) return { ok: false, reason: "Буксировка не включена", distance: 0, relativeSpeed: 0 };
-        return this.towing.setConnection(connected, this.towingBodyA());
+        const limits = [this.params["limits.speedLimitForwardMps"], this.params["limits.speedLimitReverseMps"],
+            this.params["limits.speedLimitLateralMps"]];
+        const captureMaxSpeed = limits.every(value => typeof value === "number" && Number.isFinite(value) && value > 0)
+            ? Math.min(...limits as number[]) : NaN;
+        return this.towing.setConnection(connected, this.towingBodyA(), captureMaxSpeed);
     }
 
     private listenForFocus(enabled: boolean): void {
