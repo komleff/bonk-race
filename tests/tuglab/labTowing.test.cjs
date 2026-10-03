@@ -1,6 +1,7 @@
 const {test} = require('node:test');
 const {assert, near} = require('./helpers.cjs');
 const {BonkLab} = require('../../.cache/tuglab-tests/client/src/lab/BonkLab.js');
+const {PRESETS,DEFAULT_PRESET_IDX}=require('../../.cache/tuglab-tests/client/src/lab/ui/presets.js');
 const make = towing => new BonkLab({}, {towing});
 const advance = (lab,n=1) => { for(let i=0;i<n;i++) lab.update(1/60); };
 const live = lab => { lab.start(); advance(lab,240); };
@@ -26,7 +27,7 @@ test('trailer edits preserve map and positions; restart creates feasible composi
 });
 test('invalid tow edits are rejected without changing values or map',()=>{
  const lab=make(true),p={...lab.params},s=lab.getState();
- for(const [k,v] of [['tow.massRatio',NaN],['tow.radiusB',''],['tow.length',25],['tow.stiffness',Infinity],['tow.type','bad']]) lab.updateParams(k,v);
+ for(const [k,v] of [['tow.massRatio',NaN],['tow.radiusB',''],['tow.length',101],['tow.stiffness',Infinity],['tow.type','bad']]) lab.updateParams(k,v);
  assert.deepEqual(lab.params,p); assert.strictEqual(lab.getState().arena,s.arena);
 });
 test('impossible composition fails visibly on the existing map',()=>{
@@ -55,8 +56,8 @@ test('disconnect preserves velocities and capture rejects excess attachment spee
  const lab=make(true);live(lab);lab.setInput(0,-1,1);advance(lab,20);
  const s=lab.getState();assert.ok(lab.setTowingConnection(false).ok);const t=lab.getState();
  near(t.vx,s.vx);near(t.vy,s.vy);assert.deepEqual(t.towing.B.velocity,s.towing.B.velocity);
- lab.setInput(1,0,1);advance(lab,60);const result=lab.setTowingConnection(true);
- assert.equal(result.ok,false);assert.equal(lab.getState().towing.coupling.connected,false);assert.ok(lab.getState().towing.reason);
+ lab.reset();lab.setTowingConnection(false);lab.towing.B.velocity.x=181;const result=lab.setTowingConnection(true);
+ assert.equal(result.ok,false);assert.equal(lab.getState().towing.coupling.connected,false);assert.match(result.reason,/180/);
 });
 test('spring damping reference remains fixed across mass edits until restart',()=>{
  const lab=make(true),s=lab.getState();lab.updateParams('tow.massRatio',5);near(lab.getState().towing.coupling.c,s.towing.coupling.c);
@@ -125,8 +126,8 @@ test('numeric budget failure preserves both body states and exposes failed diagn
 test('capture checks angular attachment speed and reconnects without velocity jump',()=>{
  const lab=make(true);lab.setTowingConnection(false);
  assert.equal(lab.setTowingConnection(true).ok,true);lab.setTowingConnection(false);
- lab.towing.B.angularVelocity=0.2;const s=lab.getState();const result=lab.setTowingConnection(true);
- assert.equal(result.ok,false);near(result.relativeSpeed,4);assert.deepEqual(lab.getState().towing.B,s.towing.B);
+ lab.towing.B.angularVelocity=10;const s=lab.getState();const result=lab.setTowingConnection(true);
+ assert.equal(result.ok,false);near(result.relativeSpeed,200);assert.match(result.reason,/180/);assert.deepEqual(lab.getState().towing.B,s.towing.B);
  lab.towing.B.angularVelocity=0;assert.equal(lab.setTowingConnection(true).ok,true);near(lab.getState().towing.coupling.restLength,8);
 });
 test('passive B drifts exactly once and keeps angular velocity beyond player limit',()=>{
@@ -185,3 +186,83 @@ test('terminal stop detaches focus listeners even while runtime is paused',()=>{
   lab.resume();lab.pause();win.dispatchEvent(new Event('blur'));near(lab.getState().inputMagnitude,0);
  } finally {lab?.stop();delete global.window;delete global.document;}
 });
+for (const type of ['rod','rope','spring']) {
+ test(`${type} captures nearest nose pair at 40 and 100 m without moving bodies`,()=>{
+  for(const gap of [40,100]) {
+   const lab=make(true);lab.updateParams('tow.type',type);lab.updateParams('tow.length',100);lab.reset();
+   lab.setTowingConnection(false);lab.x=0;lab.y=0;lab.angle=0;
+   lab.towing.B.position={x:40+gap,y:0};lab.towing.B.angle=Math.PI;
+   const before=lab.getState(),result=lab.setTowingConnection(true),after=lab.getState();
+   assert.equal(result.ok,true);near(result.distance,gap);
+   assert.equal(after.towing.coupling.attachmentA,'nose');assert.equal(after.towing.coupling.attachmentB,'nose');
+   near(after.towing.coupling.restLength,gap);assert.equal(lab.params['tow.length'],100);
+   assert.deepEqual(after.towing.B,before.towing.B);near(after.x,before.x);near(after.y,before.y);near(after.vx,before.vx);near(after.vy,before.vy);
+  }
+ });
+ test(`${type} failed nearest capture leaves coupling and bodies intact`,()=>{
+  for(const [gap,speed,want] of [[1,0,'расстояние'],[9,0,'расстояние'],[8,180.01,'скорость']]) {
+   const lab=make(true);lab.updateParams('tow.type',type);lab.reset();lab.setTowingConnection(false);
+   lab.x=0;lab.y=0;lab.angle=0;lab.towing.B.position={x:40+gap,y:0};lab.towing.B.angle=Math.PI;lab.towing.B.velocity.x=speed;
+   const before=lab.getState(),result=lab.setTowingConnection(true),after=lab.getState();
+   assert.equal(result.ok,false);assert.match(result.reason,new RegExp(want));
+   assert.deepEqual(after.towing.coupling,before.towing.coupling);assert.deepEqual(after.towing.B,before.towing.B);near(after.x,before.x);near(after.vx,before.vx);
+  }
+ });
+ test(`${type} capture includes 2 m and current linear cap boundaries and deterministic ties`,()=>{
+  const lab=make(true);lab.updateParams('tow.type',type);lab.reset();lab.setTowingConnection(false);
+  lab.x=0;lab.y=0;lab.angle=0;lab.towing.B.position={x:42,y:0};lab.towing.B.angle=Math.PI;lab.towing.B.velocity.x=180;
+  assert.equal(lab.setTowingConnection(true).ok,true);near(lab.getState().towing.coupling.restLength,2);
+  lab.setTowingConnection(false);lab.updateParams('tow.length',100);lab.reset();lab.setTowingConnection(false);
+  lab.x=0;lab.y=0;lab.angle=0;lab.towing.B.position={x:0,y:40};lab.towing.B.angle=0;
+  assert.equal(lab.setTowingConnection(true).ok,true);assert.equal(lab.getState().towing.coupling.attachmentA,'nose');assert.equal(lab.getState().towing.coupling.attachmentB,'nose');
+ });
+}
+test('configured tow length permits 100 and rejects values outside 4–100',()=>{
+ const lab=make(true);lab.updateParams('tow.length',100);assert.equal(lab.params['tow.length'],100);lab.reset();near(lab.getState().towing.distance,100);
+ for(const v of [3.99,100.01]) {lab.updateParams('tow.length',v);assert.equal(lab.params['tow.length'],100);}
+});
+
+for(const type of ['rod','rope','spring']) test(`${type} selects each of the four nearest attachment pairs`,()=>{
+ for(const [x,angle,wantA,wantB] of [[80,Math.PI,'nose','nose'],[80,0,'nose','tail'],[-80,0,'tail','nose'],[-80,Math.PI,'tail','tail']]) {
+  const lab=make(true);lab.updateParams('tow.type',type);lab.updateParams('tow.length',100);lab.reset();lab.setTowingConnection(false);
+  lab.x=0;lab.y=0;lab.angle=0;lab.towing.B.position={x,y:0};lab.towing.B.angle=angle;
+  const before=lab.getState();assert.equal(lab.setTowingConnection(true).ok,true);const after=lab.getState();
+  assert.equal(after.towing.coupling.attachmentA,wantA);assert.equal(after.towing.coupling.attachmentB,wantB);near(after.towing.coupling.restLength,40);
+  assert.deepEqual(after.towing.B,before.towing.B);lab.updateParams('tow.massRatio',2);
+  assert.equal(lab.getState().towing.coupling.attachmentA,wantA);assert.equal(lab.getState().towing.coupling.attachmentB,wantB);
+ }
+});
+
+const captureFixture=type=>{
+ const lab=make(true);for(const [key,value] of Object.entries(PRESETS[DEFAULT_PRESET_IDX].values))lab.updateParams(key,value);
+ lab.updateParams('tow.type',type);lab.reset();lab.setTowingConnection(false);return lab;
+};
+const unchangedCaptureBodies=(before,after)=>{
+ for(const key of ['x','y','vx','vy','angle','angularVelocity'])near(after[key],before[key]);
+ assert.deepEqual(after.towing.B,before.towing.B);
+};
+for(const type of ['rod','rope','spring']) {
+ test(`${type} captures at high relative speed below ordinary preset cap with no velocity jump`,()=>{
+  const lab=captureFixture(type);lab.vx=10;lab.towing.B.velocity.x=110;
+  const before=lab.getState(),result=lab.setTowingConnection(true);assert.equal(result.ok,true);near(result.relativeSpeed,100);
+  unchangedCaptureBodies(before,lab.getState());
+ });
+ for(const key of ['limits.speedLimitForwardMps','limits.speedLimitReverseMps','limits.speedLimitLateralMps']) {
+  test(`${type} immediately uses ${key} as inclusive minimum and rejects overspeed atomically`,()=>{
+   const lab=captureFixture(type);for(const k of ['limits.speedLimitForwardMps','limits.speedLimitReverseMps','limits.speedLimitLateralMps'])lab.updateParams(k,300);
+   lab.updateParams('limits.angularSpeedLimitRadps',0.5);lab.updateParams(key,120);lab.towing.B.velocity.x=121;
+   const before=lab.getState(),result=lab.setTowingConnection(true);assert.equal(result.ok,false);near(result.relativeSpeed,121);assert.match(result.reason,/120/);
+   unchangedCaptureBodies(before,lab.getState());assert.deepEqual(lab.getState().towing.coupling,before.towing.coupling);
+   lab.updateParams(key,121);assert.equal(lab.setTowingConnection(true).ok,true);unchangedCaptureBodies(before,lab.getState());
+   lab.setTowingConnection(false);lab.updateParams(key,250);lab.towing.B.velocity.x=220;const fast=lab.getState();
+   assert.equal(lab.setTowingConnection(true).ok,true);unchangedCaptureBodies(fast,lab.getState());
+  });
+ }
+ test(`${type} refuses invalid linear limits without altering bodies or coupling`,()=>{
+  for(const invalid of [0,-1,NaN,Infinity,'180']) {
+   const lab=captureFixture(type);lab.paramManager.params['limits.speedLimitForwardMps']=invalid;
+   const before=lab.getState(),result=lab.setTowingConnection(true);assert.equal(result.ok,false);assert.match(result.reason,/лимит/);
+   unchangedCaptureBodies(before,lab.getState());assert.deepEqual(lab.getState().towing.coupling,before.towing.coupling);
+  }
+ });
+}

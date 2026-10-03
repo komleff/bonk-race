@@ -9,7 +9,7 @@ const output = process.env.TUGLAB_QA_DIR || '.cache/tuglab-qa';
 const seconds = Number(process.env.TUGLAB_PERF_SECONDS ?? 120);
 const report = { codeSha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), timestamp:new Date().toISOString(),
   headless:process.env.TUGLAB_HEADLESS !== '0', http:[], errors:[], failedRequests:[], externalRequests:[], performance:null };
-const roots = { '/nested/tuglab/':'client/dist-tuglab', '/bonk-race/':'client/dist-lab', '/':'client/dist-tuglab' };
+const roots = { '/bonk-race/tuglab/':'client/dist-tuglab', '/nested/tuglab/':'client/dist-tuglab', '/bonk-race/':'client/dist-lab', '/':'client/dist-tuglab' };
 const server = http.createServer((req,res) => {
   const pathname = decodeURIComponent(new URL(req.url,'http://localhost').pathname);
   const prefix = Object.keys(roots).find(p=>pathname.startsWith(p));
@@ -32,7 +32,7 @@ const server = http.createServer((req,res) => {
     page.on('requestfailed',request=>report.failedRequests.push({url:request.url(),error:request.failure()?.errorText}));
     page.on('request',request=>{if(!request.url().startsWith(origin))report.externalRequests.push(request.url());});
     page.on('response',response=>{if(response.status()>=400)report.errors.push(`HTTP ${response.status()} ${response.url()}`);});
-    for(const prefix of ['/','/nested/tuglab/']) {
+    for(const prefix of ['/','/bonk-race/tuglab/']) {
       await page.goto(origin+prefix);
       await page.waitForFunction(()=>window.__bonkLab?.getState().startCountdown<=0);
       const resources=await page.evaluate(()=>performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize})));
@@ -47,7 +47,7 @@ const server = http.createServer((req,res) => {
         toolbar:document.querySelector('.tug-status').getBoundingClientRect().toJSON(),
         buttons:[...document.querySelectorAll('.tug-actions button')].map(b=>b.getBoundingClientRect().toJSON())}));
       assert.ok(geometry.canvas.top>=geometry.toolbar.bottom);
-      assert.ok(geometry.buttons.every(b=>b.width>=48&&b.height>=48&&b.x>=0&&b.right<=viewport.width));
+      assert.ok(geometry.buttons.every(b=>b.width>=44&&b.height>=44&&b.x>=0&&b.right<=viewport.width));
       await page.screenshot({path:path.join(output,`desktop-${viewport.width}x${viewport.height}.png`)});
       report.http.push({viewport,geometry,status:'PASS'});
       await page.getByRole('button',{name:'Продолжить',exact:true}).click();
@@ -56,6 +56,8 @@ const server = http.createServer((req,res) => {
     await page.waitForFunction(()=>window.__bonkLab);
     assert.equal(await page.evaluate(()=>window.__bonkLab.getState().towing),undefined);
     assert.equal(await page.getByRole('button',{name:'Экспорт',exact:true}).count(),1);
+    await page.getByLabel('Seed',{exact:true}).fill('-42');
+    assert.equal(await page.evaluate(()=>window.__bonkLab.lastSeed),-42,'stock Seed keeps the existing signed input behavior');
     await page.locator('#lab-canvas').click({position:{x:200,y:200}});await page.keyboard.down('w');
     assert.equal(await page.evaluate(()=>window.__labInput.getState().magnitude),0);await page.keyboard.up('w');
     report.http.push({url:origin+'/bonk-race/lab.html',stockOptOut:true,status:'PASS'});

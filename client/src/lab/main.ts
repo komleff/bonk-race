@@ -9,6 +9,7 @@ import { LabPanel } from "./ui/LabPanel";
 import { LabToolbar } from "./ui/LabToolbar";
 import tuglabCss from "./ui/tuglab.css?raw";
 import { injectStyles } from "../ui/utils/injectStyles";
+import { decodeShareFragment } from "../tuglab/share";
 import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
 const root = document.getElementById("lab-root")!;
@@ -50,6 +51,12 @@ const input = new LabInput(canvas, { keyboard: towing });
 const renderer = new LabRenderer(canvas);
 const hud = new TelemetryHUD();
 if (towing) lab.reset();
+let startupError = "";
+const sharedLaunch = towing && location.hash.length > 0;
+if (sharedLaunch) {
+    try { lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
+    catch (error) { startupError = error instanceof Error ? error.message : "Повреждённая ссылка TugLab"; lab.pause(); }
+}
 
 // Обработка изменения размера окна
 function onResize(): void {
@@ -61,11 +68,12 @@ function onResize(): void {
         document.body.style.setProperty("--lab-top", `${top}px`);
         canvas.style.top = `${top}px`;
         canvas.style.height = `calc(100dvh - ${top}px)`;
-        canvas.style.width = uiContainer.querySelector(".lab-panel") ? "calc(100vw - 320px)" : "100vw";
+        canvas.style.width = root.querySelector(".lab-panel") && window.innerWidth >= 900 ? "calc(100vw - 320px)" : "100vw";
     }
     renderer.resize();
 }
 window.addEventListener("resize", onResize);
+window.visualViewport?.addEventListener("resize", onResize);
 onResize(); // начальный размер
 
 // Триггеры синхронизации для межкомпонентного взаимодействия
@@ -77,6 +85,10 @@ function renderToolbar(): void {
         h(LabToolbar, {
             lab,
             towing,
+            syncTrigger,
+            startupError,
+            onStartupRecovered: () => { startupError = ""; renderToolbar(); },
+            onPanelVisibilityChanged: onResize,
             onClearInput: towing ? () => { input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail(); } : undefined,
             onParamsChanged: () => renderPanel(),
             externalParamChange: paramChangeCounter,
@@ -87,6 +99,7 @@ function renderToolbar(): void {
 
 function renderPanel(): void {
     syncTrigger++;
+    if (towing) { renderToolbar(); onResize(); return; }
     render(
         h(LabPanel, {
             lab,
@@ -101,6 +114,19 @@ function renderPanel(): void {
         uiContainer,
     );
 }
+
+// Повторный переход к fragment той же оболочки не перезагружает страницу.
+function onShareHashChanged(): void {
+    if (!towing) return;
+    input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail();
+    startupError = "";
+    if (location.hash) {
+        try { lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
+        catch (error) { startupError = error instanceof Error ? error.message : "Повреждённая ссылка TugLab"; lab.pause(); }
+    }
+    renderPanel();
+}
+if (towing) window.addEventListener("hashchange", onShareHashChanged);
 
 // Первоначальная отрисовка
 renderToolbar();
@@ -194,17 +220,19 @@ function frame(): void {
 }
 
 // Запуск симуляции и цикла рендеринга
-lab.start();
+if (!sharedLaunch) lab.start();
 rafId = requestAnimationFrame(frame);
 
 // Очистка при горячей перезагрузке — предотвращение устаревших листенеров/циклов при HMR Vite
 if (import.meta.hot) {
     import.meta.hot.dispose(() => {
         layoutObserver?.disconnect();
+        window.removeEventListener("hashchange", onShareHashChanged);
         lab.stop();
         input.destroy();
         cancelAnimationFrame(rafId!);
         window.removeEventListener("resize", onResize);
+        window.visualViewport?.removeEventListener("resize", onResize);
         render(null, toolbarContainer);
         render(null, uiContainer);
     });

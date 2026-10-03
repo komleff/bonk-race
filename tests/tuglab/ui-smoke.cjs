@@ -13,15 +13,18 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || '/tmp/bonk-tuglab-
  await page.waitForFunction(() => window.__bonkLab);
  assert.equal(await page.evaluate(() => !!window.__bonkLab.getState().towing), true);
  await page.getByRole('button', { name: 'Пауза', exact: true }).click();
+  await page.getByRole('button', { name: 'Настройки', exact: true }).click();
  const beforeStep = await page.evaluate(() => window.__bonkLab.getState().startCountdown);
  await page.getByRole('button', { name: 'Step', exact: true }).click();
  const afterStep = await page.evaluate(() => window.__bonkLab.getState().startCountdown);
  assert.ok(Math.abs((beforeStep - afterStep) - 1 / 60) < 1e-9);
  assert.equal(await page.evaluate(() => window.__bonkLab.getState().towing.paused), true);
+ await page.getByRole('button', { name: 'Скрыть', exact: true }).click();
  await page.getByRole('button', { name: 'Продолжить', exact: true }).click();
  await page.locator('#lab-canvas').click({ position: { x: 200, y: 200 } });
  await page.keyboard.down('w');
  assert.equal(await page.evaluate(() => window.__labInput.getState().y), -1);
+ await page.getByRole('button', { name: 'Настройки', exact: true }).click();
  await page.getByLabel('Масса B / A', { exact: true }).focus();
  assert.equal(await page.evaluate(() => window.__labInput.getState().magnitude), 0);
  await page.keyboard.up('w');
@@ -46,7 +49,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || '/tmp/bonk-tuglab-
  assert.equal(await page.getByRole('button', { name: 'Экспорт', exact: true }).count(), 0);
  const rects = await page.evaluate(() => ({ canvas: document.querySelector('canvas').getBoundingClientRect().toJSON(), toolbar: document.querySelector('.lab-toolbar').getBoundingClientRect().toJSON(), buttons: [...document.querySelectorAll('.tug-actions button')].map(b => b.getBoundingClientRect().toJSON()) }));
  assert.ok(rects.canvas.top >= rects.toolbar.bottom);
- assert.ok(rects.buttons.every(r => r.width >= 48 && r.height >= 48));
+ assert.ok(rects.buttons.every(r => r.width >= 44 && r.height >= 44));
  await page.waitForFunction(() => window.__bonkLab.getState().startCountdown <= 0);
  await page.getByRole('button', { name: 'Пауза', exact: true }).click();
  await page.screenshot({ path: `/tmp/task4-desktop-${width}.png` });

@@ -5,7 +5,7 @@
  * слайдеров с двусторонней привязкой к BonkLab.updateParams().
  */
 
-import { Fragment } from "preact";
+import { Fragment, type ComponentChildren } from "preact";
 import { useState, useEffect, useLayoutEffect, useCallback } from "preact/hooks";
 import { injectStyles } from "../../ui/utils/injectStyles";
 import type { BonkLab } from "../BonkLab";
@@ -391,6 +391,9 @@ function PanelGroup({
 export interface LabPanelProps {
     lab: BonkLab;
     towing?: boolean;
+    panelOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    settingsContent?: ComponentChildren;
     onPanelVisibilityChanged?: () => void;
     /** Инкрементируется извне (reset/import/preset) для синхронизации значений */
     syncTrigger?: number;
@@ -398,7 +401,7 @@ export interface LabPanelProps {
     onParamChanged?: () => void;
 }
 
-export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onPanelVisibilityChanged }: LabPanelProps) {
+export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onPanelVisibilityChanged, panelOpen: controlledOpen, onOpenChange, settingsContent }: LabPanelProps) {
     const groups = towing ? [TOW_GROUP, ...PARAM_GROUPS] : PARAM_GROUPS;
     // Инжектируем стили один раз
     useEffect(() => {
@@ -406,8 +409,10 @@ export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onP
     }, []);
 
     // Состояние открытия/закрытия панели
-    const [panelOpen, setPanelOpen] = useState(true);
-    useEffect(() => { onPanelVisibilityChanged?.(); }, [panelOpen, onPanelVisibilityChanged]);
+    const [localOpen, setLocalOpen] = useState(true);
+    const panelOpen = controlledOpen ?? localOpen;
+    const setPanelOpen = (open: boolean) => onOpenChange ? onOpenChange(open) : setLocalOpen(open);
+    useLayoutEffect(() => { onPanelVisibilityChanged?.(); }, [panelOpen, onPanelVisibilityChanged]);
 
     // Раскрытые группы — первые 2 раскрыты по умолчанию
     const [expandedGroups, setExpandedGroups] = useState<Record<number, boolean>>(() => {
@@ -463,7 +468,7 @@ export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onP
 
     // На мобильных скрываем панель при инициализации
     useEffect(() => {
-        if (isMobile) setPanelOpen(false);
+        if (isMobile && !towing) setPanelOpen(false);
     }, [isMobile]);
 
     // Кнопка переключения панели
@@ -478,12 +483,12 @@ export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onP
     );
 
     if (!panelOpen) {
-        return <Fragment>{toggleButton}</Fragment>;
+        return <Fragment>{!towing && toggleButton}</Fragment>;
     }
 
     return (
         <Fragment>
-            {toggleButton}
+            {!towing && toggleButton}
             <div class="lab-panel">
                 <div class="lab-panel-header">
                     <h2>{towing ? "TugLab" : "BonkLab"}</h2>
@@ -491,11 +496,13 @@ export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onP
                         class="lab-panel-close"
                         onClick={() => setPanelOpen(false)}
                         title="Скрыть"
+                        aria-label="Скрыть"
                     >
                         &times;
                     </button>
                 </div>
                 <div class="lab-panel-content">
+                    {settingsContent}
                     {towing && <p class="tug-mass-summary">Масса A: {values.mass} кг · B: {(Number(values.mass) * Number(values["tow.massRatio"])).toFixed(1)} кг</p>}
                     {groups.map((group, i) => (
                         <PanelGroup

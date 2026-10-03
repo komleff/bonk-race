@@ -10,6 +10,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || '/tmp/bonk-tuglab-
   await page.goto(process.env.TUGLAB_URL || 'http://localhost:5174/tuglab.html');
   await page.waitForFunction(() => window.__bonkLab);
   await page.getByRole('button', { name: 'Пауза', exact: true }).click();
+  await page.getByRole('button', { name: 'Настройки', exact: true }).click();
   const model = key => page.evaluate(k => window.__bonkLab.params[k], key);
   const check = async (name, body) => {
    try { await body(); console.log(`PASS ${name}`); }
@@ -76,12 +77,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || '/tmp/bonk-tuglab-
   await check('preset and reset discard stale draft/error, including unchanged tow value', async () => {
    const field = page.getByLabel('Длина между креплениями', { exact: true });
    const previous = await model('tow.length');
-   await typeDraft(field, '99', 'tow.length', previous); await field.press('Enter');
+   await typeDraft(field, '101', 'tow.length', previous); await field.press('Enter');
    await page.getByLabel('Пресет движения').selectOption('1');
    assert.equal(await model('tow.length'), previous);
    assert.equal(Number(await field.inputValue()), previous);
    assert.equal(await field.getAttribute('aria-invalid'), 'false');
-   await typeDraft(field, '99', 'tow.length', previous); await field.press('Enter');
+   await typeDraft(field, '101', 'tow.length', previous); await field.press('Enter');
    await page.getByRole('button', { name: 'Сброс', exact: true }).click();
    assert.equal(await model('tow.length'), 8);
    await page.waitForFunction(() => {
