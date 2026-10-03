@@ -24,7 +24,7 @@
 
 Начальные лабораторные FA-настройки, явно помеченные как адаптация: V_FA250м/с; crew-g4.5 по размерной M-кривой; coast-deadzone1.5м/с, комфортное торможение3.5с, аварийное0.2с, lateral comfort20м/с², yaw stop1с по runtime-опоре U2 Стриж. Yaw cap M24°/с по размерной кривой. **Расчётный** yaw alpha24°/с² даёт torque=I_dry*24*pi/180≈45333181.99Н·м; при изменении текущей массы torque не увеличивается. Эти значения доступны для настройки и снабжены справкой о происхождении.
 
-Первичный масштаб сцепок: rope288–2000м, default288м; rod/spring20–2000м, default288м. Пружина default f0.15Гц и zeta0.5: k=mu*(2*pi*f)², c=2*zeta*sqrt(k*mu), mu=mA*mB/(mA+mB). Диапазон k0–1e8Н/м, zeta0–1.5, масса A10000–1e7кг, massRatio0.1–10, radiusB2–250м. Верхние границы допускаются только при проверенной устойчивости/явном атомарном solver-stop; нельзя обещать, что любой крайне жёсткий состав безопасно интегрируется. Если solver требует более узких границ, Developer сужает их согласованно и фиксирует причину.
+Первичный масштаб сцепок: rope288–2000м, default288м; rod/spring20–2000м, default288м. Пружина default f0.15Гц и zeta0.5: k=mu*(2*pi*f)², c=2*zeta*sqrt(k*mu), mu=mA*mB/(mA+mB). Диапазон k0–1e8Н/м, zeta0–1.5, масса A10000–1e7кг, massRatio0.1–10, radiusB2–250м. В новом режиме повторная сцепка rope сохраняет настроенную длину (>=288м) и допускает провис; тела не перемещаются. Rod/spring сохраняют фактическую длину захвата. Верхние границы допускаются только при проверенной устойчивости/явном атомарном solver-stop; нельзя обещать, что любой крайне жёсткий состав безопасно интегрируется. Если solver требует более узких границ, Developer сужает их согласованно и фиксирует причину.
 
 ## Review Focus
 
@@ -34,7 +34,7 @@
 - Пауза, Step и Restart согласованно управляют всеми движущимися объектами/полями; seed не зависит от wall-clock.
 - Ссылка в новой оболочке воспроизводит все физические настройки/движения, несовместимая схема не применяется частично; старые ссылки остаются рабочими.
 
-## Task A: рабочая физика на кругах — Beads561.2/561.3
+## Task 1: A — рабочая физика на кругах — Beads561.2/561.3
 
 **Files:** Create client/src/u2taglab/{profile.ts,physics/flightAssist.ts}; client/u2taglab.html; client/vite.config.u2taglab.ts. Modify client/src/lab/{BonkLab.ts,main.ts}, client/src/tuglab/labTowing.ts, при необходимости physics/advance.ts/types.ts и LabToolbar/LabPanel/paramDefs.ts. Test tests/tuglab/u2taglab-physics.test.cjs и u2taglab-lifecycle.test.cjs; подключить новые модули в существующий test tsconfig.
 
@@ -49,7 +49,7 @@
 - [ ] Запустить npm run test:tuglab, npm run typecheck:tuglab, client typecheck, build:tuglab и build:u2taglab. Проверить браузером :5175/u2taglab.html, root BonkLab и :5174/tuglab.html.
 - [ ] Commit; self-review; один свежий task reviewer проверяет spec+quality. PM показывает пользователю готовую локальную физику и продолжает остальные этапы без ожидания разрешения.
 
-## Task B: космический мир — Beads561.4
+## Task 2: B — космический мир — Beads561.4
 
 **Files:** Create client/src/u2taglab/{world.ts,physics/worldContacts.ts}; Modify BonkLab.ts/LabRenderer.ts/space adapter, при необходимости общие contacts/advance только с сохранением старого пути. Test tests/tuglab/u2taglab-world.test.cjs.
 
@@ -58,10 +58,10 @@
 - [ ] RED: один seed воспроизводит типы/геометрию/начальные скорости; свободны A/B/сцепка/коридор; сцена масштабирована под трос288–2000м.
 - [ ] RED: asteroid m=4*pi*r³*2500/3, I=2*m*r²/5; v/omega без drag; A/B/asteroid и asteroid/asteroid контакты сохраняют суммарный импульс, учитывают массу; static station не движется.
 - [ ] RED: Pause/Step/Restart согласованны для всего мира; быстрый asteroid не проходит сквозь A/B/станцию в объявленном диапазоне; ошибка шага атомарна.
-- [ ] Запустить адресные RED, реализовать детерминированный каталог/контакты/рендер. Радиусы астероидов5–50м; начальная скорость0–5м/с default, настройка максимум100м/с только при подтверждённом CCD. Станционные габариты взять из найденного source либо обозначить лабораторный диапазон с явным источником/обоснованием.
+- [ ] Запустить адресные RED, реализовать детерминированный каталог/контакты/рендер. Радиусы астероидов5–50м; начальная скорость0–5м/с default, настройка максимум100м/с только при подтверждённом CCD. Runtime baseline U2 SectorInitializationSystem: станция100×100м/R70.710678, заброшенная платформа1000×1000м/R707.106781. Это текущие baseline, не окончательные asset-derived габариты. Коэффициент столкновения0.8 — runtime fallback GameWorld, настраиваемый0–1; Перекрёсток0.95 доступен как source-reference.
 - [ ] Адресные и регрессионные тесты + браузерный полёт; commit/self-review/task review.
 
-## Task C: локальные поля — Beads561.5
+## Task 3: C — локальные поля — Beads561.5
 
 **Files:** Create client/src/u2taglab/fields.ts; Modify world.ts/space adapter/LabRenderer.ts/param definitions. Test tests/tuglab/u2taglab-fields.test.cjs.
 
@@ -69,10 +69,10 @@
 
 - [ ] RED: вне полей force/torque0; ResistiveMedium drag=-weight*k_R*A_eff*v_rel, falloff один раз; движущаяся геометрия поля не превращается в velocity среды; перекрытия детерминированны.
 - [ ] RED: Plasma-force по замкнутому механическому закону; тепловое/пылевое/EM поле само не меняет engine/thrust/drag. Pause/Step и раздельное A/B семплирование корректны.
-- [ ] Запустить RED; реализовать только подтверждённые механические воздействия. Профиль коэффициентов/эффективной площади круга явно лабораторный; thermal/dust/EM визуальные области со справкой о границах, без обещания отсутствующих систем.
+- [ ] Запустить RED; реализовать только подтверждённые механические воздействия. Замкнутый LAB pressure-law: F=w*p*pi*r²*n, p[Pa], torque0; r корабля из L/W, не collision-only override. Resistive k_R[N*s/m³]; A_eff=pi*r². Начальная pressure50Pa (0–1000), k_R0.5 (0–100); они LAB balance, не паспортные U2 значения. Smoothstep falloff один раз. Поля семплируют все подвижные тела (A/B/астероиды), статика не интегрируется. Профиль коэффициентов/эффективной площади круга явно лабораторный; thermal/dust/EM визуальные области со справкой о границах, без обещания отсутствующих систем.
 - [ ] Тесты/браузер/commit/self-review/task review. Не переносить весь thermal/energy/sensor контур U2.
 
-## Task D: интерфейс, обмен, локальная приёмка — Beads561.6/560
+## Task 4: D — интерфейс, обмен, локальная приёмка — Beads561.6/560
 
 **Files:** Create client/src/u2taglab/share.ts и docs/U2TagLab-Guide.md; Modify existing UI/main/input/renderer точечно, scripts QA и Pages для вложенной оболочки; test u2taglab-share.test.cjs/u2taglab-ui.cjs. Version policy: BonkRace0.6.3, новая оболочкаU2TagLab0.1.0; прежний TugLab0.1.1.
 
