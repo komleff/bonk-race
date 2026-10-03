@@ -1,3 +1,7 @@
+## Применимость свойств сцепки (уточнение4окт)
+
+Source: applySpring использует k/c только spring; rod fixed-distance bilateral impulseconstraint, rope unilateral max-distance/slack, нет физических stiffness/damping/friction/break/masslink. Task566 hide k/ζ outside spring и пересматривает общийlengthdefault; rope>=288/XL требование отменено. All newsliders CSS body[data-space-mode=true] hit44/visual4, oldBonk/Tug preserved.
+
 ## U2TagLab — принятая космическая физика/мир/поля (3 октября 2026)
 
 Opt-in BonkLab(canvas,{towing:true,space:true}) сохраняет ввод/Canvas/панели и старые пути. profile.ts хранит SI-массы/силы/геометрию и явно LAB FA-калибровку. Инерция корабля m(L²+W²)/12 независимо от collision radius. spaceEngineWrench возвращает силу/момент; двигатель толькоA. FA ON/OFF живой, один предел модуля V_FA, yaw damping в обоих; фон linear/angular drag0, B пассивен.

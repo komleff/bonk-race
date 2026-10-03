@@ -1,3 +1,7 @@
+## U2TagLab Q1 checkpoint (4 октября)
+
+Runtime d3fa317, docs c85e255,23sliders×4viewports44pxhit/4pxtrack/source+builtrootnestedPASS/errors[]; 5174/5175 сохранены. Scoped QualityAPPROVED плюс Architecture/SecurityAPPROVED предыдущего kernel (физика не менялась). Current local JS u2taglab-BwwxEXXP.js stamped d3fa317/0.6.3. InitialTask4/565/560closed; новый566калибровкисцепокактивен, no merge/deploy.
+
 ## U2TagLab — самостоятельная оболочка в bonk-race (3 октября 2026)
 
 Ветка feat/u2taglab-space-v0.1, существующий linked worktree bonk-race-tuglab; U2 read-only source snapshot0fe06927. client/u2taglab.html, client/vite.config.u2taglab.ts; build:u2taglab → client/dist-u2taglab/index.html. Локально5175/u2taglab.html; сервер detached nodeVite PID99049, log /tmp/bonk-tuglab-tools/u2taglab-dev-server.log. Прежний TugLab5174 сохранён. Отдельной серверной API/БД/зависимостей нет.

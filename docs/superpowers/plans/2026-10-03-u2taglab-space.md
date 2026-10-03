@@ -7,6 +7,10 @@
 **Tech Stack:** TypeScript, Preact, Canvas, Vite, существующие node:test/Playwright инструменты.
 **Spec:** [одобренный проект](../specs/2026-10-03-u2taglab-space-design.md).
 
+## Latest operator coupling update (4 October)
+
+Предыдущий rope>=288/XL минимум отменён. Task566: единая рекомендуемая начальная длина rope/rod/spring для sourceM/L по удобству/безопасности; пересмотреть k/ζ/длину пружины численно, k/ζ показывать только для spring, help явно по режимам. Source law rod/rope без упругости/материальной прочности не расширять. Целевые4типа: rigidборт-в-борт,rope,rod,spring; one-hinge исключён, rigid555 отдельно после круговой части. Старые288/270/.5 ниже — выполненная история до этой корректировки, итоговые числа будут обновлены после advisor.
+
 ## Global Constraints
 
 - Итоговое дополнение оператора4окт (заменяет A-relative и sphereρ): общий каталог астероидов loguniform1–200000т, m=σπr², σ1000кг/м² LAB, r0.56419–252.31325м, I=mr²/2; массы/объекты не зависят от массыA, все контакты взаимные. Редкие гиганты позже. Task4: factory/config/recipe/share/generatorID/help и проверка одинакового мира/стартовой безопасности.
@@ -82,11 +86,11 @@
 
 **Interfaces:** независимая model/schema/generator share-схема; reuse ограниченное кодирование/атомарная валидация. Полный начальный профиль/overrides/seed/движения/поля/FA передаются вместе; несовместимые ссылки отклоняются, не мигрируют молча.
 
-- [ ] RED: encode/decode/exact keys/finite values/ranges/model compatibility; две независимые страницы имеют одинаковый начальный мир и таймер0 до Старт; изменённые настройки целиком отражаются после импорта.
-- [ ] Добавить (i) ко всем новым параметрам и шести tow-параметрам560: смысл/единицы/эффект/source. Сохранить radiusB, compact toolbar и живой FA. Настройки на телефоне прокручиваются, не получают игровой ввод.
-- [ ] Проверить360/390/412px, ориентацию/resize, pointer/keyboard, ручной brake/FA, паузу/Step/restart/reconnect и длинную сцепку; browser console0errors. Проверить root/вложенный /bonk-race/u2taglab/ build и предыдущие оболочки/ссылки.
-- [ ] Финальные проверки npm run test:tuglab/typecheck:tuglab; shared/client/server typecheck, npm test, npm run build, build:tuglab/build:u2taglab, check-version и существующая матрица/browser QA. Новую физику дополнительно проверить на ограниченной матрице масс/длин/сил, не подменять реальную игру одними тестами.
-- [ ] Обновить Guide/Memory Bank/Beads, записать фактические допущения и результаты; commit. Свежий final reviewer полного diff, fix важных замечаний/scoped re-review. Push/PR обязательны, merge/публичный релиз после локальной приёмки оператором.
+- [x] RED: encode/decode/exact keys/finite values/ranges/model compatibility; две независимые страницы имеют одинаковый начальный мир и таймер0 до Старт; изменённые настройки целиком отражаются после импорта.
+- [x] Добавить (i) ко всем новым параметрам и шести tow-параметрам560: смысл/единицы/эффект/source. Сохранить radiusB, compact toolbar и живой FA. Настройки на телефоне прокручиваются, не получают игровой ввод.
+- [x] Проверить360/390/412px, ориентацию/resize, pointer/keyboard, ручной brake/FA, паузу/Step/restart/reconnect и длинную сцепку; browser console0errors. Проверить root/вложенный /bonk-race/u2taglab/ build и предыдущие оболочки/ссылки.
+- [x] Финальные проверки npm run test:tuglab/typecheck:tuglab; shared/client/server typecheck, npm test, npm run build, build:tuglab/build:u2taglab, check-version и существующая матрица/browser QA. Новую физику дополнительно проверить на ограниченной матрице масс/длин/сил, не подменять реальную игру одними тестами.
+- [x] Обновить Guide/Memory Bank/Beads, записать фактические допущения и результаты; commit. Свежий final reviewer полного diff, fix важных замечаний/scoped re-review. Push/PR обязательны, merge/публичный релиз после локальной приёмки оператором.
 
 ## Self-review / execution record
 
