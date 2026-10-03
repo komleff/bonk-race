@@ -21,6 +21,52 @@ const report={checks:[],errors:[],physicalAndroid:false};
   assert.ok(layout.canvas.top+(layout.map.y+layout.map.h)/layout.dpr<fa.y,'карта не перекрывает тормоз/FA');
   await page.screenshot({path:`${out}/layout-${width}x${height}.png`});report.checks.push(`layout ${width}x${height}`);
  }
+ // Проверяем реальные области касания всех слайдеров, включая раскрываемые группы.
+ const mobile=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+ track(mobile);
+ await mobile.goto(process.env.U2TAGLAB_URL||'http://127.0.0.1:5175/u2taglab.html');
+ await mobile.waitForFunction(()=>window.__bonkLab);
+ await mobile.evaluate(()=>{window.__bonkLab.pause();window.__bonkLab.reset();});
+ await mobile.getByRole('button',{name:'Настройки',exact:true}).click();
+ for(const title of ['Локальные поля','Двигатели A','FA и вращение A']){
+  await mobile.locator('.lab-group-header').filter({hasText:title}).click();
+ }
+ const touch=await mobile.context().newCDPSession(mobile);
+ const massSlider=mobile.locator('.lab-param').filter({has:mobile.getByLabel('Масса A',{exact:true})}).locator('input[type="range"]');
+ report.sliderTargets=[];
+ for(const [width,height]of [[390,844],[360,800],[412,915],[844,390]]){
+  await mobile.setViewportSize({width,height});
+  const sliders=await mobile.locator('.lab-panel input[type="range"]').evaluateAll(inputs=>inputs.map(input=>{
+   const box=input.getBoundingClientRect();
+   return {label:input.getAttribute('aria-label')||input.closest('.lab-param').querySelector('.lab-param-label').textContent.trim(),width:box.width,height:box.height};
+  }));
+  assert.equal(sliders.length,23,'должны быть раскрыты все22 числовых параметра и насыщенность');
+  for(const slider of sliders)assert.ok(slider.width>=44&&slider.height>=44,`${width}×${height}: ${slider.label} — область касания ${slider.width}×${slider.height}`);
+  await massSlider.scrollIntoViewIfNeeded();
+  const box=await massSlider.boundingBox(),y=box.y+box.height/2-16;
+  await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width*0.15,y}]});
+  for(const fraction of [0.25,0.4,0.55]){
+   await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box.x+box.width*fraction,y}]});
+  }
+  await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  const mass=await mobile.evaluate(()=>window.__bonkLab.params.mass);
+  assert.ok(mass>4000000&&mass<7000000,'перетаскивание вне видимой4px дорожки должно менять массу');
+  assert.equal(await mobile.evaluate(()=>window.__labInput.getState().magnitude),0);
+  report.sliderTargets.push({viewport:{width,height},sliders,dragMass:mass});
+ }
+ await mobile.setViewportSize({width:390,height:844});
+ await massSlider.scrollIntoViewIfNeeded();
+ await mobile.screenshot({path:out+'/mobile-slider-targets.png'});
+ const panel=mobile.locator('.lab-panel'),scrollBefore=await panel.evaluate(el=>el.scrollTop);
+ const panelBox=await panel.boundingBox(),swipeX=panelBox.x+8;
+ await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:swipeX,y:650}]});
+ for(const y of [620,570,500])await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:swipeX,y}]});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await mobile.waitForFunction(before=>document.querySelector('.lab-panel').scrollTop>before,scrollBefore);
+ report.panelSwipe={before:scrollBefore,after:await panel.evaluate(el=>el.scrollTop)};
+ assert.equal(await mobile.evaluate(()=>window.__labInput.getState().magnitude),0);
+ await mobile.close();
+ report.checks.push('all23 mobile slider targets >=44px at360/390/412/landscape; off-track touch drag and panel swipe do not steer game');
  await page.setViewportSize({width:1280,height:900});
  await page.evaluate(()=>{const l=window.__bonkLab;l.pause();l.reset();});
  await page.getByRole('button',{name:'Настройки',exact:true}).click();
