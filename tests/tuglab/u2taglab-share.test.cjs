@@ -8,10 +8,10 @@ const make=()=>new BonkLab({}, {towing:true,space:true});
 const api=()=>{const path='../../.cache/tuglab-tests/client/src/u2taglab/share.js';assert.ok(existsSync(resolve(__dirname,path)),'должна существовать независимая схема U2TagLab');return require(path);};
 const exported=lab=>{assert.equal(typeof lab.exportSpaceShareSnapshot,'function','экспорт должен учитывать исходный генератор');return lab.exportSpaceShareSnapshot();};
 const imported=(lab,value)=>{assert.equal(typeof lab.applySpaceShareSnapshot,'function','импорт должен быть атомарным');return lab.applySpaceShareSnapshot(value);};
-test('calculated spring starts at270 between attachments with matching world reservation',()=>{
- const lab=make(),s=lab.getState();near(s.towing.distance,270);near(s.towing.coupling.restLength,270);near(s.towing.coupling.k,184904.0171469394);
- near(s.y,9000-24.879310344827587-2*44.76923076923077-270-500);near(s.distanceM,0);
- lab.updateParams('tow.type','rope');assert.equal(lab.params['tow.type'],'rope');near(lab.params['tow.length'],288);lab.reset();near(lab.getState().towing.distance,288);
+test('all coupling types start at the common288m recommendation with matching world reservation',()=>{
+ const lab=make(),s=lab.getState();near(s.towing.distance,288);near(s.towing.coupling.restLength,288);near(s.towing.coupling.k,328718.25270567);near(lab.params['tow.dampingRatio'],1);near(s.towing.coupling.c,523171.34802638186);
+ near(s.y,9000-24.879310344827587-2*44.76923076923077-288-500);near(s.distanceM,0);
+ for(const type of ['rope','rod','spring']){lab.updateParams('tow.type',type);assert.equal(lab.params['tow.type'],type);near(lab.params['tow.length'],288);lab.reset();near(lab.getState().towing.distance,288);}
 });
 test('space schema round trips full effective profile and current FA with bounded links',()=>{
  const lab=make();lab.updateParams('mass',456789);lab.setSpaceFA(false);lab.updateParams('space.fieldPressure',321);
@@ -30,7 +30,7 @@ test('live length/radius overrides never replace the actual seeded course on sha
 });
 test('validation rejects unknown/missing keys, incompatibility, nonfinite values and invalid ranges atomically',()=>{
  const lab=make(),a=api(),s=exported(lab);lab.start();lab.setInput(1,0,1);const before=lab.getState(),params=lab.params;
- const cases=[v=>v.extra=1,v=>delete v.params['space.fa'],v=>v.params.extra=1,v=>v.schema=9,v=>v.model='arcade',v=>v.generator='u2-space-world-fields-v1',v=>v.seed=-1,v=>v.seed=1.5,v=>v.density=26,v=>v.params.mass=NaN,v=>v.params['space.forwardForce']=Infinity,v=>v.params['space.fa']='true',v=>v.params['tow.radiusB']=251,v=>{v.params['tow.type']='rope';v.params['tow.length']=270;},v=>v.world.couplingLength=2001,v=>v.world.radiusB=0,v=>v.world.fields.extra=1,v=>v.world.fields.fieldPressure=Infinity,v=>v.world.asteroidMaxSpeed=101];
+ const cases=[v=>v.extra=1,v=>delete v.params['space.fa'],v=>v.params.extra=1,v=>v.schema=9,v=>v.model='arcade',v=>v.generator='u2-space-world-fields-v1',v=>v.seed=-1,v=>v.seed=1.5,v=>v.density=26,v=>v.params.mass=NaN,v=>v.params['space.forwardForce']=Infinity,v=>v.params['space.fa']='true',v=>v.params['tow.radiusB']=251,v=>{v.params['tow.type']='rope';v.params['tow.length']=19;},v=>v.world.couplingLength=2001,v=>v.world.radiusB=0,v=>v.world.fields.extra=1,v=>v.world.fields.fieldPressure=Infinity,v=>v.world.asteroidMaxSpeed=101];
  for(const mutate of cases){const v=structuredClone(s);mutate(v);assert.throws(()=>a.validateSpaceShareSnapshot(v),/U2TagLab/);assert.throws(()=>imported(lab,v),/U2TagLab/);assert.deepEqual(lab.getState(),before);assert.deepEqual(lab.params,params);assert.equal(lab.isRunning,true);}
  assert.throws(()=>a.decodeSpaceShareFragment('#tug=abc'),/U2TagLab/);assert.throws(()=>a.decodeSpaceShareFragment('#u2tag='+ 'a'.repeat(16000)),/U2TagLab/);assert.throws(()=>a.decodeSpaceShareFragment('#u2tag=e30'),/U2TagLab/);
  const old=new BonkLab({}, {towing:true});assert.throws(()=>imported(lab,old.exportShareSnapshot()),/U2TagLab/);assert.throws(()=>old.applyShareSnapshot(s),/TugLab/);
@@ -63,4 +63,18 @@ test('live tug mass overrides never alter the global seeded asteroid population 
  const target=make();imported(target,snapshot);assert.equal(target.params.mass,600000);assert.deepEqual(target.getState().spaceWorld,initial);target.reset();assert.deepEqual(target.getState().spaceWorld,initial);source.reset();assert.deepEqual(source.getState().spaceWorld,initial);
  const other=make();other.updateParams('mass',10000);other.reset();assert.deepEqual(other.getState().spaceWorld.asteroids,initial.asteroids);
  const before=target.getState(),bad=structuredClone(snapshot);bad.world.asteroidMassReference=300000;assert.throws(()=>imported(target,bad),/U2TagLab/);assert.deepEqual(target.getState(),before);
+});
+test('short rope and rod links retain full hidden spring settings on import and switchback',()=>{
+ for(const type of ['rope','rod'])for(const length of [20,270]){
+  const snapshot=exported(make());snapshot.params['tow.type']=type;snapshot.params['tow.length']=length;snapshot.params['tow.stiffness']=123456;snapshot.params['tow.dampingRatio']=0.75;
+  const target=make();imported(target,api().decodeSpaceShareFragment(api().encodeSpaceShareFragment(snapshot)));
+  assert.deepEqual(exported(target),snapshot);near(target.getState().towing.coupling.restLength,length);target.updateParams('tow.type','spring');
+  near(target.params['tow.length'],length);near(target.params['tow.stiffness'],123456);near(target.params['tow.dampingRatio'],0.75);
+ }
+});
+test('explicit former270m spring links preserve coefficients and the original recipe without compatibility migration',()=>{
+ const original=make();original.updateParams('tow.length',270);original.updateParams('tow.stiffness',184904.0171469394);original.updateParams('tow.dampingRatio',0.5);original.reset();
+ const snapshot=exported(original),target=make();assert.equal(snapshot.model,'u2-space-circles-disk-v2');assert.equal(snapshot.generator,'u2-space-world-area-catalog-v3');
+ imported(target,api().decodeSpaceShareFragment(api().encodeSpaceShareFragment(snapshot)));
+ assert.deepEqual(exported(target),snapshot);assert.deepEqual(target.getState(),original.getState());near(target.getState().towing.coupling.c,196189.25550989318);target.reset();assert.deepEqual(target.getState(),original.getState());
 });

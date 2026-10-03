@@ -10,6 +10,8 @@ const report={checks:[],errors:[],physicalAndroid:false};
  const page=await browser.newPage({viewport:{width:1280,height:900}});track(page);
  await page.addInitScript(()=>{const draw=CanvasRenderingContext2D.prototype.fillRect;CanvasRenderingContext2D.prototype.fillRect=function(x,y,w,h){if(w===140&&h===140)window.__minimapRect={x,y,w,h};return draw.call(this,x,y,w,h);};});
  await page.goto(process.env.U2TAGLAB_URL||'http://127.0.0.1:5175/u2taglab.html');await page.waitForFunction(()=>window.__bonkLab);
+ report.defaults=await page.evaluate(()=>({params:window.__bonkLab.exportSpaceShareSnapshot().params,coupling:window.__bonkLab.getState().towing.coupling,distance:window.__bonkLab.getState().towing.distance}));
+ assert.equal(report.defaults.params['tow.length'],288);assert.equal(report.defaults.params['tow.dampingRatio'],1);assert.ok(Math.abs(report.defaults.coupling.k-328718.25270567)<1e-6);assert.ok(Math.abs(report.defaults.coupling.c-523171.34802638186)<1e-6);assert.ok(Math.abs(report.defaults.distance-288)<1e-8);
  report.resources=await page.evaluate(()=>performance.getEntriesByType('resource').map(r=>r.name));if(process.env.U2TAGLAB_BUILT==='1'){assert.ok(report.resources.length>0);const prefix=process.env.U2TAGLAB_URL;assert.ok(report.resources.every(url=>url.startsWith(prefix)),JSON.stringify(report.resources));}
  const toolbarFA=await page.locator('.tug-race-toolbar').getByRole('button',{name:'Flight Assist',exact:true}).count();assert.equal(toolbarFA,0,'FA должен находиться внизу рядом с тормозом');
  for(const [width,height]of [[360,800],[390,844],[412,915],[844,390]]){
@@ -33,14 +35,35 @@ const report={checks:[],errors:[],physicalAndroid:false};
  }
  const touch=await mobile.context().newCDPSession(mobile);
  const massSlider=mobile.locator('.lab-param').filter({has:mobile.getByLabel('Масса A',{exact:true})}).locator('input[type="range"]');
+ const mobileEdit=async(label,value)=>{const control=mobile.getByLabel(label,{exact:true});await control.fill(String(value));await control.press('Enter');};
+ await mobileEdit('Длина между креплениями',270);await mobileEdit('Жёсткость пружины k',123456);await mobileEdit('Демпфирование пружины ζ',0.75);
+ const beforeType=await mobile.evaluate(()=>window.__bonkLab.getState());
+ report.couplingModes=[];
+ for(const type of ['rope','rod','spring']){
+  await mobile.getByLabel('Сцепка',{exact:true}).selectOption(type);
+  assert.equal(await mobile.getByLabel('Жёсткость пружины k',{exact:true}).count(),type==='spring'?1:0);assert.equal(await mobile.getByLabel('Демпфирование пружины ζ',{exact:true}).count(),type==='spring'?1:0);
+  const state=await mobile.evaluate(()=>({params:window.__bonkLab.exportSpaceShareSnapshot().params,state:window.__bonkLab.getState()}));
+  assert.equal(state.params['tow.length'],270);assert.equal(state.params['tow.stiffness'],123456);assert.equal(state.params['tow.dampingRatio'],0.75);
+  for(const key of ['x','y','vx','vy','angle','angularVelocity','elapsedTime','spaceWorld'])assert.deepEqual(state.state[key],beforeType[key]);assert.deepEqual(state.state.towing.B,beforeType.towing.B);
+  const length=mobile.getByLabel('Длина между креплениями',{exact:true});assert.equal(await length.getAttribute('min'),'20');assert.equal(await length.getAttribute('max'),'2000');
+  if(type!=='spring'){
+   await mobile.getByRole('button',{name:'Поделиться',exact:true}).click();const modeLink=await mobile.getByLabel('Ссылка на заезд',{exact:true}).inputValue();await mobile.getByRole('button',{name:'Закрыть',exact:true}).click();
+   const target=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});track(target);await target.goto(modeLink);await target.waitForFunction(()=>window.__bonkLab);
+   assert.deepEqual(await target.evaluate(()=>window.__bonkLab.exportSpaceShareSnapshot().params),state.params);assert.deepEqual(await target.evaluate(()=>window.__bonkLab.getState().spaceWorld),beforeType.spaceWorld);
+   await target.getByRole('button',{name:'Настройки',exact:true}).click();assert.equal(await target.getByLabel('Жёсткость пружины k',{exact:true}).count(),0);assert.equal(await target.getByLabel('Демпфирование пружины ζ',{exact:true}).count(),0);
+   await target.getByLabel('Сцепка',{exact:true}).selectOption('spring');assert.equal(await target.getByLabel('Жёсткость пружины k',{exact:true}).inputValue(),'123456');assert.equal(await target.getByLabel('Демпфирование пружины ζ',{exact:true}).inputValue(),'0.75');await target.close();
+  }
+  report.couplingModes.push({type,length:state.params['tow.length'],springControlsVisible:type==='spring',hiddenSharePreserved:true});
+ }
  report.sliderTargets=[];
- for(const [width,height]of [[390,844],[360,800],[412,915],[844,390]]){
+ for(const type of ['spring','rope','rod'])for(const [width,height]of [[390,844],[360,800],[412,915],[844,390]]){
+  await mobile.getByLabel('Сцепка',{exact:true}).selectOption(type);
   await mobile.setViewportSize({width,height});
   const sliders=await mobile.locator('.lab-panel input[type="range"]').evaluateAll(inputs=>inputs.map(input=>{
    const box=input.getBoundingClientRect();
    return {label:input.getAttribute('aria-label')||input.closest('.lab-param').querySelector('.lab-param-label').textContent.trim(),width:box.width,height:box.height};
   }));
-  assert.equal(sliders.length,23,'должны быть раскрыты все22 числовых параметра и насыщенность');
+  assert.equal(sliders.length,type==='spring'?23:21,'должны быть раскрыты все применимые числовые параметры и насыщенность');
   for(const slider of sliders)assert.ok(slider.width>=44&&slider.height>=44,`${width}×${height}: ${slider.label} — область касания ${slider.width}×${slider.height}`);
   await massSlider.scrollIntoViewIfNeeded();
   const box=await massSlider.boundingBox(),y=box.y+box.height/2-16;
@@ -52,8 +75,9 @@ const report={checks:[],errors:[],physicalAndroid:false};
   const mass=await mobile.evaluate(()=>window.__bonkLab.params.mass);
   assert.ok(mass>4000000&&mass<7000000,'перетаскивание вне видимой4px дорожки должно менять массу');
   assert.equal(await mobile.evaluate(()=>window.__labInput.getState().magnitude),0);
-  report.sliderTargets.push({viewport:{width,height},sliders,dragMass:mass});
+  report.sliderTargets.push({type,viewport:{width,height},sliders,dragMass:mass});
  }
+ await mobile.getByLabel('Сцепка',{exact:true}).selectOption('spring');
  await mobile.setViewportSize({width:390,height:844});
  await massSlider.scrollIntoViewIfNeeded();
  await mobile.screenshot({path:out+'/mobile-slider-targets.png'});
@@ -66,7 +90,7 @@ const report={checks:[],errors:[],physicalAndroid:false};
  report.panelSwipe={before:scrollBefore,after:await panel.evaluate(el=>el.scrollTop)};
  assert.equal(await mobile.evaluate(()=>window.__labInput.getState().magnitude),0);
  await mobile.close();
- report.checks.push('all23 mobile slider targets >=44px at360/390/412/landscape; off-track touch drag and panel swipe do not steer game');
+ report.checks.push('common288 defaults; actual spring→rope→rod→spring preserves270 and bodies; hidden k/ζ survive rope/rod share; all23 spring/21 rope/rod mobile sliders >=44px at360/390/412/landscape, off-track touch drag and panel swipe do not steer game');
  await page.setViewportSize({width:1280,height:900});
  await page.evaluate(()=>{const l=window.__bonkLab;l.pause();l.reset();});
  await page.getByRole('button',{name:'Настройки',exact:true}).click();
@@ -80,7 +104,7 @@ const report={checks:[],errors:[],physicalAndroid:false};
  for(const title of ['Двигатели A','FA и вращение A'])await page.locator('.lab-group-header').filter({hasText:title}).click();
  const helpRows=page.locator('.lab-param');
  for(let i=0;i<await helpRows.count();i++){const row=helpRows.nth(i),info=row.getByRole('button',{name:'i',exact:true});assert.equal(await info.count(),1);await info.click();assert.ok((await row.locator('.lab-param-tooltip').innerText()).length>40);await info.click();}
- const lengthRow=page.locator('.lab-param').filter({has:page.getByLabel('Длина между креплениями',{exact:true})});await lengthRow.getByRole('button',{name:'i',exact:true}).click();assert.match(await lengthRow.locator('.lab-param-tooltip').innerText(),/270–288/);
+ const lengthRow=page.locator('.lab-param').filter({has:page.getByLabel('Длина между креплениями',{exact:true})});await lengthRow.getByRole('button',{name:'i',exact:true}).click();assert.match(await lengthRow.locator('.lab-param-tooltip').innerText(),/20–2000/);assert.match(await lengthRow.locator('.lab-param-tooltip').innerText(),/288/);
  await page.getByLabel('Масса A',{exact:true}).focus();await page.keyboard.down('w');assert.equal(await page.evaluate(()=>window.__labInput.getState().magnitude),0);await page.keyboard.up('w');
  await page.screenshot({path:out+'/desktop-help.png'});
  await page.getByRole('button',{name:'Скрыть',exact:true}).click();await page.getByRole('button',{name:'Flight Assist',exact:true}).click();

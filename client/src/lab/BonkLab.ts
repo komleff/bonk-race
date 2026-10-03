@@ -553,10 +553,6 @@ export class BonkLab {
             if (key === "arena.objectDensity" && (typeof value !== "number" || !Number.isFinite(value) || value < 0.1 || value > 25)) return;
         }
         if (key.startsWith("tow.")) {
-            // Минимум троса принадлежит космическому режиму; длина пружины от него независима.
-            if (this.space && key === "tow.type" && value === "rope" && Number(this.towing!.params["tow.length"]) < 288) {
-                this.towing!.update("tow.length", 288, this.towingBodyA(), this.arena);
-            }
             if (this.towing?.update(key, value, this.towingBodyA(), this.arena)) {
                 if (this.space && ["tow.length", "tow.radiusB", "tow.type"].includes(key)) this.spaceGeometryDirty = true;
                 if (this.towing.needsRestart) this.pause();

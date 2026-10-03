@@ -104,7 +104,7 @@ test('real Lab samples separate A/B/asteroids, leaves statics fixed and Pause/St
  for(let i=0;i<30;i++)lab.update(1/60);assert.deepEqual(lab.getState(),before);lab.stepOnce();const after=lab.getState();
  assert.ok(after.vx>0);near(after.towing.B.velocity.x,0);near(after.spaceWorld.asteroids[0].velocity.x,0);
  near(after.spaceWorld.time,before.spaceWorld.time+1/60);assert.deepEqual(after.spaceWorld.statics,before.spaceWorld.statics);
- lab.reset();assert.deepEqual(lab.getState().spaceWorld,createSpaceWorld(createSpaceProfile(),42,5,{couplingLength:270}));
+ lab.reset();assert.deepEqual(lab.getState().spaceWorld,createSpaceWorld(createSpaceProfile(),42,5,{couplingLength:288}));
 });
 test('real Lab combines A engine with resistive response rather than adding a separate Euler drag',()=>{
  const lab=new BonkLab({}, {towing:true,space:true});lab.setSpaceFA(false);lab.setTowingConnection(false);

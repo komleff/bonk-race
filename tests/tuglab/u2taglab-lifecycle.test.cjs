@@ -6,7 +6,7 @@ const advance=(lab,n=1)=>{for(let i=0;i<n;i++)lab.update(1/60);};
 const live=lab=>{lab.start();advance(lab,240);};
 test('space starts a free large composition with source geometry and calibrated spring',()=>{
  const lab=make(),s=lab.getState();near(s.mass,300000);near(s.radius,24.879310344827587);near(s.towing.B.mass,680000);
- near(s.towing.B.inertia,791520000);near(s.towing.distance,270);near(s.towing.coupling.k,184904.0171469394);assert.equal(s.towing.reason,undefined);
+ near(s.towing.B.inertia,791520000);near(s.towing.distance,288);near(s.towing.coupling.k,328718.25270567);near(s.towing.coupling.c,523171.34802638186);near(lab.params['tow.dampingRatio'],1);assert.equal(s.towing.reason,undefined);
  assert.equal(s.orbs.length,0);assert.equal(s.arena.zones.length,0);assert.ok(s.arena.width>=6000);
 });
 test('live FA toggle keeps bodies, seed, timer, angle, input and current coupling',()=>{
@@ -19,10 +19,30 @@ test('mass edits do not add torque; radius override does not change U2 inertia',
  lab.updateParams('mass',600000);near(lab.getState().towing.B.inertia,1583040000);near(lab.params['space.yawTorque'],45333181.99130072);
  near(lab.getState().x,s.x);near(lab.getState().y,s.y);
 });
-test('space rope minimum is enforced atomically including type switch',()=>{
- const lab=make();lab.updateParams('tow.type','rope');lab.updateParams('tow.length',287);near(lab.params['tow.length'],288);
- lab.updateParams('tow.type','rod');lab.updateParams('tow.length',20);
- lab.updateParams('tow.type','rope');assert.equal(lab.params['tow.type'],'rope');near(lab.params['tow.length'],288);assert.ok(lab.getState().towing.needsRestart);
+test('all space coupling types preserve a selected270m length and hidden spring settings without moving bodies or world',()=>{
+ const lab=make();lab.updateParams('tow.length',270);lab.updateParams('tow.stiffness',123456);lab.updateParams('tow.dampingRatio',0.75);lab.reset();lab.setSpaceFA(false);
+ const before=lab.getState();
+ for(const type of ['rope','rod','spring']){
+  lab.updateParams('tow.type',type);const after=lab.getState();
+  assert.equal(lab.params['tow.type'],type);near(lab.params['tow.length'],270);near(lab.params['tow.stiffness'],123456);near(lab.params['tow.dampingRatio'],0.75);
+  for(const key of ['x','y','vx','vy','angle','angularVelocity','elapsedTime','spaceWorld'])assert.deepEqual(after[key],before[key]);
+  assert.deepEqual(after.towing.B,before.towing.B);assert.equal(after.towing.needsRestart,false);assert.equal(lab.params['space.fa'],false);
+ }
+});
+test('rope accepts the shared20–2000m range and invalid endpoints leave the composition unchanged',()=>{
+ for(const length of [20,270,2000]){
+  const lab=make();lab.updateParams('tow.type','rope');lab.updateParams('tow.length',length);lab.reset();
+  near(lab.params['tow.length'],length);near(lab.getState().towing.distance,length);assert.equal(lab.getState().towing.needsRestart,false);
+  const params=lab.params,before=lab.getState();for(const invalid of [19,2001]){lab.updateParams('tow.length',invalid);assert.deepEqual(lab.params,params);assert.deepEqual(lab.getState(),before);}
+ }
+});
+test('only Spring exposes stiffness and damping controls while all types expose one common length range',()=>{
+ const {spaceGroups}=require('../../.cache/tuglab-tests/client/src/u2taglab/ui/paramDefs.js');
+ for(const type of ['spring','rope','rod']){
+  const params=spaceGroups(type).flatMap(group=>group.params),keys=params.map(param=>param.key);
+  assert.equal(keys.includes('tow.stiffness'),type==='spring');assert.equal(keys.includes('tow.dampingRatio'),type==='spring');
+  const length=params.find(param=>param.key==='tow.length');near(length.min,20);near(length.max,2000);
+ }
 });
 test('long seeded start reserves entire composition and restores exact spawn',()=>{
  const lab=make();lab.updateParams('tow.length',2000);lab.updateParams('tow.radiusB',250);lab.reset();let s=lab.getState();near(s.towing.distance,2000);assert.equal(s.towing.reason,undefined);
@@ -42,7 +62,7 @@ test('space bypasses legacy FA and ambient drag; B has no damping',()=>{
 });
 test('actual space thrust transfers to B and pause/step/restart remain coherent',()=>{
  const lab=make();lab.updateParams('tow.type','rod');lab.reset();live(lab);const s=lab.getState();lab.setInput(0,-1,1);advance(lab,120);let t=lab.getState();
- assert.ok(t.y<s.y-10);assert.ok(t.towing.B.velocity.y<0);assert.equal(t.towing.reason,undefined);near(t.towing.distance,270,2.7);
+ assert.ok(t.y<s.y-10);assert.ok(t.towing.B.velocity.y<0);assert.equal(t.towing.reason,undefined);near(t.towing.distance,288,2.88);
  lab.pause();t=lab.getState();lab.stepOnce();near(lab.getState().elapsedTime,t.elapsedTime+1/60);assert.deepEqual(lab.getInterpolatedState(0),lab.getState());lab.reset();near(lab.getState().elapsedTime,0);
 });
 test('space extreme solver stop is atomic, with no partial A/B update',()=>{
@@ -60,7 +80,7 @@ test('space rope capture keeps configured length and slack without pulling bodie
 });
 test('space calibration follows actual reduced mass, and invalid edits are atomic',()=>{
  const lab=make();lab.updateParams('tow.massRatio',1);const c=lab.getState().towing.coupling.c;
- near(c,Math.sqrt(184904.0171469394*150000),1e-6);lab.updateParams('mass',600000);near(lab.getState().towing.coupling.c,c*Math.sqrt(2),1e-6);
+ near(c,2*Math.sqrt(328718.25270567*150000),1e-6);lab.updateParams('mass',600000);near(lab.getState().towing.coupling.c,c*Math.sqrt(2),1e-6);
  const before=lab.params,s=lab.getState();for(const [key,value] of [['mass',NaN],['mass',1e8],['space.forwardForce',Infinity],['space.yawStopTime',0],['tow.radiusB',251],['tow.massRatio',0.09],['tow.stiffness',1e9]])lab.updateParams(key,value);
  assert.deepEqual(lab.params,before);assert.deepEqual(lab.getState(),s);
 });
@@ -94,4 +114,25 @@ test('space capture chooses nearest tail/tail pair with perpendicular hull headi
  lab.towing.B.position={x:s.x+200,y:s.y+200};lab.towing.B.angle=0;const before=lab.getState();assert.equal(lab.setTowingConnection(true).ok,true);
  const after=lab.getState();assert.equal(after.towing.coupling.attachmentA,'tail');assert.equal(after.towing.coupling.attachmentB,'tail');
  near(after.x,before.x);near(after.y,before.y);near(after.angle,before.angle);assert.deepEqual(after.towing.B,before.towing.B);
+});
+for(const type of ['spring','rope','rod'])test(`common288 ${type} flight keeps generated world, FA, Pause/Step/Restart and capture coherent`,()=>{
+ const kernel=require('../../.cache/tuglab-tests/client/src/u2taglab/physics/advanceWorld.js'),original=kernel.advanceSpaceWorld,contacts=[];let ticks=0;
+ // Наблюдаем реальные контакты адаптера, не подменяя результат физики.
+ kernel.advanceSpaceWorld=(...args)=>{const result=original(...args);ticks++;contacts.push(...result.contacts);return result;};
+ try{
+  const lab=make();lab.updateParams('tow.type',type);lab.reset();const initial=lab.getState();near(initial.towing.distance,288);live(lab);
+  lab.vx=0;lab.vy=-150;lab.towing.B.velocity={x:0,y:-150};
+  for(let i=0;i<120;i++){
+   const direction=i/60*7.5*Math.PI/180;lab.setInput(Math.sin(direction),-Math.cos(direction),0.35);advance(lab);
+   const s=lab.getState();assert.equal(s.towing.reason,undefined);assert.equal(s.towing.needsRestart,false);
+   assert.ok([s.x,s.y,s.vx,s.vy,s.angularVelocity,s.towing.B.position.x,s.towing.B.position.y,s.towing.B.velocity.x,s.towing.B.velocity.y,s.towing.B.angularVelocity].every(Number.isFinite));
+  }
+  assert.ok(ticks>=120,'физический адаптер действительно продвигает мир');assert.ok(contacts.every(contact=>!['A','B'].includes(contact.body)&&!['A','B'].includes(contact.other)),'в плавном старте нет контактов кораблей');
+  const beforeFA=lab.getState();lab.setSpaceFA(false);assert.deepEqual(lab.getState(),beforeFA);lab.pause();const paused=lab.getState();advance(lab,5);assert.deepEqual(lab.getState(),paused);
+  lab.stepOnce();near(lab.getState().spaceWorld.time,paused.spaceWorld.time+1/60);near(lab.getState().elapsedTime,paused.elapsedTime+1/60);
+  lab.reset();assert.deepEqual(lab.getState().spaceWorld,initial.spaceWorld);near(lab.getState().towing.distance,288);near(lab.getState().elapsedTime,0);assert.equal(lab.params['space.fa'],false);
+  lab.setTowingConnection(false);lab.towing.B.position.y-=88;const beforeCapture=lab.getState();assert.equal(lab.setTowingConnection(true).ok,true);const captured=lab.getState();
+  near(captured.towing.distance,200);near(captured.towing.coupling.restLength,type==='rope'?288:200);assert.deepEqual(captured.towing.B,beforeCapture.towing.B);
+  for(const key of ['x','y','vx','vy','angle','angularVelocity','elapsedTime','spaceWorld'])assert.deepEqual(captured[key],beforeCapture[key]);
+ }finally{kernel.advanceSpaceWorld=original;}
 });

@@ -75,7 +75,6 @@ export function validateSpaceShareSnapshot(value: unknown): SpaceShareSnapshot {
     params[key] = current as number | boolean | string;
   }
   if (params['arena.objectDensity'] !== density) fail('плотность генератора не соответствует параметрам');
-  if (params['tow.type'] === 'rope' && Number(params['tow.length']) < 288) fail('трос должен иметь длину не менее 288 м');
   if (!exact(value.world, ['radiusB', 'couplingLength', 'asteroidMaxSpeed', 'fields'])
     || !exact(value.world.fields, ['fieldsEnabled', 'fieldPressure', 'resistiveK'])) fail('неполная конфигурация исходного мира');
   const fields = value.world.fields;
