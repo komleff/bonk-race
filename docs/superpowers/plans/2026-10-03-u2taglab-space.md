@@ -40,14 +40,14 @@
 
 **Interfaces:** `SpaceProfile` хранит SI geometry/mass/force/FA/coupling параметры и источник; `spaceEngineWrench(body:BodyState,input:InputFrame,fa:boolean,profile:SpaceProfile,dt:number):EngineWrench` возвращает силу/момент без прямой записи скорости. `BonkLab(canvas,{towing:true,space:true})` включает только новый профиль. LabTowing получает optional mode-owned профиль диапазонов/геометрии/инерции; дефолт остаётся прежним. Взаимодействие UI с FA через атомарный живой toggle текущего mode-owned состояния.
 
-- [ ] Добавить RED: vacuum/no engines сохраняет v/omega A/B; F/m и torque/I совпадают с числовым профилем; B passive; radius override не меняет I скрыто.
-- [ ] Добавить RED: FA ON coast, lateral damping, diagonal magnitude250; OFF raw linear/no governor; yaw torque действует в обоих; toggle сохраняет тела/seed. Soft overspeed после внешнего импульса уменьшается без мгновенного clamp.
-- [ ] Добавить RED: rope>=288, rod/spring/nearest attachment, relaxed captureV_FA, изменение масс не добавляет torque; длинный старт и экстремальный solver-stop атомарны.
-- [ ] Запустить npm run test:tuglab и убедиться, что новые адресные тесты падают по ожидаемой причине.
-- [ ] Реализовать профиль/FA и узкие hooks BonkLab, исключить старый FA/drag из space-path; reuse advancePair/couplings с корректными инерциями и диапазонами. Если нужен выделенный adapter, сохранить контракт и записать решение.
-- [ ] Добавить entry/build/dev скрипты и минимальный компактный UI с FA/параметрами. На этом этапе карта может быть временной безопасной исходной ареной с явно отмеченным масштабом, но игра должна реально запускаться/летать и соединяться.
-- [ ] Запустить npm run test:tuglab, npm run typecheck:tuglab, client typecheck, build:tuglab и build:u2taglab. Проверить браузером :5175/u2taglab.html, root BonkLab и :5174/tuglab.html.
-- [ ] Commit; self-review; один свежий task reviewer проверяет spec+quality. PM показывает пользователю готовую локальную физику и продолжает остальные этапы без ожидания разрешения.
+- [x] Добавить RED: vacuum/no engines сохраняет v/omega A/B; F/m и torque/I совпадают с числовым профилем; B passive; radius override не меняет I скрыто.
+- [x] Добавить RED: FA ON coast, lateral damping, diagonal magnitude250; OFF raw linear/no governor; yaw torque действует в обоих; toggle сохраняет тела/seed. Soft overspeed после внешнего импульса уменьшается без мгновенного clamp.
+- [x] Добавить RED: rope>=288, rod/spring/nearest attachment, relaxed captureV_FA, изменение масс не добавляет torque; длинный старт и экстремальный solver-stop атомарны.
+- [x] Запустить npm run test:tuglab и убедиться, что новые адресные тесты падают по ожидаемой причине.
+- [x] Реализовать профиль/FA и узкие hooks BonkLab, исключить старый FA/drag из space-path; reuse advancePair/couplings с корректными инерциями и диапазонами. Если нужен выделенный adapter, сохранить контракт и записать решение.
+- [x] Добавить entry/build/dev скрипты и минимальный компактный UI с FA/параметрами. На этом этапе карта может быть временной безопасной исходной ареной с явно отмеченным масштабом, но игра должна реально запускаться/летать и соединяться.
+- [x] Запустить npm run test:tuglab, npm run typecheck:tuglab, client typecheck, build:tuglab и build:u2taglab. Проверить браузером :5175/u2taglab.html, root BonkLab и :5174/tuglab.html.
+- [x] Commit; self-review; один свежий task reviewer проверяет spec+quality. PM показывает пользователю готовую локальную физику и продолжает остальные этапы без ожидания разрешения.
 
 ## Task 2: B — космический мир — Beads561.4
 

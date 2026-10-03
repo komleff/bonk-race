@@ -1,3 +1,7 @@
+## U2TagLab — физика принята, начат космический мир (3 октября 2026)
+
+Task1/A864165c: независимый GPT-6-Astra подтвердил Spec/QualityAPPROVED, замечаний0;245tests/typechecks/builds/browserPASS. Beads561.2/.3 CLOSED. Task2/B561.4 IN_PROGRESS: статические station100×100/derelict1000×1000 по runtimeU2, подвижные астероидыrho2500 и sphereI, общий clock/массовые контакты/CCD, seededRestart и корректная стартоваяопораA. Следующий свежий Developer получает отдельный brief; :5174/:5175 продолжают работать. Поля/share ещё не реализованы; круговая версия не объявляется завершённой/опубликованной.
+
 ## U2TagLab — первая рабочая физика на кругах (3 октября 2026)
 
 Task1/A реализован свежим Developer gpt-6.1-sol/xhigh, commit864165c. Opt-in space-профиль/чистый закон сил, liveFA/V_FA модуль, вакуум/passiveB/инерция поL/W, сцепкиSI и rope>=288 с провисом, отдельные entry/build/dev и камера состава. http://localhost:5175/u2taglab.html работает (session44409); после прерывания старый :5174 восстановлен PM (session81761), checkout/stash сохранены. 245/245 tests, typechecks, npmtest/build, обе сборки, браузерnew/old/share-v1 PASS по Developer. PM отдельно проверил реальный полёт, сохранность state при FA, паузу/Step/расцепку/radiusB/mobile52px. Task review GPT-6-Astra идёт, .2/.3 ещё in_progress. Сцена временная: начальный progress ненулевой, новый каталог объектов/поля/share ещё не готовы; это Task2–4, работа продолжается без ожидания разрешения.
