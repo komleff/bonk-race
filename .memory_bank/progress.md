@@ -2,6 +2,8 @@
 
 bonk-race-554: единый патч UI/capture/share прошёл финальные gates и self-review: 200/200 TugLab, общий npm test/build и обе оболочки/version PASS, адресные mobile/share/numeric/stock/root/nested browser PASS. Новые проверки полного snapshot/атомарности/совместимости, ближайших точек и границ всех трёх сцепок; browser QA мобильного интерфейса и независимых страниц. PM закрывает задачу после одного независимого итогового review. Новые жёсткое/одношарнирное крепления вынесены в bonk-race-555, в этот патч не входят.
 
+Round1 review: три Important исправлены; 205/205 TugLab PASS, browser regressions auto/manual mass/radius + Restart/share, repeated-invalid recovery, waiting/started Step PASS. Исправления ожидают scoped re-review; исходный генератор/решатель и pipeline не менялись.
+
 # Progress
 
 Отслеживание статуса задач.

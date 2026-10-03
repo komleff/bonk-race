@@ -2,6 +2,8 @@
 
 Ветка feat/tuglab-usability-share, Beads bonk-race-554. Реализованы компактные действия заезда, сворачиваемые настройки и viewport; длина 4–100 м, ближайшие нос/хвост крепления для трёх сцепок. Share передаёт полный валидируемый снимок фактического генератора/параметров и создаёт новый заезд в ожидании явного Старт. Версии 0.6.2 / TugLab 0.1.1. Финальные gates и self-review PASS, TugLab 200/200, общий npm test/build/typecheck/version PASS; mobile/share/stock/root/nested browser PASS; PR38 draft, независимое итоговое review организует PM. Не объявлять новый патч опубликованным.
 
+Round1 исправления трёх Important: автоматическая плотность синхронизирует исходные arena.orbs и живые орбы, включая mass/radius-only + Restart; ошибка ссылки теперь одна controlled parent state с явной очисткой при recovery; Step запрещён до первого Start, включая изменения настроек в ожидании, но сохранён при started countdown/паузе. Адресные RED воспроизвели все три дефекта, 205/205 TugLab и client TS/build + обе оболочки PASS; dev mobile/share и static root/nested/stock PASS. PM проводит scoped re-review тем же reviewer.
+
 # Active Context — BonkRace
 
 Текущее состояние проекта и фокус работы.

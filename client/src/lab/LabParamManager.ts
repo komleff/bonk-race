@@ -52,6 +52,8 @@ export class LabParamManager {
 
     /** Внешний массив орбов — задаётся BonkLab для обновления масс в autoSyncOrbDensity */
     orbs: SandboxOrb[] = [];
+    /** Исходные орбы арены тоже должны соответствовать автоматической плотности при Restart. */
+    initialOrbs: Pick<SandboxOrb, "radius" | "mass">[] = [];
 
     constructor(
         private slimeConfig: SlimeConfig,
@@ -267,6 +269,9 @@ export class LabParamManager {
         const r = this.slimeConfig.geometry.baseRadiusM;
         const density = this.mass / (Math.PI * r * r);
         this.params["orbs.density"] = density;
+        for (const orb of this.initialOrbs) {
+            orb.mass = density * Math.PI * orb.radius * orb.radius;
+        }
         // Обновить массы живых орбов согласно новой плотности
         for (const orb of this.orbs) {
             if (orb.alive) {

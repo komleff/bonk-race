@@ -87,6 +87,7 @@ function renderToolbar(): void {
             towing,
             syncTrigger,
             startupError,
+            onStartupRecovered: () => { startupError = ""; renderToolbar(); },
             onPanelVisibilityChanged: onResize,
             onClearInput: towing ? () => { input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail(); } : undefined,
             onParamsChanged: () => renderPanel(),

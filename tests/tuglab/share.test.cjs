@@ -44,3 +44,26 @@ test('share starts connected at configured length instead of transferring captur
  const snapshot=exportSnapshot(a);assert.equal(snapshot.params['tow.length'],8);const b=make();b.applyShareSnapshot(snapshot);
  assert.equal(b.getState().towing.coupling.connected,true);near(b.getState().towing.distance,8);near(b.getState().towing.coupling.restLength,8);assert.equal(b.isRunning,false);
 });
+
+for(const [key,value] of [['mass',150],['geometry.baseRadiusM',30]]) for(const manual of [false,true]) {
+ test(`Restart/share preserves actual initial orb masses after ${key}-only edit (${manual?'manual':'auto'} density)`,()=>{
+  const a=make();if(manual)a.updateParams('orbs.density',0.27);
+  const arena=a.getState().arena,oldOrbs=structuredClone(arena.orbs);
+  a.updateParams(key,value);assert.strictEqual(a.getState().arena,arena,'mass/radius edit must not regenerate the map');
+  assert.deepEqual(a.getState().arena.orbs.map(o=>[o.x,o.y,o.radius,o.vx,o.vy]),oldOrbs.map(o=>[o.x,o.y,o.radius,o.vx,o.vy]));
+  const density=manual?0.27:key==='mass'?150/(Math.PI*400):100/(Math.PI*900);
+  near(a.params['orbs.density'],density);
+  for(const orb of a.getState().arena.orbs)near(orb.mass,density*Math.PI*orb.radius**2);
+  a.reset();const snapshot=exportSnapshot(a);assert.equal(snapshot.orbDensityManual,manual);
+  const b=make();b.applyShareSnapshot(snapshot);
+  assert.deepEqual(b.getState().arena,a.getState().arena);assert.deepEqual(b.getState().orbs,a.getState().orbs);
+  assert.deepEqual(b.getState().towing.B,a.getState().towing.B);near(b.getState().x,a.getState().x);near(b.getState().y,a.getState().y);
+ });
+}
+test('shared challenge Step preserves all initial state until Start, then permits paused countdown and live ticks',()=>{
+ const lab=make();lab.applyShareSnapshot(exportSnapshot(lab));const initial=structuredClone(lab.getState());
+ assert.equal(lab.hasStarted,false);assert.equal(lab.stepOnce(),false);assert.deepEqual(lab.getState(),initial);
+ lab.updateParams('orbs.count',31);const edited=structuredClone(lab.getState());assert.equal(lab.stepOnce(),false);assert.deepEqual(lab.getState(),edited);
+ lab.start();lab.pause();const countdown=lab.getState().startCountdown;assert.ok(countdown>0);assert.equal(lab.stepOnce(),true);near(lab.getState().startCountdown,countdown-1/60);
+ lab.resume();for(let i=0;i<240;i++)lab.update(1/60);lab.pause();const elapsed=lab.getState().elapsedTime;assert.equal(lab.stepOnce(),true);near(lab.getState().elapsedTime,elapsed+1/60);
+});

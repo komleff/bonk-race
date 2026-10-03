@@ -2,6 +2,8 @@
 
 BonkLab.exportShareSnapshot берёт lastSeed/lastDensity и orbDensityManual, полный params; arena.objectDensity синхронизируется с фактическим генератором. share.ts строго проверяет schema1/generator bonklab-arena-v1, точные ключи и типы, конечные числа/диапазоны/enums до изменений. applyShareSnapshot применяет все параметры без промежуточных генераций, один раз вызывает regenerateArena/reset и оставляет симуляцию в ожидании. Штатный нестрогий JSON import не используется. Настройки в TugLab принадлежат controlled LabPanel внутри Toolbar; layout sync выполняется до paint. На ширине <900 панель перекрывает canvas без desktop-отступа; ResizeObserver и visualViewport.resize поддерживают высоту.
 
+LabParamManager держит ссылки на живые и исходные орбы арены: autoSyncOrbDensity обновляет массы обоих наборов, не меняя карту/раскладку; manual density отключает обе авто-синхронизации. BonkLab связывает initialOrbs после создания/сброса арены. Step проверяет started, который выставляется при явном Start до countdown, поэтому ожидание импорта/настроек неизменно, а паузнутый countdown допускает одиночный тик. Ошибка ссылки принадлежит оболочке; Toolbar получает controlled prop и recovery callback очищает parent state.
+
 # System Patterns
 Архитектурные решения и паттерны проектирования.
 

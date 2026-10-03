@@ -253,6 +253,7 @@ export class BonkLab {
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
         // Передать ссылку на орбы в paramManager (для autoSyncOrbDensity)
         this.paramManager.orbs = this.orbs;
+        this.paramManager.initialOrbs = this.arena.orbs;
 
         // Поместить персонажа на точку спауна
         this.x = this.arena.spawnPoint.x;
@@ -320,7 +321,7 @@ export class BonkLab {
     }
 
     stepOnce(): boolean {
-        if (!this.towing || this.running || this.towing.needsRestart) return false;
+        if (!this.towing || !this.started || this.running || this.towing.needsRestart) return false;
         this.tick(FIXED_DT);
         this.accumulator = 0;
         this.syncPrevState();
@@ -400,6 +401,7 @@ export class BonkLab {
         this.orbs = this.arena.orbs.map(o => ({ ...o, deathProgress: -1 }));
         // Поддерживать синхронизацию ссылки на орбы в paramManager
         this.paramManager.orbs = this.orbs;
+        this.paramManager.initialOrbs = this.arena.orbs;
         this.resetTowing();
         // Синхронизировать prev-состояние, чтобы интерполяция не дёргала после сброса
         this.syncPrevState();

@@ -110,6 +110,7 @@ export interface LabToolbarProps {
     syncTrigger?: number;
     onPanelVisibilityChanged?: () => void;
     startupError?: string;
+    onStartupRecovered?: () => void;
     onClearInput?: () => void;
     /** Called when params are changed externally (reset/import/preset) so panel can sync */
     onParamsChanged?: () => void;
@@ -117,7 +118,7 @@ export interface LabToolbarProps {
     externalParamChange?: number;
 }
 
-export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing = false, onClearInput, syncTrigger, onPanelVisibilityChanged, startupError }: LabToolbarProps) {
+export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing = false, onClearInput, syncTrigger, onPanelVisibilityChanged, startupError, onStartupRecovered }: LabToolbarProps) {
     // Inject styles once
     useEffect(() => {
         injectStyles("lab-toolbar-styles", toolbarCss);
@@ -150,8 +151,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     const [shareLink, setShareLink] = useState("");
     const [shareNotice, setShareNotice] = useState("");
     const [shareError, setShareError] = useState("");
-    const [launchError, setLaunchError] = useState(startupError ?? "");
-    useLayoutEffect(() => { setLaunchError(startupError ?? ""); }, [startupError]);
+    const launchError = startupError ?? "";
     useLayoutEffect(() => {
         if (towing && panelOpen) {
             const snapshot = lab.exportShareSnapshot();
@@ -366,7 +366,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 <div class="tug-actions">
                     <button class="lab-tb-btn" aria-label={towState.paused ? (lab.hasStarted ? "Продолжить" : "Старт") : "Пауза"}
                         disabled={towState.needsRestart || !!launchError} onClick={() => { onClearInput?.(); towState.paused ? lab.resume() : lab.pause(); setTowState(lab.getState().towing); }}>{towState.paused ? "▶" : "Ⅱ"}</button>
-                    {towState.paused && <button class="lab-tb-btn" disabled={towState.needsRestart || !!launchError}
+                    {towState.paused && <button class="lab-tb-btn" disabled={!lab.hasStarted || towState.needsRestart || !!launchError}
                         onClick={() => { onClearInput?.(); lab.stepOnce(); setTowState(lab.getState().towing); }}>Step</button>}
                     <button class="lab-tb-btn" onClick={() => { onClearInput?.(); lab.setTowingConnection(!towState.coupling.connected); setTowState(lab.getState().towing); }}>{towState.coupling.connected ? "Расцепить" : "Сцепить"}</button>
                 </div>
@@ -388,7 +388,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
             {launchError && <div class="lab-modal-backdrop"><div class="lab-modal" role="dialog" aria-label="Ошибка ссылки">
                 <p role="alert">{launchError}</p><button class="lab-tb-btn" onClick={() => {
                     history.replaceState(null, "", location.pathname + location.search);
-                    setLaunchError(""); handleResetParams(); lab.start(); setTowState(lab.getState().towing);
+                    onStartupRecovered?.(); handleResetParams(); lab.start(); setTowState(lab.getState().towing);
                 }}>Начать обычный заезд</button>
             </div></div>}
         </Fragment>;

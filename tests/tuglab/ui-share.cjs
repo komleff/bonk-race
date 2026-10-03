@@ -5,6 +5,51 @@ const out=process.env.TUGLAB_SHARE_QA_DIR||'.cache/tuglab-qa/share';
 const url=process.env.TUGLAB_URL||'http://localhost:5174/tuglab.html';
 (async()=>{fs.mkdirSync(out,{recursive:true});const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});const errors=[],checks=[];
 try{const context=await browser.newContext();const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+// Адресные переходы из review: независимые страницы, без дополнительного regenerateArena.
+const regressions=[];
+const regression=async(name,body)=>{try{await body();checks.push({name,status:'PASS'});console.log(`PASS ${name}`);}catch(error){regressions.push(`${name}: ${error.message}`);console.log(`FAIL ${name}: ${error.message}`);}};
+const shareFrom=async sender=>{
+ await sender.getByRole('button',{name:'Настройки',exact:true}).click();await sender.getByRole('button',{name:'Поделиться',exact:true}).click();
+ return sender.getByLabel('Ссылка на заезд').inputValue();
+};
+for(const [key,value] of [['mass',150],['geometry.baseRadiusM',30]])for(const manual of [false,true])await regression(`Restart/share ${key} only, ${manual?'manual':'auto'} orb density`,async()=>{
+ const sender=await context.newPage(),receiver=await context.newPage();
+ try{
+  await sender.goto(url);await sender.waitForFunction(()=>window.__bonkLab);
+  await sender.evaluate(({key,value,manual})=>{const lab=window.__bonkLab;lab.pause();if(manual)lab.updateParams('orbs.density',0.27);lab.updateParams(key,value);lab.reset();},{key,value,manual});
+  const source=await sender.evaluate(()=>({snapshot:window.__bonkLab.exportShareSnapshot(),state:window.__bonkLab.getState()}));
+  assert.equal(source.snapshot.orbDensityManual,manual);if(manual)assert.equal(source.snapshot.params['orbs.density'],0.27);
+  const challenge=await shareFrom(sender);await receiver.goto(challenge);await receiver.waitForFunction(()=>window.__bonkLab);
+  const target=await receiver.evaluate(()=>({snapshot:window.__bonkLab.exportShareSnapshot(),state:window.__bonkLab.getState()}));
+  assert.deepEqual(target.snapshot,source.snapshot);assert.deepEqual(target.state.arena,source.state.arena);assert.deepEqual(target.state.orbs,source.state.orbs);assert.deepEqual(target.state.towing.B,source.state.towing.B);assert.equal(target.state.x,source.state.x);assert.equal(target.state.y,source.state.y);
+ }finally{await sender.close();await receiver.close();}
+});
+await regression('waiting shared Step disabled and inert; Step works after Start/pause',async()=>{
+ const sender=await context.newPage(),receiver=await context.newPage();
+ try{
+  await sender.goto(url);await sender.waitForFunction(()=>window.__bonkLab);await sender.evaluate(()=>{window.__bonkLab.pause();window.__bonkLab.reset();});
+  await receiver.goto(await shareFrom(sender));await receiver.waitForFunction(()=>window.__bonkLab);
+  const initial=await receiver.evaluate(()=>window.__bonkLab.getState());assert.equal(await receiver.getByRole('button',{name:'Step',exact:true}).isDisabled(),true);
+  assert.equal(await receiver.evaluate(()=>window.__bonkLab.stepOnce()),false);assert.deepEqual(await receiver.evaluate(()=>window.__bonkLab.getState()),initial);
+  await receiver.getByRole('button',{name:'Настройки',exact:true}).click();await receiver.getByLabel('Seed',{exact:true}).fill('456');await receiver.getByRole('button',{name:'Скрыть',exact:true}).click();
+  const edited=await receiver.evaluate(()=>window.__bonkLab.getState());assert.equal(await receiver.getByRole('button',{name:'Step',exact:true}).isDisabled(),true);assert.equal(await receiver.evaluate(()=>window.__bonkLab.stepOnce()),false);assert.deepEqual(await receiver.evaluate(()=>window.__bonkLab.getState()),edited);
+  await receiver.getByRole('button',{name:'Старт',exact:true}).click();await receiver.getByRole('button',{name:'Пауза',exact:true}).click();
+  const countdown=await receiver.evaluate(()=>window.__bonkLab.getState().startCountdown);assert.ok(countdown>0);assert.equal(await receiver.getByRole('button',{name:'Step',exact:true}).isEnabled(),true);
+  await receiver.getByRole('button',{name:'Step',exact:true}).click();assert.ok(Math.abs(countdown-await receiver.evaluate(()=>window.__bonkLab.getState().startCountdown)-1/60)<1e-9);
+  await receiver.evaluate(()=>{const lab=window.__bonkLab;lab.resume();for(let i=0;i<240;i++)lab.update(1/60);lab.pause();});
+  const elapsed=await receiver.evaluate(()=>window.__bonkLab.getState().elapsedTime);await receiver.getByRole('button',{name:'Step',exact:true}).click();assert.ok(Math.abs(await receiver.evaluate(()=>window.__bonkLab.getState().elapsedTime)-elapsed-1/60)<1e-9);
+ }finally{await sender.close();await receiver.close();}
+});
+await regression('same invalid fragment shows error and recovery after each recovery',async()=>{
+ const invalid=await context.newPage();try{
+  await invalid.goto(url+'#tug=bad');await invalid.getByRole('alert').waitFor();
+  for(let attempt=0;attempt<2;attempt++){
+   await invalid.getByRole('button',{name:'Начать обычный заезд',exact:true}).click();assert.equal(await invalid.evaluate(()=>location.hash),'');assert.equal(await invalid.evaluate(()=>window.__bonkLab.isRunning),true);
+   await invalid.evaluate(()=>location.hash='#tug=bad');await invalid.getByRole('button',{name:'Начать обычный заезд',exact:true}).waitFor({timeout:3000});assert.ok(await invalid.getByRole('alert').isVisible());assert.equal(await invalid.evaluate(()=>window.__bonkLab.isRunning),false);
+  }
+ }finally{await invalid.close();}
+});
+assert.deepEqual(regressions,[]);
 for(const viewport of [{width:360,height:800},{width:390,height:844},{width:412,height:915},{width:844,height:390}]){
  await page.setViewportSize(viewport);await page.goto(url);await page.waitForFunction(()=>window.__bonkLab);
  await page.waitForFunction(()=>{const c=document.querySelector('canvas'),r=c.getBoundingClientRect();return Math.abs(r.width-innerWidth)<1 && Math.abs(c.width-r.width*devicePixelRatio)<2 && r.bottom>=innerHeight-1;});
