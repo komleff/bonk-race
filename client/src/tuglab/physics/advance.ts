@@ -1,7 +1,8 @@
 import type { AdvanceResult, ApplyVelocity, BodyState, Bounds, CircleObstacle, CouplingState, TugConfig } from '../types';
 import { driftBody, isValidBody } from './body';
-import { applySpring, couplingGeometry, rodStepLimit, solveCoupling } from './coupling';
+import { applySpring, couplingGeometry, rodStepLimit } from './coupling';
 import { firstContact, hasPenetration, resolveContact } from './contacts';
+import { advanceCoupledInterval } from './coupledAdvance';
 
 const cloneBody = (body: BodyState): BodyState => ({ ...body, position: { ...body.position }, velocity: { ...body.velocity } });
 export function validCoupling(coupling: CouplingState): boolean {
@@ -59,54 +60,11 @@ function attempt(a: BodyState, b: BodyState, original: CouplingState, dt: number
     }
     coupling.accumulatedImpulse = 0;
     applySpring(A, B, coupling, subDt);
-    let remaining = subDt, events = 0;
-    // Нулевой остаток всё ещё допускает одновременные контакты в конце интервала.
-    while (true) {
-      const rawHit = firstContact(A, B, obstacles, bounds, remaining, config);
-      if (rawHit?.time === 0) {
-        if (++events > config.maxContactEvents) return undefined;
-        result.contacts.push(resolveContact(A, B, rawHit));
-        continue;
-      }
-      if (remaining === 0) break;
-      let horizon = rawHit ? rawHit.time : remaining;
-      while (true) {
-        // Будущий контакт ограничивает прогноз: сила за его временем ещё не произошла.
-        const trialA = cloneBody(A), trialB = cloneBody(B);
-        const trialCoupling = { ...coupling, lastNormal: { ...coupling.lastNormal } };
-        const impulses = { pull: 0, push: 0 };
-        for (let iteration = 0; iteration < config.solverIterations; iteration++) {
-          solveCoupling(trialA, trialB, trialCoupling, horizon, config, impulses);
-        }
-        if (!isValidBody(trialA) || !isValidBody(trialB)) return undefined;
-        const hit = firstContact(trialA, trialB, obstacles, bounds, horizon, config);
-        if (hit && hit.time < horizon) {
-          const distance = couplingGeometry(A, B, coupling).distance;
-          const active = coupling.connected && (coupling.type === 'rod'
-            || (coupling.type === 'rope' ? distance >= coupling.restLength - config.normalEpsilon
-              : distance >= coupling.maxLength - config.normalEpsilon || distance <= coupling.minLength + config.normalEpsilon));
-          // Уже активная связь может требовать совместного импульса контакта при t=0.
-          // Провисшая связь такого права не имеет: её будущую пробу полностью откатываем.
-          if (hit.time > 0 || !active) {
-            if (++events > config.maxContactEvents) return undefined;
-            horizon = hit.time > 0 ? hit.time : horizon / 2;
-            if (!(horizon > 0)) return undefined;
-            continue;
-          }
-        }
-        Object.assign(A, trialA); Object.assign(B, trialB); Object.assign(coupling, trialCoupling);
-        const segment = hit ? hit.time : horizon;
-        driftBody(A, segment); driftBody(B, segment);
-        // Принятые укороченные отрезки также расходуют бюджет, исключая бесконечное приближение к контакту.
-        if (!hit && segment < remaining && ++events > config.maxContactEvents) return undefined;
-        remaining -= segment;
-        if (hit) {
-          if (++events > config.maxContactEvents) return undefined;
-          result.contacts.push(resolveContact(A, B, hit));
-        }
-        break;
-      }
-    }
+    if (!advanceCoupledInterval(A, B, coupling, subDt, config, {
+      findContact: (trialA, trialB, horizon) => firstContact(trialA, trialB, obstacles, bounds, horizon, config),
+      advanceBodies: segment => { driftBody(A, segment); driftBody(B, segment); },
+      resolveContact: hit => { result.contacts.push(resolveContact(A, B, hit)); },
+    })) return undefined;
     result.diagnostics.couplingImpulse += coupling.accumulatedImpulse;
     if (!couplingAccepted(result, config) || hasPenetration(A, B, obstacles, bounds, config.normalEpsilon)) return undefined;
   }

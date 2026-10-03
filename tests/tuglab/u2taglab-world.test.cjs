@@ -134,3 +134,16 @@ test('world speed and restitution settings validate atomically and preserve seed
  assert.ok(fast.spaceWorld.asteroids.every(b=>Math.hypot(b.velocity.x,b.velocity.y)<=100));near(fast.elapsedTime,0);near(fast.distanceM,0);
  lab.reset();assert.deepEqual(lab.getState().spaceWorld,fast.spaceWorld);near(lab.params['space.collisionRestitution'],0.95);
 });
+for(const type of ['rod','rope','spring'])for(const gap of [0,0.005])test(`world and original pair keep identical ${type} contact horizons with gap ${gap}`,()=>{
+ const {world}=require('./helpers.cjs'),{defaultConfig}=core('config/validate.js'),{advancePair}=core('physics/advance.js');
+ const config={...defaultConfig,couplingType:type,substeps:1,restitution:1},s=world(config);
+ if(type==='rope'){s.B.position.x=-19.7;s.B.velocity.x=-100;}
+ else{s.A.velocity.x=s.B.velocity.x=-100;}
+ const obstacle={id:'blockingA',position:{x:-8-gap,y:0},radius:2};
+ const initialWorld=empty();initialWorld.statics=[{...obstacle,kind:'station'}];
+ const bounds={minX:-initialWorld.width/2,maxX:initialWorld.width/2,minY:-initialWorld.height/2,maxY:initialWorld.height/2};
+ const pair=advancePair(s.A,s.B,s.coupling,1/60,config,[obstacle],bounds);
+ const all=api().advanceSpaceWorld(s.A,s.B,s.coupling,initialWorld,1/60,config);
+ assert.equal(pair.stopReason,undefined);assert.equal(all.stopReason,undefined);assert.deepEqual(all.A,pair.A);assert.deepEqual(all.B,pair.B);
+ assert.deepEqual(all.coupling,pair.coupling);assert.deepEqual(all.contacts,pair.contacts);assert.deepEqual(all.diagnostics,pair.diagnostics);
+});

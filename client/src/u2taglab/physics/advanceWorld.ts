@@ -1,7 +1,8 @@
 import type { AdvanceResult, BodyState, CouplingState, TugConfig, Vec2 } from '../../tuglab/types';
 import { driftBody, isValidBody } from '../../tuglab/physics/body';
-import { applySpring, couplingGeometry, rodStepLimit, solveCoupling } from '../../tuglab/physics/coupling';
+import { applySpring, couplingGeometry, rodStepLimit } from '../../tuglab/physics/coupling';
 import { couplingAccepted, validCoupling, validNumerics } from '../../tuglab/physics/advance';
+import { advanceCoupledInterval } from '../../tuglab/physics/coupledAdvance';
 import { cloneSpaceWorld, type SpaceWorld } from '../world';
 import { firstWorldContact, resolveWorldContact, worldHasPenetration, type NamedBody, type WorldContactEvent } from './worldContacts';
 
@@ -43,47 +44,12 @@ function attempt(a: BodyState, b: BodyState, original: CouplingState, world: Spa
     }
     coupling.accumulatedImpulse = 0;
     applySpring(A, B, coupling, subDt);
-    let remaining = subDt, events = 0;
-    while (true) {
-      const rawHit = firstWorldContact(bodies, statics, bounds, remaining, config);
-      if (rawHit?.time === 0) {
-        if (++events > config.maxContactEvents) return undefined;
-        result.contacts.push(resolveWorldContact(bodies, rawHit)); continue;
-      }
-      if (remaining === 0) break;
-      let horizon = rawHit ? rawHit.time : remaining;
-      while (true) {
-        // Пробуем сцепку только до ближайшего контакта; откат не затрагивает астероиды.
-        const trialA = cloneBody(A), trialB = cloneBody(B);
-        const trialCoupling = { ...coupling, lastNormal: { ...coupling.lastNormal } }, impulses = { pull: 0, push: 0 };
-        for (let i = 0; i < config.solverIterations; i++) solveCoupling(trialA, trialB, trialCoupling, horizon, config, impulses);
-        if (!isValidBody(trialA) || !isValidBody(trialB)) return undefined;
-        const trialBodies = [{ id: 'A', body: trialA }, { id: 'B', body: trialB }, ...bodies.slice(2)];
-        const hit = firstWorldContact(trialBodies, statics, bounds, horizon, config);
-        if (hit && hit.time < horizon) {
-          const distance = couplingGeometry(A, B, coupling).distance;
-          const active = coupling.connected && (coupling.type === 'rod' || (coupling.type === 'rope'
-            ? distance >= coupling.restLength - config.normalEpsilon
-            : distance >= coupling.maxLength - config.normalEpsilon || distance <= coupling.minLength + config.normalEpsilon));
-          if (hit.time > 0 || !active) {
-            if (++events > config.maxContactEvents) return undefined;
-            horizon = hit.time > 0 ? hit.time : horizon / 2;
-            if (!(horizon > 0)) return undefined;
-            continue;
-          }
-        }
-        Object.assign(A, trialA); Object.assign(B, trialB); Object.assign(coupling, trialCoupling);
-        const segment = hit ? hit.time : horizon;
-        for (const { body } of bodies) driftBody(body, segment);
-        if (!hit && segment < remaining && ++events > config.maxContactEvents) return undefined;
-        remaining -= segment;
-        if (hit) {
-          if (++events > config.maxContactEvents) return undefined;
-          result.contacts.push(resolveWorldContact(bodies, hit));
-        }
-        break;
-      }
-    }
+    if (!advanceCoupledInterval(A, B, coupling, subDt, config, {
+      findContact: (trialA, trialB, horizon) => firstWorldContact(
+        [{ id: 'A', body: trialA }, { id: 'B', body: trialB }, ...bodies.slice(2)], statics, bounds, horizon, config),
+      advanceBodies: segment => { for (const { body } of bodies) driftBody(body, segment); },
+      resolveContact: hit => { result.contacts.push(resolveWorldContact(bodies, hit)); },
+    })) return undefined;
     result.diagnostics.couplingImpulse += coupling.accumulatedImpulse;
     if (bodies.some(({ body }) => !isValidBody(body)) || !couplingAccepted({ ...result, contacts: [] }, config)
       || worldHasPenetration(bodies, statics, bounds, config.normalEpsilon)) return undefined;
