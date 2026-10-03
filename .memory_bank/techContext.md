@@ -1,3 +1,9 @@
+## U2TagLab — самостоятельная оболочка в bonk-race (3 октября 2026)
+
+Ветка feat/u2taglab-space-v0.1, существующий linked worktree bonk-race-tuglab; U2 read-only source snapshot0fe06927. client/u2taglab.html, client/vite.config.u2taglab.ts; build:u2taglab → client/dist-u2taglab/index.html. Локально5175/u2taglab.html; сервер detached nodeVite PID99049, log /tmp/bonk-tuglab-tools/u2taglab-dev-server.log. Прежний TugLab5174 сохранён. Отдельной серверной API/БД/зависимостей нет.
+
+Принятые commits864165c (physics),e0fd699+d09b82d (world/sharedstep),ea7e405 (fields). CommonJS test output .cache/tuglab-tests из client/tsconfig.tuglab-test.json;287tests+typechecks/npmtest/build/3LABbuilds+Chrome154desktop/mobile эмulation PASS. Playwright внешний /tmp/bonk-tuglab-ui, product dependencies прежние. Физический Android не проверялся. FinalTask4 добавляет strictspace share/help/defaultspring270/mobileplacements и prepares nested Pages output; публикация ещё не выполнена. Task4 code bde6982: BonkRace0.6.3/U2TagLab0.1.0, TugLab0.1.1;305tests/affectedtypechecks/matrix/browserPASS, final stamped artifact/review ещё проверяются.
+
 ## TugLab 0.1.1: URL fragment
 
 Share статический, без API/ID/новых зависимостей: base64url UTF-8 JSON, fragment ≤16000 символов, JSON ≤12000; несовместимость явная. Диапазоны включают реальную схему скрытых полей и штатные preset/default, а не только slider limits. Тест ui-share.cjs использует внешний Playwright/Chrome, PNG и JSON; мобильные 360/390/412 portrait и 844×390 landscape — эмуляция, Android остаётся отдельным follow-up. Версия репозитория 0.6.2 синхронизирована штатным sync-version; версия оболочки 0.1.1. Существующий Pages pipeline сохранён.
