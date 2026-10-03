@@ -403,7 +403,7 @@ export interface LabPanelProps {
 }
 
 export function LabPanel({ lab, syncTrigger, onParamChanged, towing = false, onPanelVisibilityChanged, panelOpen: controlledOpen, onOpenChange, settingsContent }: LabPanelProps) {
-    const groups = lab.isSpace ? spaceGroups(String(lab.params["tow.type"])) : towing ? [TOW_GROUP, ...PARAM_GROUPS] : PARAM_GROUPS;
+    const groups = lab.isSpace ? spaceGroups(String(lab.params["tow.type"]), String(lab.params["tow.dampingMode"])) : towing ? [TOW_GROUP, ...PARAM_GROUPS] : PARAM_GROUPS;
     // Инжектируем стили один раз
     useEffect(() => {
         injectStyles("lab-panel-styles", panelCss);

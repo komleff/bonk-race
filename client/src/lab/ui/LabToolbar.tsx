@@ -8,7 +8,7 @@ import { injectStyles } from "../../ui/utils/injectStyles";
 import { LabPanel } from "./LabPanel";
 import { createSpaceShareUrl } from "../../u2taglab/share";
 import { createShareUrl, validateShareSnapshot } from "../../tuglab/share";
-import { createSpaceProfile, SPACE_SOURCE } from "../../u2taglab/profile";
+import { SPACE_SOURCE } from "../../u2taglab/profile";
 import { SPACE_FIELD_INFO } from "../../u2taglab/fields";
 import type { BonkLab } from "../BonkLab";
 import toolbarCss from "./lab-toolbar.css?raw";
@@ -379,7 +379,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
             </details>}
             <div class="tug-settings-actions"><button class="lab-tb-btn" onClick={handleResetParams}>Сброс</button>
                 <button class="lab-tb-btn" onClick={handleShare}>Поделиться</button></div>
-            {space && <button class="lab-tb-btn" onClick={() => { lab.updateParams("tow.radiusB", createSpaceProfile().radiusB); onParamsChanged?.(); }}>Радиус B по ТТХ</button>}
+            {space && <button class="lab-tb-btn" onClick={() => { lab.restoreSpaceRadiusB(); onParamsChanged?.(); }}>Радиус B по ТТХ</button>}
             <span class="tug-build">{space ? "U2TagLab v0.1.0 · расчётный профиль" : "TugLab v0.1.1"} · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
             {shareError && <p role="alert">{shareError}</p>}
         </div>;

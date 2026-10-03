@@ -42,8 +42,8 @@ import type {
 } from "@bonk-race/shared";
 import type { SandboxOrb, SandboxState } from "./labTypes";
 export type { SandboxOrb, SandboxState } from "./labTypes";
-import { createSpaceProfile, hullInertia, SPACE_RANGES, spaceParams, spaceTowingProfile, type SpaceProfile } from "../u2taglab/profile";
-import { SPACE_SHARE_SCHEMA, SPACE_SHARE_MODEL, SPACE_SHARE_GENERATOR, SPACE_SHARE_DEFAULTS, validateSpaceShareSnapshot, spaceProfileFromParams, type SpaceShareSnapshot, type SpaceWorldRecipe } from "../u2taglab/share";
+import { createSpaceProfile, hullInertia, hullCircleRadius, SPACE_RANGES, spaceParams, spaceTowingProfile, type SpaceProfile } from "../u2taglab/profile";
+import { SPACE_SHARE_SCHEMA, SPACE_SHARE_MODEL, SPACE_SHARE_GENERATOR, SPACE_SHARE_DEFAULTS, LEGACY_SPACE_SHARE_KEYS, LEGACY_SPACE_SHARE_MODEL, validateSpaceShareSnapshot, spaceProfileFromParams, type SpaceShareSnapshot, type SpaceWorldRecipe } from "../u2taglab/share";
 import { spaceEngineWrench, spaceInputFrame } from "../u2taglab/physics/flightAssist";
 import { advanceSpaceWorld, cloneSpaceWorld, createSpaceWorld, spaceWorldArena, SPACE_WORLD_DEFAULTS, type SpaceWorld } from "../u2taglab/world";
 import { sampleSpaceFieldResponse, SPACE_FIELD_DEFAULTS, validSpaceFieldSettings, type SpaceFieldSettings } from "../u2taglab/fields";
@@ -156,6 +156,7 @@ export class BonkLab {
     private spaceWorld?: SpaceWorld;
     private spaceWorldRecipe?: SpaceWorldRecipe;
     private spaceGeometryDirty = false;
+    private legacySpaceShare = false;
     private spaceWorldSettings = { asteroidMaxSpeed: SPACE_WORLD_DEFAULTS.asteroidMaxSpeed, collisionRestitution: SPACE_WORLD_DEFAULTS.restitution };
     private spaceFieldSettings: SpaceFieldSettings = { fieldsEnabled: SPACE_FIELD_DEFAULTS.fieldsEnabled,
         fieldPressure: SPACE_FIELD_DEFAULTS.fieldPressure, resistiveK: SPACE_FIELD_DEFAULTS.resistiveK };
@@ -320,7 +321,8 @@ export class BonkLab {
             fieldPressure: SPACE_FIELD_DEFAULTS.fieldPressure, resistiveK: SPACE_FIELD_DEFAULTS.resistiveK };
         this.mass = this.space.massA; this.paramManager.mass = this.mass;
         this.paramManager.params.mass = this.mass;
-        Object.assign(this.towing.params, spaceTowingProfile(this.space).defaults);
+        this.legacySpaceShare = false;
+        this.towing = new LabTowing(this.towingBodyA(), spaceTowingProfile(this.space));
         this.regenerateArena(this.lastSeed, 5);
     }
 
@@ -554,6 +556,7 @@ export class BonkLab {
         }
         if (key.startsWith("tow.")) {
             if (this.towing?.update(key, value, this.towingBodyA(), this.arena)) {
+                if (this.space && this.towing.params["tow.dampingMode"] === "fixed") this.legacySpaceShare = false;
                 if (this.space && ["tow.length", "tow.radiusB", "tow.type"].includes(key)) this.spaceGeometryDirty = true;
                 if (this.towing.needsRestart) this.pause();
                 this.syncPrevState();
@@ -680,29 +683,38 @@ export class BonkLab {
         this.pause();
     }
 
+    restoreSpaceRadiusB(): void {
+        if (this.space) this.updateParams("tow.radiusB", hullCircleRadius(this.space.geometryB));
+    }
+
     /** Исходный генератор хранится отдельно от параметров, изменённых во время полёта. */
     exportSpaceShareSnapshot(): SpaceShareSnapshot {
         if (!this.space || !this.spaceWorldRecipe) throw new Error("Ссылка U2TagLab: режим недоступен");
         const current = this.params;
-        return validateSpaceShareSnapshot({ schema: SPACE_SHARE_SCHEMA, model: SPACE_SHARE_MODEL, generator: SPACE_SHARE_GENERATOR,
+        const legacy = this.legacySpaceShare && current["tow.dampingMode"] === "legacy";
+        return validateSpaceShareSnapshot({ schema: legacy ? 1 : SPACE_SHARE_SCHEMA, model: legacy ? LEGACY_SPACE_SHARE_MODEL : SPACE_SHARE_MODEL, generator: SPACE_SHARE_GENERATOR,
+            ...(legacy ? {} : { geometry: { A: this.space.geometryA, B: this.space.geometryB } }),
             seed: this.lastSeed, density: this.lastDensity,
-            params: Object.fromEntries(Object.keys(SPACE_SHARE_DEFAULTS).map(key => [key, current[key]])), world: this.spaceWorldRecipe });
+            params: Object.fromEntries((legacy ? LEGACY_SPACE_SHARE_KEYS : Object.keys(SPACE_SHARE_DEFAULTS)).map(key => [key, current[key]])), world: this.spaceWorldRecipe });
     }
 
     /** Строим и проверяем кандидата целиком до остановки или изменения текущего заезда. */
     applySpaceShareSnapshot(value: unknown): void {
         if (!this.space || !this.towing) throw new Error("Ссылка U2TagLab: режим недоступен");
-        const snapshot = validateSpaceShareSnapshot(value), profile = spaceProfileFromParams(snapshot.params);
+        const snapshot = validateSpaceShareSnapshot(value), profile = spaceProfileFromParams(snapshot.params, snapshot.schema === 1
+            ? { A: { length: 60, width: 27 }, B: { length: 108, width: 48 } } : snapshot.geometry);
         const world = createSpaceWorld({ ...profile, radiusB: snapshot.world.radiusB }, snapshot.seed, snapshot.density, snapshot.world);
         const arena = spaceWorldArena(world);
         const a: BodyState = { ...this.towingBodyA(), position: { ...arena.spawnPoint }, velocity: { x: 0, y: 0 },
-            mass: profile.massA, inertia: hullInertia(profile.massA, profile.geometryA), angle: -Math.PI / 2, angularVelocity: 0 };
+            mass: profile.massA, radius: profile.radiusA, inertia: hullInertia(profile.massA, profile.geometryA), angle: -Math.PI / 2, angularVelocity: 0 };
         const towing = new LabTowing(a, spaceTowingProfile(profile));
         for (const [key, current] of Object.entries(snapshot.params)) if (key.startsWith("tow.")) towing.params[key] = current as number | string;
+        if (snapshot.schema === 1) { towing.params["tow.dampingMode"] = "legacy"; towing.params["tow.module"] = "custom"; }
         const startArena = this.towingStartArena(arena, world), start = towing.reset(a, startArena);
         if (!start || towing.needsRestart || !towing.validGeometry(start, startArena)) throw new Error("Ссылка U2TagLab: невозможный безопасный старт выбранного состава на исходной карте");
         arena.spawnPoint = { ...start.position };
         this.stop();
+        this.legacySpaceShare = snapshot.schema === 1;
         this.space = profile; this.towing = towing; this.spaceFA = Boolean(snapshot.params["space.fa"]);
         this.spaceWorldRecipe = snapshot.world; this.spaceGeometryDirty = false;
         this.spaceWorldSettings = { asteroidMaxSpeed: snapshot.world.asteroidMaxSpeed, collisionRestitution: Number(snapshot.params["space.collisionRestitution"]) };

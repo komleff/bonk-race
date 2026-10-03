@@ -165,7 +165,7 @@ test('a ship imparts reciprocal momentum to a comparable moving asteroid with ac
  const b=api().createAsteroid(5,{x:s.A.radius+5+0.1,y:0},{x:0,y:0},300000);assert.equal(b.mass,300000);near(b.inertia,3750000);
  s.w.asteroids=[{id:'asteroid:equal',kind:'asteroid',...b}];s.w.fields=[];s.w.statics=[];
  const before=momentum([s.A,s.B,...s.w.asteroids]),r=run(s),after=momentum([r.A,r.B,...r.world.asteroids]);
- assert.equal(r.stopReason,undefined);assert.ok(r.contacts.length>0);near(r.A.velocity.x,10,1e-7);near(r.world.asteroids[0].velocity.x,90,1e-7);near(after.x,before.x,1e-5);near(after.y,before.y,1e-5);assert.ok(r.world.asteroids[0].position.x>b.position.x);
+ assert.equal(r.stopReason,undefined);assert.ok(r.contacts.length>0);near(r.A.velocity.x,(s.A.mass-s.config.restitution*b.mass)*100/(s.A.mass+b.mass),1e-7);near(r.world.asteroids[0].velocity.x,(1+s.config.restitution)*s.A.mass*100/(s.A.mass+b.mass),1e-7);near(after.x,before.x,1e-5);near(after.y,before.y,1e-5);assert.ok(r.world.asteroids[0].position.x>b.position.x);
 });
 test('one shared asteroid population is independent of the selected tug mass for a fixed seed and world settings',()=>{
  const profile=createSpaceProfile(),world=api().createSpaceWorld(profile,42,5,{couplingLength:270});

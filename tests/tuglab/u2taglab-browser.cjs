@@ -8,7 +8,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || '/tmp/bonk-tuglab-
   const page=await browser.newPage({viewport:{width:1280,height:720}});page.on('pageerror',e=>errors.push(e.message));
   await page.goto(process.env.U2TAGLAB_URL || 'http://localhost:5175/u2taglab.html');await page.waitForFunction(()=>window.__bonkLab?.getState().startCountdown===0);
   assert.equal(await page.evaluate(()=>window.__bonkLab.isSpace),true);
-  const initial=await page.evaluate(()=>window.__bonkLab.getState());assert.equal(initial.mass,300000);assert.equal(initial.towing.B.mass,680000);
+  const initial=await page.evaluate(()=>window.__bonkLab.getState());assert.equal(initial.mass,401200);assert.equal(initial.towing.B.mass,1556800);
   await page.screenshot({path:'/tmp/u2taglab-default.png'});
   await page.keyboard.down('w');await page.waitForFunction(y=>window.__bonkLab.getState().y<y-10,initial.y);await page.keyboard.up('w');
   const flight=await page.evaluate(()=>{const s=window.__bonkLab.getState();return {y:s.y,by:s.towing.B.position.y,vy:s.vy,bvy:s.towing.B.velocity.y,reason:s.towing.reason};});

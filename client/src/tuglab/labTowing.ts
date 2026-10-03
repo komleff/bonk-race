@@ -17,6 +17,7 @@ const clone = (b: BodyState): BodyState => ({ ...b, position: { ...b.position },
 export interface TowingProfile {
   defaults: Record<string, number | string>; ranges: Record<string, readonly [number, number]>;
   inertiaB: (mass: number) => number; reducedMass?: boolean;
+  springModules?: Readonly<Record<string, { k: number; c: number }>>;
   ropeMinLength: number; captureMinLength: number; clearCoupling?: boolean;
   spawnSearch?: { depth: number; step: number; lateral: number }; maxValidatedSpeed?: number;
 }
@@ -50,6 +51,7 @@ export class LabTowing {
     return { ...(defaults as TugConfig), couplingType: this.params['tow.type'] as TugConfig['couplingType'],
       length: Number(this.params['tow.length']), springStiffness: Number(this.params['tow.stiffness']),
       springDamping: Number(this.params['tow.dampingRatio']), springReferenceMass: this.referenceMass, restitution,
+      ...(this.params['tow.dampingMode'] === 'fixed' ? { springDampingCoefficient: Number(this.params['tow.dampingCoefficient']) } : {}),
       maxValidatedSpeed: this.profile?.maxValidatedSpeed ?? defaults.maxValidatedSpeed };
   }
   private free(b: BodyState, arena: Arena): boolean {
@@ -77,7 +79,8 @@ export class LabTowing {
     this.B.mass = actual.mass; this.B.radius = actual.radius; this.B.inertia = actual.inertia;
     if (this.profile?.reducedMass) {
       this.referenceMass = this.reducedMass(a);
-      this.coupling.c = 2 * Number(this.params['tow.dampingRatio']) * Math.sqrt(this.coupling.k * this.referenceMass);
+      this.coupling.c = this.params['tow.dampingMode'] === 'fixed' ? Number(this.params['tow.dampingCoefficient'])
+        : 2 * Number(this.params['tow.dampingRatio']) * Math.sqrt(this.coupling.k * this.referenceMass);
     }
   }
   reset(a: BodyState, arena: Arena): BodyState | undefined {
@@ -114,13 +117,27 @@ export class LabTowing {
       : c.type === 'rope' ? d <= c.restLength + 1e-6 : d >= c.minLength - 1e-6 && d <= c.maxLength + 1e-6;
   }
   update(key: string, value: number | boolean | string, a: BodyState, arena: Arena): boolean {
+    if (key === 'tow.module' && this.profile?.springModules) {
+      if (typeof value !== 'string' || (value !== 'custom' && !Object.hasOwn(this.profile.springModules, value))) return false;
+      this.params[key] = value;
+      if (value !== 'custom') {
+        const module = this.profile.springModules[value];
+        this.params['tow.stiffness'] = this.coupling.k = module.k;
+        this.params['tow.dampingCoefficient'] = this.coupling.c = module.c;
+        this.params['tow.dampingMode'] = 'fixed';
+      }
+      // Модуль меняет только коэффициенты, не трогая захват, накопленный импульс и состояние тел.
+      return true;
+    }
     const ownRanges = this.profile?.ranges ?? ranges;
-    const valid = key === 'tow.type' ? ['rod', 'rope', 'spring'].includes(String(value)) && typeof value === 'string'
+    const valid = key === 'tow.dampingMode' && this.profile?.springModules ? ['fixed', 'legacy'].includes(String(value)) && typeof value === 'string'
+      : key === 'tow.type' ? ['rod', 'rope', 'spring'].includes(String(value)) && typeof value === 'string'
       : key in ownRanges && typeof value === 'number' && Number.isFinite(value) && value >= ownRanges[key][0] && value <= ownRanges[key][1];
     const type = key === 'tow.type' ? value : this.params['tow.type'];
     const length = key === 'tow.length' ? Number(value) : Number(this.params['tow.length']);
     if (!valid || (type === 'rope' && length < (this.profile?.ropeMinLength ?? 0))) return false;
     this.params[key] = value as number | string;
+    if (this.profile?.springModules && ['tow.stiffness', 'tow.dampingCoefficient', 'tow.dampingRatio', 'tow.dampingMode'].includes(key)) this.params['tow.module'] = 'custom';
     if (this.profile?.reducedMass) this.referenceMass = this.reducedMass(a);
     const previous = this.coupling;
     this.coupling = createCoupling(this.physicsConfig());

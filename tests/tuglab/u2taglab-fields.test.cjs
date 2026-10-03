@@ -41,8 +41,8 @@ test('ship force area comes from L/W and ignores collision radius overrides',()=
  const p=createSpaceProfile(),w=world();w.fields=[field('p','plasma',{pressure:1})];
  for(const id of ['A','B']) {
   const b={id,...createSpaceBody(p,id,250)};
-  near(wrench(w,b).force.x,id==='A'?1944.5832822071027:6296.643964464786,1e-6);
-  b.radius=2;near(wrench(w,b).force.x,id==='A'?1944.5832822071027:6296.643964464786,1e-6);
+  near(wrench(w,b).force.x,id==='A'?1944.5832822071027:Math.PI*createSpaceProfile().radiusB**2,1e-6);
+  b.radius=2;near(wrench(w,b).force.x,id==='A'?1944.5832822071027:Math.PI*createSpaceProfile().radiusB**2,1e-6);
  }
 });
 test('overlaps sum by stable ids regardless of storage order, opposite winds cancel',()=>{
@@ -73,7 +73,7 @@ test('pure resistance cannot reverse velocity or add energy at all declared mass
   const r=advanceSpaceWorld(A,B,c,w,dt,config,({id,body,time,subDt})=>api().sampleSpaceFieldResponse(w,{...body,id},time,subDt));
   assert.equal(r.stopReason,undefined);assert.ok(r.B.velocity.x>=-1e-12&&r.B.velocity.y<=1e-12);
   assert.ok(r.B.velocity.x**2+r.B.velocity.y**2<=15625+1e-9);near(r.B.angularVelocity,0.7);
-  near(r.B.velocity.x,100*Math.exp(-k*6296.643964464786*dt/mass),1e-8);
+  near(r.B.velocity.x,100*Math.exp(-k*Math.PI*createSpaceProfile().radiusB**2*dt/mass),1e-8);
   assert.deepEqual({A,B,w,c},before);
  }
 });
@@ -104,14 +104,14 @@ test('real Lab samples separate A/B/asteroids, leaves statics fixed and Pause/St
  for(let i=0;i<30;i++)lab.update(1/60);assert.deepEqual(lab.getState(),before);lab.stepOnce();const after=lab.getState();
  assert.ok(after.vx>0);near(after.towing.B.velocity.x,0);near(after.spaceWorld.asteroids[0].velocity.x,0);
  near(after.spaceWorld.time,before.spaceWorld.time+1/60);assert.deepEqual(after.spaceWorld.statics,before.spaceWorld.statics);
- lab.reset();assert.deepEqual(lab.getState().spaceWorld,createSpaceWorld(createSpaceProfile(),42,5,{couplingLength:288}));
+ lab.reset();assert.deepEqual(lab.getState().spaceWorld,createSpaceWorld(createSpaceProfile(),42,5,{couplingLength:360}));
 });
 test('real Lab combines A engine with resistive response rather than adding a separate Euler drag',()=>{
  const lab=new BonkLab({}, {towing:true,space:true});lab.setSpaceFA(false);lab.setTowingConnection(false);
  lab.start();for(let i=0;i<240;i++)lab.update(1/60);lab.pause();lab.spaceWorld.statics=[];lab.spaceWorld.asteroids=[];
  lab.spaceWorld.fields=[field('r','resistive',{radius:1e20,resistiveK:100}),field('p','plasma',{radius:1e20,pressure:50})];
  lab.vx=100;lab.vy=0;lab.setInput(0,-1,1);lab.stepOnce();const s=lab.getState();
- const K=100*1944.5832822071027,gamma=K/300000,decay=Math.exp(-gamma/60);
+ const K=100*1944.5832822071027,gamma=K/s.mass,decay=Math.exp(-gamma/60);
  near(s.vx,100*decay+50*1944.5832822071027/K*(1-decay),1e-9);
  near(s.vy,-16228800/K*(1-decay),1e-9);assert.equal(s.towing.reason,undefined);
 });
@@ -122,7 +122,7 @@ test('real Lab applies pressure to A, passive B and asteroids using their own ef
  lab.spaceWorld.asteroids=[{...body('asteroid:test',{position:{x:700,y:lab.y},velocity:{x:0,y:0}}),kind:'asteroid'}];
  lab.spaceWorld.fields=[field('p','plasma',{radius:1e20,pressure:2})];lab.vx=lab.vy=0;lab.towing.B.velocity={x:0,y:0};
  const statics=structuredClone(lab.spaceWorld.statics);lab.stepOnce();const s=lab.getState();
- near(s.vx,2*1944.5832822071027/300000/60);near(s.towing.B.velocity.x,2*6296.643964464786/680000/60);
+ near(s.vx,2*1944.5832822071027/s.mass/60);near(s.towing.B.velocity.x,2*Math.PI*((120**2+54**2)/(2*(120+54)))**2/s.towing.B.mass/60);
  near(s.spaceWorld.asteroids[0].velocity.x,8*Math.PI/1000/60);assert.deepEqual(s.spaceWorld.statics,statics);
 });
 test('field settings reject invalid input atomically and seeded regeneration resets the shared clock',()=>{

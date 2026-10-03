@@ -10,14 +10,14 @@ function kick(b, w, dt) { b.velocity.x += w.force.x*dt/b.mass; b.velocity.y += w
 test('space SI authoring masses, geometry inertia and honest fixed torque', () => {
  const { createSpaceProfile, createSpaceBody, spaceEngineWrench } = api(), p=createSpaceProfile();
  const a=createSpaceBody(p,'A'), b=createSpaceBody(p,'B');
- near(a.mass,300000); near(b.mass,680000); near(a.radius,24.879310344827587); near(b.radius,44.76923076923077);
- near(a.inertia,108225000); near(b.inertia,791520000); near(p.yawTorque,45333181.99130072);
+ near(a.mass,401200); near(b.mass,1556800); near(a.radius,24.879310344827587); near(b.radius,49.75862068965517);
+ near(a.inertia,144732900); near(b.inertia,2246462400); near(p.yawTorque,45333181.99130072);
  let w=spaceEngineWrench(a,{...idle,forward:1,yaw:1},false,p,1/60);
  near(w.force.x,16228800); near(w.torque,45333181.99130072); kick(a,w,1/60);
- near(a.velocity.x,0.9016); near(a.angularVelocity,Math.PI/450);
+ near(a.velocity.x,p.forwardForce/a.mass/60); near(a.angularVelocity,p.yawTorque/a.inertia/60);
  const heavy={...a,mass:600000,inertia:216450000,angularVelocity:0};
  near(spaceEngineWrench(heavy,{...idle,yaw:1},false,p,1/60).torque,45333181.99130072);
- near(createSpaceBody(p,'B',250).inertia,791520000);
+ near(createSpaceBody(p,'B',250).inertia,2246462400);
 });
 test('vacuum with disabled engines preserves A/B linear and angular momentum', () => {
  const { createSpaceProfile, createSpaceBody, spaceEngineWrench }=api(),p=createSpaceProfile();p.enginesEnabled=false;
@@ -50,6 +50,6 @@ for(const fa of [false,true]) test(`yaw soft cap and manual brake use available 
 test('FA limits vector acceleration to crew budget while OFF and emergency braking use full engines',()=>{
  const {createSpaceProfile,createSpaceBody,spaceEngineWrench}=api(),p=createSpaceProfile(),b=createSpaceBody(p,'A');
  const command={...idle,forward:1,lateral:1};const on=spaceEngineWrench(b,command,true,p,1/60),off=spaceEngineWrench(b,command,false,p,1/60);
- near(Math.hypot(on.force.x,on.force.y)/b.mass,44.145,1e-9);near(off.force.x,16228800);near(off.lateral,4173120);
+ near(Math.hypot(on.force.x,on.force.y)/b.mass,Math.min(44.145,Math.hypot(p.forwardForce,p.lateralForce)/b.mass),1e-9);near(off.force.x,16228800);near(off.lateral,4173120);
  b.velocity.x=-100;near(spaceEngineWrench(b,{...idle,brake:true},true,p,1/60).forward,16228800);
 });

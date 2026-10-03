@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const {BonkLab}=require('../../.cache/tuglab-tests/client/src/lab/BonkLab.js');
 const cases=[
- {mass:300000,ratio:680000/300000,length:270,radius:44.76923076923077,k:184904.0171469394,force:16228800,pressure:50,drag:0.5,type:'spring'},
+ {mass:401200,ratio:1556800/401200,length:360,radius:49.75862068965517,k:360000,force:16228800,pressure:50,drag:0.5,type:'spring'},
  {mass:10000,ratio:0.1,length:20,radius:2,k:1e8,force:1e8,pressure:1000,drag:100,type:'spring'},
  {mass:1e7,ratio:10,length:2000,radius:250,k:1e8,force:1e8,pressure:1000,drag:100,type:'spring'},
  {mass:10000,ratio:10,length:2000,radius:250,k:0,force:0,pressure:1000,drag:100,type:'rope'},
