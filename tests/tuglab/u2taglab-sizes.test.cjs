@@ -3,16 +3,42 @@ const {assert,near}=require('./helpers.cjs');
 const {BonkLab}=require('../../.cache/tuglab-tests/client/src/lab/BonkLab.js');
 const share=require('../../.cache/tuglab-tests/client/src/u2taglab/share.js');
 const make=()=>new BonkLab({}, {towing:true,space:true});
-const tugs=[['S',100300,30,13.5,5428000,48,240000,290000],['M',401200,60,27,16228800,24,360000,710000],['L',1604800,120,54,48760000,12,540000,1740000],['XL',6419200,240,108,146096000,6,810000,4260000]];
+const tugs=[['S',100300,30,13.5,5428000,48,240000,290000,200],['M',401200,60,27,16228800,24,360000,710000,175],['L',1604800,120,54,48760000,12,540000,1740000,150],['XL',6419200,240,108,146096000,6,810000,4260000,95]];
 const trailers=[['XS',24371.875,15,6.75],['S',97300,30,13.5],['M',389200,60,27],['L',1556800,120,54],['XL',6227200,240,108],['XXL',24908800,480,216]];
+test('initial and reset M profile use175 without changing the crew or braking configuration',()=>{
+ const lab=make(),profile={crewGLimit:4.5,coastDeadzone:1.5,comfortableBrakingTime:3.5,emergencyBrakingTime:0.2,lateralComfort:20,yawStopTime:1};
+ for(let i=0;i<2;i++){
+  near(lab.space.speedLimit,175);near(lab.params['space.speedLimit'],175);near(lab.exportSpaceShareSnapshot().params['space.speedLimit'],175);assert.equal(lab.getSpaceSize('A'),'M');
+  for(const [key,value]of Object.entries(profile))near(lab.params[`space.${key}`],value);
+  lab.selectSpaceSize('A','XL');lab.updateParams('space.speedLimit',177);lab.resetSpaceParams();
+ }
+});
 test('all24 size combinations fit full profiles, bounded links and reproduce geometry in fresh receivers',()=>{
- for(const [a,massA,L,W,force,yaw,k,c]of tugs)for(const [b,massB,LB,WB]of trailers){
+ for(const [a,massA,L,W,force,yaw,k,c,cap]of tugs)for(const [b,massB,LB,WB]of trailers){
   const lab=make();lab.selectSpaceSize('A',a);lab.selectSpaceSize('B',b);const s=lab.getState(),p=lab.params;
   near(s.mass,massA);near(s.towing.B.mass,massB);near(s.radius,(L*L+W*W)/(2*(L+W)));near(s.towing.B.inertia,massB*(LB*LB+WB*WB)/12);
   near(p['space.yawTorque'],{S:7581229.414644962,M:45333181.99130072,L:272410277.27198845,XL:1632405737.01101}[a],1e-6);near(p['space.forwardForce'],force);near(p['space.reverseForce'],force*3/7);near(p['space.lateralForce'],force*9/35);near(p['space.yawLimit'],yaw*Math.PI/180);near(s.towing.coupling.k,k);near(s.towing.coupling.c,c);
   assert.ok(p['tow.length']>=4*(s.radius+s.towing.B.radius));assert.equal(lab.getSpaceSize('A'),a);assert.equal(lab.getSpaceSize('B'),b);assert.equal(s.towing.needsRestart,false);
-  const snapshot=lab.exportSpaceShareSnapshot(),fragment=share.encodeSpaceShareFragment(snapshot);assert.ok(fragment.length<16000);assert.deepEqual(snapshot.geometry,{A:{length:L,width:W},B:{length:LB,width:WB}});
+  near(lab.space.speedLimit,cap);near(p['space.speedLimit'],cap);
+  const snapshot=lab.exportSpaceShareSnapshot(),fragment=share.encodeSpaceShareFragment(snapshot);assert.ok(fragment.length<16000);assert.deepEqual(snapshot.geometry,{A:{length:L,width:W},B:{length:LB,width:WB}});near(snapshot.params['space.speedLimit'],cap);
   for(let i=0;i<2;i++){const target=make();target.applySpaceShareSnapshot(share.decodeSpaceShareFragment(fragment));assert.deepEqual(target.exportSpaceShareSnapshot(),snapshot);assert.deepEqual(target.getState(),s);target.reset();near(target.getState().towing.B.inertia,s.towing.B.inertia);}
+ }
+});
+test('manual cap retains tug size, trailer and module choices preserve it, repeated A restores its recommendation',()=>{
+ for(const [a,,,,,,,,cap]of tugs){
+  const lab=make();lab.selectSpaceSize('A',a);lab.updateParams('space.speedLimit',177);assert.equal(lab.getSpaceSize('A'),a);
+  for(const [b]of trailers){lab.selectSpaceSize('B',b);near(lab.space.speedLimit,177);near(lab.params['space.speedLimit'],177);near(lab.exportSpaceShareSnapshot().params['space.speedLimit'],177);}
+  for(const [module]of tugs){lab.updateParams('tow.module',module);near(lab.space.speedLimit,177);near(lab.params['space.speedLimit'],177);near(lab.exportSpaceShareSnapshot().params['space.speedLimit'],177);}
+  lab.selectSpaceSize('A',a);near(lab.space.speedLimit,cap);near(lab.params['space.speedLimit'],cap);near(lab.exportSpaceShareSnapshot().params['space.speedLimit'],cap);assert.equal(lab.getSpaceSize('A'),a);
+ }
+});
+test('explicit250 legacy links and arbitrary valid catalog caps round trip without default replacement',()=>{
+ for(const fixture of ['u2-space-v2.json','u2-space-fixed-v3.json']){
+  const snapshot=require(`./fixtures/${fixture}`),lab=make();near(snapshot.params['space.speedLimit'],250);lab.applySpaceShareSnapshot(share.decodeSpaceShareFragment(share.encodeSpaceShareFragment(snapshot)));near(lab.space.speedLimit,250);assert.deepEqual(lab.exportSpaceShareSnapshot(),snapshot);lab.reset();near(lab.params['space.speedLimit'],250);assert.deepEqual(lab.exportSpaceShareSnapshot(),snapshot);
+ }
+ for(const cap of [1,177,250,1000]){
+  const lab=make();lab.selectSpaceSize('A','L');lab.updateParams('space.speedLimit',cap);const snapshot=lab.exportSpaceShareSnapshot();assert.equal(snapshot.schema,3);
+  const target=make();target.applySpaceShareSnapshot(share.decodeSpaceShareFragment(share.encodeSpaceShareFragment(snapshot)));near(target.space.speedLimit,cap);assert.equal(target.getSpaceSize('A'),'L');assert.deepEqual(target.exportSpaceShareSnapshot(),snapshot);
  }
 });
 test('tug selection preserves absolute customized B and controls, then clears motion/input on safe start',()=>{

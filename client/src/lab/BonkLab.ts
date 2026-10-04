@@ -714,7 +714,7 @@ export class BonkLab {
         if (id === 'A') {
             const fitted = fittedTug(size as typeof TUG_SIZES[number]), massB = this.towing.B.mass;
             snapshot.params.mass = fitted.mass; snapshot.params['tow.massRatio'] = massB / fitted.mass;
-            for (const key of ['forwardForce', 'reverseForce', 'lateralForce', 'yawTorque', 'yawLimit'] as const) snapshot.params[`space.${key}`] = fitted[key];
+            for (const key of ['forwardForce', 'reverseForce', 'lateralForce', 'yawTorque', 'yawLimit', 'speedLimit'] as const) snapshot.params[`space.${key}`] = fitted[key];
             Object.assign(snapshot.params, { 'tow.module': size, 'tow.dampingMode': 'fixed', 'tow.stiffness': fitted.k, 'tow.dampingCoefficient': fitted.c });
         } else {
             snapshot.params['tow.massRatio'] = hull.mass / Number(snapshot.params.mass);

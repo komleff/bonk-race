@@ -12,6 +12,8 @@ export interface SpaceProfile {
   source: Readonly<Record<string, string>>;
 }
 
+export const TUG_SPEED_LIMITS = Object.freeze({ S: 200, M: 175, L: 150, XL: 95 } as const);
+
 export const SPACE_SOURCE = {
   snapshot: 'U2 252d17f7423a7805e732e499cd8e754e21f3b323; релевантные файлы совпадают с локальным 0fe06927.',
   geometry: 'Стартовый Industrial профиль: Титан M 60×27 м; оснащённый L 120×54 м. Старые ссылки сохраняют Караван 108×48 м.',
@@ -19,7 +21,7 @@ export const SPACE_SOURCE = {
   force: 'Neutral Industrial S/M/L/XL вперёд: 5.428/16.2288/48.760/146.096 МН; назад3/7 и бок9/35 от forward. M: 16228800/6955200/4173120 Н. Источник propulsion_force_mass_input.csv. Без незамкнутого национального множителя.',
   inertia: 'U2: I=m(L²+W²)/12; круг R=(L²+W²)/(2(L+W)) — лабораторное допущение.',
   yaw: 'Стартовый профиль M, размерная кривая: предел24°/с. Сохранённый LAB момент45.333 МН·м: при оснащённом A401200 кг/I144732900 кг·м² alpha≈17.946°/с² (прежние24°/с² относились к неполным300 т). Момент не растёт при изменении массы.',
-  fa: 'Лабораторная адаптация: один V_FA=250 м/с, crew-g=4.5. Coast 1.5 м/с, comfort 3.5 с, emergency 0.2 с, lateral 20 м/с², yaw stop 1 с — опора U2 Стриж.',
+  fa: 'Рекомендации LAB V_FA: S200/M175/L150/XL95 м/с; стартовый M175 м/с. Это не официальный профиль U2 и не гарантия безопасного уклонения: проверен только резкий манёвр90°, плавный поворот на пределе ограничен текущим FA. Лимит можно изменить вручную. Crew-g=4.5; coast 1.5 м/с, comfort 3.5 с, emergency 0.2 с, lateral 20 м/с², yaw stop 1 с — опора U2 Стриж.',
   coupling: 'Фиксированные физические модули S k240000/c290000, M360000/710000, L540000/1740000, XL810000/4260000 (Н/м и Н·с/м). Модуль обозначает размер буксира S/M/L/XL, не переключает корабли. Рекомендации длины для груза −1/своего/+1 размера: S90/120/180, M180/240/360, L360/480/720, XL720/960/1440 м. Расчёт по верхнему Industrial размеру с полными баками: steady extension≈10% максимальной рекомендованной длины, c немного выше2√(kμmax). XXL только резерв. Это инженерная опора, не рейтинг безопасной массы произвольного груза/корабля и не гарантия прочности материала. Выбор модуля меняет только k/c, сохраняя корабли, заданную и фактическую длину захвата. c фиксирован при изменениях массы, радиуса и длины. Старый автоматический режим ζ пересчитывает c=2ζ√(kμ).',
 } as const;
 export const hullInertia = (mass: number, geometry: HullGeometry): number => mass * (geometry.length ** 2 + geometry.width ** 2) / 12;
@@ -29,7 +31,7 @@ export function createSpaceProfile(): SpaceProfile {
   return { geometryA, geometryB, massA: 401200, massB: 1556800,
     radiusA: hullCircleRadius(geometryA), radiusB: hullCircleRadius(geometryB),
     forwardForce: 16228800, reverseForce: 6955200, lateralForce: 4173120,
-    yawTorque: 45333181.99130072, speedLimit: 250, crewGLimit: 4.5, coastDeadzone: 1.5,
+    yawTorque: 45333181.99130072, speedLimit: TUG_SPEED_LIMITS.M, crewGLimit: 4.5, coastDeadzone: 1.5,
     comfortableBrakingTime: 3.5, emergencyBrakingTime: 0.2, lateralComfort: 20,
     yawLimit: 24 * Math.PI / 180, yawStopTime: 1, enginesEnabled: true, source: SPACE_SOURCE };
 }
@@ -81,7 +83,7 @@ export function fittedTug(size: typeof TUG_SIZES[number]) {
   return { mass: hull.mass + [3000, 12000, 48000, 192000][i], forwardForce,
     reverseForce: forwardForce * 3 / 7, lateralForce: forwardForce * 9 / 35,
     yawTorque: 45333181.99130072 * (forwardForce / 16228800) * (hull.length / 60),
-    yawLimit: [48, 24, 12, 6][i] * Math.PI / 180, ...SPRING_MODULES[size] };
+    yawLimit: [48, 24, 12, 6][i] * Math.PI / 180, speedLimit: TUG_SPEED_LIMITS[size], ...SPRING_MODULES[size] };
 }
 export function recommendedLength(a: HullGeometry, b: HullGeometry): number {
   const ia = geometrySize(a), ib = geometrySize(b);
@@ -89,4 +91,4 @@ export function recommendedLength(a: HullGeometry, b: HullGeometry): number {
   const nominal = 120 * 2 ** (aIndex - 1) * (bIndex < aIndex ? 0.75 : bIndex === aIndex ? 1 : 1.5 * 2 ** (bIndex - aIndex - 1));
   return Math.max(nominal, 4 * (hullCircleRadius(a) + hullCircleRadius(b)));
 }
-export const SIZE_HELP = 'Industrial dry: размер тягача меняет массу, корпус, двигатели, LAB-момент и предел вращения, фиксированный модуль k/c; размер прицепа — его массу и корпус. Сцепка сохраняет тип. Выбор обнуляет заезд и ставит паузу после проверки безопасного старта. Длина рекомендована для выбранной пары; её можно изменить. Рейтинг модуля: груз −1/своего/+1 размера; остальные сочетания — LAB геометрические тесты. XXL — экспериментальный резерв. Момент — LAB экстраполяция тяга×плечо; предел 48/24/12/6°/с — LAB адаптация размерной кривой U2, не подтверждённый Industrial профиль.';
+export const SIZE_HELP = 'Industrial dry: размер тягача меняет массу, корпус, двигатели, LAB-момент и предел вращения, фиксированный модуль k/c и рекомендованный V_FA. Повторный выбор тягача возвращает рекомендацию S200/M175/L150/XL95 м/с; стартовый M175. V_FA можно изменить вручную; размер прицепа и модуль пружины сохраняют заданный лимит. Это рекомендации LAB, не официальный профиль U2 и не гарантия безопасного уклонения: проверен только резкий манёвр90°, плавный поворот на пределе ограничен текущим FA. Размер прицепа меняет его массу и корпус. Сцепка сохраняет тип. Выбор обнуляет заезд и ставит паузу после проверки безопасного старта. Длина рекомендована для выбранной пары; её можно изменить. Рейтинг модуля: груз −1/своего/+1 размера; остальные сочетания — LAB геометрические тесты. XXL — экспериментальный резерв. Момент — LAB экстраполяция тяга×плечо; предел 48/24/12/6°/с — LAB адаптация размерной кривой U2, не подтверждённый Industrial профиль.';
