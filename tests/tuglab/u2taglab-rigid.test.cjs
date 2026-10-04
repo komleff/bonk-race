@@ -128,3 +128,14 @@ for(const dt of [1/60,1000])test(`rigid zero-curvature tiny closing rate is safe
  const config={...defaults,couplingType:'rigid',attachmentA:'nose',attachmentB:'tail',restitution:0,substeps:1},w=space();w.width=w.height=100;
  const r=advanceSpaceWorld(a,b,createCoupling(config),w,dt,config);assert.equal(r.stopReason,undefined,r.stopReason);assert.ok(r.A.position.x>=-49-config.normalEpsilon/4);assert.ok(r.A.velocity.x>=-1e-15);
 });
+
+for(const scenario of ['mass','coordinate','angular'])test(`rigid capture rejects derived ${scenario} overflow atomically`,()=>{
+ const {captureRigid}=require('../../.cache/tuglab-tests/client/src/u2taglab/physics/rigid.js');
+ const a={mass:1,inertia:1,radius:1,position:{x:0,y:0},velocity:{x:0,y:0},angle:0,angularVelocity:0};
+ const b={...structuredClone(a),position:{x:3,y:0}};
+ if(scenario==='mass')a.mass=a.inertia=b.mass=b.inertia=1e308;
+ if(scenario==='coordinate'){a.mass=b.mass=1e100;a.position.x=1e250;b.position.x=1e250;}
+ if(scenario==='angular')a.angularVelocity=b.angularVelocity=1e308;
+ const before=structuredClone({a,b});const result=captureRigid(a,b,{attachmentA:'nose',attachmentB:'tail'},empty());
+ assert.ok(result.reason);assert.deepEqual({a,b},before);
+});

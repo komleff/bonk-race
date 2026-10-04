@@ -47,6 +47,9 @@ export function captureRigid(a: BodyState, b: BodyState, c: CouplingState, arena
   { A: BodyState; B: BodyState } | { reason: string } {
   if (![a, b].every(isValidBody)) return { reason: 'Захват: недопустимые корпуса' };
   const A = cloneRigidBody(a), B = cloneRigidBody(b), r = rigidAssembly(a, b, c), epsilon = 1e-7;
+  const numericalFailure = { reason: 'Захват: численные параметры состава превышают допустимую точность' };
+  if (![r.mass, r.inertia, r.position.x, r.position.y, r.velocity.x, r.velocity.y, r.offsetA, r.offsetB]
+    .every(Number.isFinite) || r.mass <= 0 || r.inertia <= 0) return numericalFailure;
   const angular = [a, b].reduce((total, body) => {
     const arm = { x: body.position.x - r.position.x, y: body.position.y - r.position.y };
     const relative = { x: body.velocity.x - r.velocity.x, y: body.velocity.y - r.velocity.y };
@@ -56,10 +59,13 @@ export function captureRigid(a: BodyState, b: BodyState, c: CouplingState, arena
     * ((body.velocity.x - r.velocity.x) ** 2 + (body.velocity.y - r.velocity.y) ** 2)
     + 0.5 * body.inertia * body.angularVelocity ** 2, 0);
   r.angularVelocity = angular / r.inertia;
-  if (0.5 * r.inertia * r.angularVelocity ** 2 > internalEnergy + Math.max(1, internalEnergy) * 1e-12) {
+  const projectedEnergy = 0.5 * r.inertia * r.angularVelocity ** 2;
+  if (![angular, internalEnergy, r.angularVelocity, projectedEnergy].every(Number.isFinite)) return numericalFailure;
+  if (projectedEnergy > internalEnergy + Math.max(1, internalEnergy) * 1e-12) {
     return { reason: 'Снизьте вращение или скорость сближения перед жёсткой сцепкой' };
   }
   syncRigid(r, A, B);
+  if (![A, B].every(isValidBody)) return numericalFailure;
   for (const [before, after] of [[a, A], [b, B]] as const) {
     if (Math.abs(before.position.x) + before.radius > arena.width / 2 + epsilon
       || Math.abs(before.position.y) + before.radius > arena.height / 2 + epsilon
