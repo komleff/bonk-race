@@ -1,3 +1,7 @@
+## Task570 — расчёт манёвренного V_FA
+
+Условные200/175/150/95м/с по actual90° уклонению отR500м на5км отA;8 corrected60/120Гц PASS, зазоры>250м. Общий safe cap не подтверждён: gentleturn governor bug572P1 и пассивное поперечное движение571 остаются отдельными задачами. Productcode/default250 неизменны, отчёт и Memory обновлены, старыеinvalidradiusprobes исключены. Straight10km50/57/67/105с — оценка крейсерской части, не всего рейса.
+
 ## Мобильный интерфейс — Beads569 (4 октября 2026)
 
 Готовоafff025: «Инфо» закрыто по умолчанию; footer-local selection/callout/contextmenu/pointer защита, явный владелец удержания и отмена, два пальца, копирование Share сохранено. Browser RED→GREEN,326/326/typecheck/npm/clientbuild/source/stamped root+nested UI+sizes/oldTug PASS. Три независимых review APPROVED без замечаний. Продуктовая физика, каталог размеров и схемы ссылок не изменены. Реальный Android/iOS и WebKit не проверены; PM обновил документы и закрывает569 вместе с доставкой уже принятого568 в PR42.
