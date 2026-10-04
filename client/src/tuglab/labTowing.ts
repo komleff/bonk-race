@@ -1,6 +1,7 @@
 import type { Arena } from '@bonk-race/shared';
 import type { AdvanceResult, ApplyVelocity, BodyState, CaptureResult, CouplingState, Diagnostics, TugConfig } from './types';
 import defaults from './config/tuglab_defaults.json';
+import { captureRigid, validRigidGeometry } from '../u2taglab/physics/rigid';
 import { createCoupling, couplingGeometry } from './physics/coupling';
 import { advancePair } from './physics/advance';
 import { isValidBody } from './physics/body';
@@ -19,7 +20,7 @@ export interface TowingProfile {
   inertiaB: (mass: number) => number; reducedMass?: boolean;
   springModules?: Readonly<Record<string, { k: number; c: number }>>;
   ropeMinLength: number; captureMinLength: number; clearCoupling?: boolean;
-  spawnSearch?: { depth: number; step: number; lateral: number }; maxValidatedSpeed?: number;
+  spawnSearch?: { depth: number; step: number; lateral: number }; maxValidatedSpeed?: number; rigidEnabled?: boolean;
 }
 export interface TowingSnapshot {
   B: BodyState; coupling: CouplingState; distance: number; relativeSpeed: number;
@@ -86,6 +87,11 @@ export class LabTowing {
   reset(a: BodyState, arena: Arena): BodyState | undefined {
     this.referenceMass = this.reducedMass(a);
     const b = this.bodyB(a), coupling = createCoupling(this.physicsConfig());
+    if (coupling.type === 'rigid') {
+      coupling.restLength = coupling.length = coupling.minLength = coupling.maxLength = 0;
+      coupling.attachmentA = this.params['tow.rigidArrangement'] === 'rear' ? 'nose' : 'tail';
+      coupling.attachmentB = coupling.attachmentA === 'nose' ? 'tail' : 'nose';
+    }
     const separation = a.radius + b.radius + coupling.restLength;
     // Ищем состав только в локальной стартовой области; генератор и карта не меняются.
     const startY = Math.min(arena.spawnPoint.y, arena.height / 2 - separation - b.radius);
@@ -96,7 +102,10 @@ export class LabTowing {
       for (const offsetX of offsets) {
         const candidate = clone(a);
         candidate.position = { x: arena.spawnPoint.x + offsetX, y: startY - offsetY };
-        b.position = { x: candidate.position.x, y: candidate.position.y + separation };
+        const direction = coupling.type === 'rigid' && this.params['tow.rigidArrangement'] === 'rear' ? -1 : 1;
+        b.position = coupling.type === 'rigid' ? { x: candidate.position.x - direction * separation * Math.cos(candidate.angle),
+          y: candidate.position.y - direction * separation * Math.sin(candidate.angle) }
+          : { x: candidate.position.x, y: candidate.position.y + separation };
         if (!this.free(candidate, arena) || !this.free(b, arena) || !this.clearLine(candidate, b, coupling, arena)) continue;
         this.B = clone(b); this.coupling = coupling;
         this.reason = undefined; this.needsRestart = false;
@@ -113,7 +122,7 @@ export class LabTowing {
       || Math.hypot(a.position.x - this.B.position.x, a.position.y - this.B.position.y) < a.radius + this.B.radius - 1e-7) return false;
     if (!this.coupling.connected) return true;
     const d = couplingGeometry(a, this.B, this.coupling).distance, c = this.coupling;
-    return c.type === 'rod' ? Math.abs(d - c.restLength) <= 0.01 * c.restLength
+    return c.type === 'rigid' ? validRigidGeometry(a, this.B, c, 1e-7) : c.type === 'rod' ? Math.abs(d - c.restLength) <= 0.01 * c.restLength
       : c.type === 'rope' ? d <= c.restLength + 1e-6 : d >= c.minLength - 1e-6 && d <= c.maxLength + 1e-6;
   }
   update(key: string, value: number | boolean | string, a: BodyState, arena: Arena): boolean {
@@ -130,8 +139,9 @@ export class LabTowing {
       return true;
     }
     const ownRanges = this.profile?.ranges ?? ranges;
-    const valid = key === 'tow.dampingMode' && this.profile?.springModules ? ['fixed', 'legacy'].includes(String(value)) && typeof value === 'string'
-      : key === 'tow.type' ? ['rod', 'rope', 'spring'].includes(String(value)) && typeof value === 'string'
+    const valid = key === 'tow.rigidArrangement' && this.profile?.rigidEnabled ? typeof value === 'string' && ['front', 'rear'].includes(value)
+      : key === 'tow.dampingMode' && this.profile?.springModules ? ['fixed', 'legacy'].includes(String(value)) && typeof value === 'string'
+      : key === 'tow.type' ? ['rod', 'rope', 'spring', ...(this.profile?.rigidEnabled ? ['rigid'] : [])].includes(String(value)) && typeof value === 'string'
       : key in ownRanges && typeof value === 'number' && Number.isFinite(value) && value >= ownRanges[key][0] && value <= ownRanges[key][1];
     const type = key === 'tow.type' ? value : this.params['tow.type'];
     const length = key === 'tow.length' ? Number(value) : Number(this.params['tow.length']);
@@ -142,15 +152,20 @@ export class LabTowing {
     const previous = this.coupling;
     this.coupling = createCoupling(this.physicsConfig());
     this.coupling.connected = previous.connected;
-    if (key !== 'tow.length' && key !== 'tow.type') {
+    if (this.coupling.type === 'rigid') this.coupling.restLength = this.coupling.length = this.coupling.minLength = this.coupling.maxLength = 0;
+    if (key !== 'tow.length' && key !== 'tow.type' && key !== 'tow.rigidArrangement') {
       // Независимые настройки массы/пружины сохраняют фактическую длину захвата.
       this.coupling.attachmentA = previous.attachmentA;
       this.coupling.attachmentB = previous.attachmentB;
-      this.coupling.restLength = previous.restLength;
+      this.coupling.restLength = previous.type === 'rigid' ? 0 : previous.restLength;
       this.coupling.minLength = previous.minLength;
       this.coupling.maxLength = previous.maxLength;
     }
     this.refresh(a); this.updateGeometry(a);
+    if ((key === 'tow.type' && (previous.type === 'rigid' || this.coupling.type === 'rigid'))
+      || key === 'tow.rigidArrangement' || (this.coupling.type === 'rigid' && ['tow.radiusB', 'tow.massRatio'].includes(key))) {
+      this.fail('Настройки жёсткого состава изменены: нужен Restart');
+    }
     if (!this.validGeometry(a, arena)) this.fail('Геометрия состава несовместима с настройками: нужен Restart');
     return true;
   }
@@ -158,7 +173,7 @@ export class LabTowing {
     const g = couplingGeometry(a, this.B, this.coupling);
     this.coupling.length = g.distance; this.coupling.lastNormal = g.normal;
   }
-  setConnection(connected: boolean, a: BodyState, captureMaxSpeed: number): CaptureResult {
+  setConnection(connected: boolean, a: BodyState, captureMaxSpeed: number, arena?: Arena): CaptureResult {
     let candidate = { ...this.coupling };
     let g = couplingGeometry(a, this.B, candidate);
     if (connected && !this.coupling.connected) {
@@ -174,16 +189,25 @@ export class LabTowing {
         }
       }
       g = best!;
-      const maxLength = Number(this.params['tow.length']);
+      const rigid = candidate.type === 'rigid';
+      const maxLength = rigid ? a.radius * 2 : Number(this.params['tow.length']);
       const reason = this.needsRestart ? this.reason
-        : g.distance < (this.profile?.captureMinLength ?? 2) || g.distance > maxLength ? `Захват: расстояние креплений должно быть 2–${maxLength} м`
+        : g.distance < (rigid ? 0 : this.profile?.captureMinLength ?? 2) || g.distance > maxLength ? rigid ? `Захват: ближайшие крепления должны быть не дальше диаметра A (${maxLength.toFixed(2)} м)` : `Захват: расстояние креплений должно быть 2–${maxLength} м`
           : !Number.isFinite(captureMaxSpeed) || captureMaxSpeed <= 0 ? 'Захват: недопустимые линейные лимиты скорости'
             : g.relativeSpeed > captureMaxSpeed ? `Захват: скорость креплений должна быть ≤${captureMaxSpeed} м/с` : undefined;
       if (reason) {
         this.reason = reason;
         return { ok: false, reason, distance: g.distance, relativeSpeed: g.relativeSpeed };
       }
-      candidate.restLength = g.distance;
+      if (rigid) {
+        const snap = arena ? captureRigid(a, this.B, candidate, arena) : { reason: 'Захват: мир не задан' };
+        if ('reason' in snap) {
+          this.reason = snap.reason;
+          return { ok: false, reason: snap.reason, distance: g.distance, relativeSpeed: g.relativeSpeed };
+        }
+        Object.assign(a, snap.A); this.B = snap.B;
+      }
+      candidate.restLength = rigid ? 0 : g.distance;
       candidate.minLength = candidate.restLength * defaults.springMinRatio;
       candidate.maxLength = candidate.restLength * defaults.springMaxRatio;
     }

@@ -43,7 +43,8 @@ import type {
 import type { SandboxOrb, SandboxState } from "./labTypes";
 export type { SandboxOrb, SandboxState } from "./labTypes";
 import { createSpaceProfile, hullInertia, hullCircleRadius, SPACE_RANGES, spaceParams, spaceTowingProfile, geometrySize, TUG_SIZES, TRAILER_SIZES, HULL_CATALOG, fittedTug, recommendedLength, type HullSize, type SpaceProfile } from "../u2taglab/profile";
-import { CATALOG_SPACE_SHARE_SCHEMA, CATALOG_SPACE_SHARE_MODEL, SPACE_SHARE_SCHEMA, SPACE_SHARE_MODEL, SPACE_SHARE_GENERATOR, SPACE_SHARE_DEFAULTS, LEGACY_SPACE_SHARE_KEYS, LEGACY_SPACE_SHARE_MODEL, validateSpaceShareSnapshot, spaceProfileFromParams, type SpaceShareSnapshot, type SpaceWorldRecipe } from "../u2taglab/share";
+import { rigidAssembly, syncRigid } from "../u2taglab/physics/rigid";
+import { RIGID_SPACE_SHARE_SCHEMA, RIGID_SPACE_SHARE_MODEL, RIGID_SPACE_SHARE_DEFAULTS, CATALOG_SPACE_SHARE_SCHEMA, CATALOG_SPACE_SHARE_MODEL, SPACE_SHARE_SCHEMA, SPACE_SHARE_MODEL, SPACE_SHARE_GENERATOR, SPACE_SHARE_DEFAULTS, LEGACY_SPACE_SHARE_KEYS, LEGACY_SPACE_SHARE_MODEL, validateSpaceShareSnapshot, spaceProfileFromParams, type SpaceShareSnapshot, type SpaceWorldRecipe } from "../u2taglab/share";
 import { spaceEngineWrench, spaceInputFrame } from "../u2taglab/physics/flightAssist";
 import { advanceSpaceWorld, cloneSpaceWorld, createSpaceWorld, spaceWorldArena, SPACE_WORLD_DEFAULTS, type SpaceWorld } from "../u2taglab/world";
 import { sampleSpaceFieldResponse, SPACE_FIELD_DEFAULTS, validSpaceFieldSettings, type SpaceFieldSettings } from "../u2taglab/fields";
@@ -156,6 +157,7 @@ export class BonkLab {
     private spaceWorld?: SpaceWorld;
     private spaceWorldRecipe?: SpaceWorldRecipe;
     private spaceGeometryDirty = false;
+    private rigidSpaceShare = false;
     private legacySpaceShare = false;
     private catalogSpaceShare = false;
     private spaceWorldSettings = { asteroidMaxSpeed: SPACE_WORLD_DEFAULTS.asteroidMaxSpeed, collisionRestitution: SPACE_WORLD_DEFAULTS.restitution };
@@ -400,7 +402,10 @@ export class BonkLab {
             this.params["limits.speedLimitLateralMps"]];
         const captureMaxSpeed = this.space ? this.space.speedLimit : limits.every(value => typeof value === "number" && Number.isFinite(value) && value > 0)
             ? Math.min(...limits as number[]) : NaN;
-        return this.towing.setConnection(connected, this.towingBodyA(), captureMaxSpeed);
+        const a = this.towingBodyA();
+        const result = this.towing.setConnection(connected, a, captureMaxSpeed, this.towingStartArena(this.arena, this.spaceWorld));
+        if (result.ok && this.towing.coupling.type === 'rigid') { this.applyTowingA(a); this.syncPrevState(); }
+        return result;
     }
 
     private listenForFocus(enabled: boolean): void {
@@ -561,6 +566,7 @@ export class BonkLab {
                     this.space.massA = this.mass = this.paramManager.mass = value;
                     this.paramManager.params.mass = value;
                     this.towing!.refresh(this.towingBodyA());
+                    if (this.towing!.coupling.type === 'rigid') { this.towing!.fail("Масса жёсткого состава изменена: нужен Restart"); this.pause(); }
                 } else {
                     const field = key.slice(6) as keyof SpaceProfile;
                     (this.space as unknown as Record<string, unknown>)[field] = value;
@@ -573,7 +579,9 @@ export class BonkLab {
         if (key.startsWith("tow.")) {
             if (this.towing?.update(key, value, this.towingBodyA(), this.arena)) {
                 if (this.space && this.towing.params["tow.dampingMode"] === "fixed") this.legacySpaceShare = false;
-                if (this.space && ["tow.length", "tow.radiusB", "tow.type"].includes(key)) this.spaceGeometryDirty = true;
+                if (this.space && (key === "tow.rigidArrangement" || (key === "tow.type" && value === "rigid"))) this.rigidSpaceShare = true;
+                if (this.space && ["tow.length", "tow.radiusB", "tow.type"].includes(key)
+                    && this.towing.params["tow.type"] !== "rigid" && key !== "tow.type") this.spaceGeometryDirty = true;
                 if (this.towing.needsRestart) this.pause();
                 this.syncPrevState();
             }
@@ -718,7 +726,7 @@ export class BonkLab {
         if (!this.space || !this.towing || !['A', 'B'].includes(id)
             || !(id === 'A' ? TUG_SIZES : TRAILER_SIZES).includes(size as never)) throw new Error('U2TagLab: неизвестный размер');
         const snapshot = this.exportSpaceShareSnapshot(), hull = HULL_CATALOG[size as HullSize];
-        snapshot.schema = CATALOG_SPACE_SHARE_SCHEMA; snapshot.model = CATALOG_SPACE_SHARE_MODEL;
+        snapshot.schema = this.rigidSpaceShare ? RIGID_SPACE_SHARE_SCHEMA : CATALOG_SPACE_SHARE_SCHEMA; snapshot.model = this.rigidSpaceShare ? RIGID_SPACE_SHARE_MODEL : CATALOG_SPACE_SHARE_MODEL;
         snapshot.world.radiusA ??= this.space.radiusA;
         snapshot.geometry = { A: { ...this.space.geometryA }, B: { ...this.space.geometryB } };
         snapshot.geometry[id] = { length: hull.length, width: hull.width };
@@ -746,11 +754,12 @@ export class BonkLab {
     exportSpaceShareSnapshot(): SpaceShareSnapshot {
         if (!this.space || !this.spaceWorldRecipe) throw new Error("Ссылка U2TagLab: режим недоступен");
         const current = this.params;
-        const legacy = this.legacySpaceShare && current["tow.dampingMode"] === "legacy";
-        return validateSpaceShareSnapshot({ schema: legacy ? 1 : this.catalogSpaceShare ? 3 : SPACE_SHARE_SCHEMA, model: legacy ? LEGACY_SPACE_SHARE_MODEL : this.catalogSpaceShare ? CATALOG_SPACE_SHARE_MODEL : SPACE_SHARE_MODEL, generator: SPACE_SHARE_GENERATOR,
+        const rigid = this.rigidSpaceShare || current["tow.type"] === "rigid";
+        const legacy = !rigid && this.legacySpaceShare && current["tow.dampingMode"] === "legacy";
+        return validateSpaceShareSnapshot({ schema: rigid ? RIGID_SPACE_SHARE_SCHEMA : legacy ? 1 : this.catalogSpaceShare ? 3 : SPACE_SHARE_SCHEMA, model: rigid ? RIGID_SPACE_SHARE_MODEL : legacy ? LEGACY_SPACE_SHARE_MODEL : this.catalogSpaceShare ? CATALOG_SPACE_SHARE_MODEL : SPACE_SHARE_MODEL, generator: SPACE_SHARE_GENERATOR,
             ...(legacy ? {} : { geometry: { A: this.space.geometryA, B: this.space.geometryB } }),
             seed: this.lastSeed, density: this.lastDensity,
-            params: Object.fromEntries((legacy ? LEGACY_SPACE_SHARE_KEYS : Object.keys(SPACE_SHARE_DEFAULTS)).map(key => [key, current[key]])), world: this.spaceWorldRecipe });
+            params: Object.fromEntries((legacy ? LEGACY_SPACE_SHARE_KEYS : Object.keys(rigid ? RIGID_SPACE_SHARE_DEFAULTS : SPACE_SHARE_DEFAULTS)).map(key => [key, current[key]])), world: rigid ? { ...this.spaceWorldRecipe, radiusA: this.spaceWorldRecipe.radiusA ?? this.space.radiusA } : this.spaceWorldRecipe });
     }
 
     /** Строим и проверяем кандидата целиком до остановки или изменения текущего заезда. */
@@ -769,7 +778,7 @@ export class BonkLab {
         if (!start || towing.needsRestart || !towing.validGeometry(start, startArena)) throw new Error("Ссылка U2TagLab: невозможный безопасный старт выбранного состава на исходной карте");
         arena.spawnPoint = { ...start.position };
         this.stop();
-        this.legacySpaceShare = snapshot.schema === 1; this.catalogSpaceShare = snapshot.schema === 3;
+        this.legacySpaceShare = snapshot.schema === 1; this.catalogSpaceShare = snapshot.schema >= 3; this.rigidSpaceShare = snapshot.schema === 4;
         this.space = profile; this.towing = towing; this.spaceFA = Boolean(snapshot.params["space.fa"]);
         this.spaceWorldRecipe = snapshot.world; this.spaceGeometryDirty = false;
         this.spaceWorldSettings = { asteroidMaxSpeed: snapshot.world.asteroidMaxSpeed, collisionRestitution: Number(snapshot.params["space.collisionRestitution"]) };
@@ -892,6 +901,21 @@ export class BonkLab {
             b.velocity.y = prev.velocity.y + (b.velocity.y - prev.velocity.y) * a;
             b.angle = lerpAngle(prev.angle, b.angle, a);
             b.angularVelocity = prev.angularVelocity + (b.angularVelocity - prev.angularVelocity) * a;
+        }
+        if (state.towing?.coupling.type === 'rigid' && state.towing.coupling.connected && this.prevB) {
+            // Интерполируем общий COM, затем вращаем неизменную геометрию; хорда сжимала бы круги.
+            const currentA = this.towingBodyA(), currentB = this.towing!.B;
+            const previousA = { ...currentA, position: { x: this.prevX, y: this.prevY },
+                velocity: { x: this.prevVx, y: this.prevVy }, angle: this.prevAngle, angularVelocity: this.prevAngVel };
+            const r = rigidAssembly(currentA, currentB, state.towing.coupling), prev = rigidAssembly(previousA, this.prevB, state.towing.coupling);
+            r.position.x = prev.position.x + (r.position.x - prev.position.x) * a;
+            r.position.y = prev.position.y + (r.position.y - prev.position.y) * a;
+            r.velocity.x = prev.velocity.x + (r.velocity.x - prev.velocity.x) * a;
+            r.velocity.y = prev.velocity.y + (r.velocity.y - prev.velocity.y) * a;
+            r.angle = state.angle; r.angularVelocity = state.angularVelocity;
+            syncRigid(r, currentA, state.towing.B);
+            state.x = currentA.position.x; state.y = currentA.position.y;
+            state.vx = currentA.velocity.x; state.vy = currentA.velocity.y;
         }
         if (state.spaceWorld && this.prevAsteroids) {
             const previous = new Map(this.prevAsteroids.map(b => [b.id, b]));

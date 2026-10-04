@@ -1,5 +1,15 @@
 ## U2TagLab — длина повторного захвата Task580
 
+## U2TagLab: жёсткий состав (Task555, 4 октября 2026)
+
+- Connected rigid проходит отдельную ветвь advanceSpaceWorld: rigidAssembly владеет COM/V/angle/omega и общей инерцией IA+IB+Σmr²; syncRigid выводит позиции/point velocities двух прежних кругов. Старый solver rod/rope/spring не имитирует weld.
+- Все внешние wrench сэмплируются на неизменном начале общего подшага; поля могут действовать на A/B, двигатели только A. Контакт каждого круга использует эффективную обратную массу 1/M+(r×n)²/I, reciprocal asteroid impulse. Внутренние A/B контакты исключены.
+- CCD rigidContacts вычисляет точную дугу p(t)=C+Vt+R(omega t)r. Свободный интервал ограничен g+g' h−amax h²/2; около касания используются локальная вторая производная, bound третьей производной и допуск epsilon/4. Численный бюджет конечен; отказ откатывает всю транзакцию A/B/asteroids/time. Конечная проверка проникновения прежнего epsilon10⁻⁶ м сохранена.
+- captureRigid строит копии: ближайшие4 anchors определяются до snap; A heading сохранён, B relativeAngle0 либоπ по названиям креплений, centers tangent. COM/P/L сохраняются; internal COM-frame energy сравнивается без вычитания больших drift totals. Infeasible energy и swept snap paths (включая live asteroids, bounds и взаимное пересечение) отказывают атомарно. BonkLab commit обновляет A/B и предыдущие transforms только после успешного snap.
+- tow.rigidArrangement front/rear относится к reset; свободный захват может изменить anchors/relativeAngle. Настройки типа/arrangement/массы/радиуса требуют Restart. Render интерполирует COM и общий angle вместо хорд двух независимых центров.
+- schema4/u2-space-circles-rigid-v5 сохраняет новый параметр и catalog geometry; прежние схемы1/2/3 имеют точные прежние keysets/model. Старый recipe мира отделён от живой нулевой длины weld. До выбора rigid/new setting export сохраняет прежнюю схему, после — schema4 и при возврате к пружине.
+
+
 LabTowing.setConnection после выбора ближайшей пары нос/хвост и проверки допуска задаёт coupling.restLength измеренной дистанцией для троса, штанги и пружины. У троса этот restLength является пределом одностороннего натяжения; при сближении он провисает. Рабочий захват отделён от params[tow.length]: настройка остаётся пределом допуска и источником начальной длины для Restart/Share. Корабли и их скорости при захвате не изменяются, отказ атомарен. Независимые mass/module edits сохраняют захват; явные type/length edits по прежнему контракту используют настройку. Абсолютная HUD-шкала размера A не зависит от захвата.
 
 ## U2TagLab — контрастный джойстик Task573

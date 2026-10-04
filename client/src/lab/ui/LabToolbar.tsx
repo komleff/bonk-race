@@ -468,7 +468,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                     onClick={() => { clearConfirmation(); onClearInput?.(); setPanelOpen(!panelOpen); }}>⚙</button>
             </div>
             {!space && <div class="tug-status" aria-live="polite"><span class="lab-tb-timer">{formatTime(elapsed)}</span> ·
-                {{ rod: "Штанга", rope: "Трос", spring: "Пружина" }[towState.coupling.type]} · {towState.distance.toFixed(2)} м · {towState.coupling.connected ? "соединено" : "расцеплено"}
+                {{ rod: "Штанга", rope: "Трос", spring: "Пружина", rigid: "Жёсткая" }[towState.coupling.type]} · {towState.distance.toFixed(2)} м · {towState.coupling.connected ? "соединено" : "расцеплено"}
                 {towState.paused && " · пауза"}
                 {towState.reason && <span role="alert"> · {towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</span>}
             </div>}

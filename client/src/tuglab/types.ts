@@ -7,7 +7,7 @@ export interface InputFrame {
   forward: number; lateral: number; yaw: number; brake: boolean;
   action: boolean; toggleFA: boolean;
 }
-export type CouplingType = 'rod' | 'rope' | 'spring';
+export type CouplingType = 'rod' | 'rope' | 'spring' | 'rigid';
 export type Attachment = 'nose' | 'tail';
 export interface CouplingState {
   type: CouplingType; connected: boolean; attachmentA: Attachment; attachmentB: Attachment;

@@ -1,10 +1,13 @@
 import type { AdvanceResult, BodyState, CouplingState, TugConfig, Vec2 } from '../../tuglab/types';
-import { driftBody, isValidBody } from '../../tuglab/physics/body';
+import { driftBody, isValidBody, cross } from '../../tuglab/physics/body';
 import { applySpring, couplingGeometry, rodStepLimit } from '../../tuglab/physics/coupling';
 import { couplingAccepted, validCoupling, validNumerics } from '../../tuglab/physics/advance';
 import { advanceCoupledInterval } from '../../tuglab/physics/coupledAdvance';
 import { cloneSpaceWorld, type SpaceWorld } from '../world';
 import { firstWorldContact, resolveWorldContact, worldHasPenetration, type NamedBody, type WorldContactEvent } from './worldContacts';
+
+import { rigidAssembly, rigidPose, syncRigid, driftRigid, validRigidGeometry } from './rigid';
+import { firstRigidContact, resolveRigidContact } from './rigidContacts';
 
 export interface SpaceForceSample {
   id: string; body: Readonly<BodyState>; time: number; subDt: number;
@@ -24,6 +27,8 @@ function attempt(a: BodyState, b: BodyState, original: CouplingState, world: Spa
     .slice().sort((x, y) => x.id < y.id ? -1 : x.id > y.id ? 1 : 0).map(body => ({ id: body.id, body }))];
   const statics = result.world.statics.slice().sort((x, y) => x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
   const bounds = { minX: -world.width / 2, maxX: world.width / 2, minY: -world.height / 2, maxY: world.height / 2 };
+  const rigid = coupling.connected && coupling.type === 'rigid' ? rigidAssembly(A, B, coupling) : undefined;
+  if (rigid && !validRigidGeometry(A, B, coupling, config.normalEpsilon)) return undefined;
   for (let step = 0; step < substeps; step++) {
     if (sampler) {
       // Все силы читаются до интеграции любых скоростей на общем подшаге.
@@ -31,27 +36,46 @@ function attempt(a: BodyState, b: BodyState, original: CouplingState, world: Spa
       forces.forEach((wrench, i) => {
         if (![wrench.force.x, wrench.force.y, wrench.torque].every(Number.isFinite)) throw new Error('Недопустимая внешняя сила');
         const body = bodies[i].body;
+        if (rigid && i < 2) {
+          const arm = rigidPose(rigid, i === 0 ? rigid.offsetA : rigid.offsetB).arm;
+          rigid.velocity.x += wrench.force.x * subDt / rigid.mass; rigid.velocity.y += wrench.force.y * subDt / rigid.mass;
+          rigid.angularVelocity += (wrench.torque + cross(arm, wrench.force)) * subDt / rigid.inertia;
+          return;
+        }
         body.velocity.x += wrench.force.x * subDt / body.mass;
         body.velocity.y += wrench.force.y * subDt / body.mass;
         body.angularVelocity += wrench.torque * subDt / body.inertia;
       });
     }
+    if (rigid) syncRigid(rigid, A, B);
     if (bodies.some(({ body }) => !isValidBody(body))) return undefined;
-    if (subDt > rodStepLimit(A, B, { ...coupling, type: 'rod' }, config)) return undefined;
+    if (!rigid && subDt > rodStepLimit(A, B, { ...coupling, type: 'rod' }, config)) return undefined;
     if (coupling.connected && coupling.type === 'spring') {
       const inverseMass = couplingGeometry(A, B, coupling).inverseMass;
       if (subDt * Math.max(Math.sqrt(coupling.k * inverseMass), coupling.c * inverseMass) > config.springMaxStep) return undefined;
     }
     coupling.accumulatedImpulse = 0;
     applySpring(A, B, coupling, subDt);
-    if (!advanceCoupledInterval(A, B, coupling, subDt, config, {
+    if (rigid) {
+      let remaining = subDt, events = 0;
+      while (true) {
+        const hit = firstRigidContact(rigid, bodies, statics, bounds, remaining, config);
+        const segment = hit ? hit.time : remaining;
+        driftRigid(rigid, segment, A, B);
+        for (const { body } of bodies.slice(2)) driftBody(body, segment);
+        remaining = Math.max(0, remaining - segment);
+        if (!hit) break;
+        if (++events > config.maxContactEvents) return undefined;
+        result.contacts.push(resolveRigidContact(rigid, bodies, hit));
+      }
+    } else if (!advanceCoupledInterval(A, B, coupling, subDt, config, {
       findContact: (trialA, trialB, horizon) => firstWorldContact(
         [{ id: 'A', body: trialA }, { id: 'B', body: trialB }, ...bodies.slice(2)], statics, bounds, horizon, config),
       advanceBodies: segment => { for (const { body } of bodies) driftBody(body, segment); },
       resolveContact: hit => { result.contacts.push(resolveWorldContact(bodies, hit)); },
     })) return undefined;
     result.diagnostics.couplingImpulse += coupling.accumulatedImpulse;
-    if (bodies.some(({ body }) => !isValidBody(body)) || !couplingAccepted({ ...result, contacts: [] }, config)
+    if (bodies.some(({ body }) => !isValidBody(body)) || !(rigid ? validRigidGeometry(A, B, coupling, config.normalEpsilon) : couplingAccepted({ ...result, contacts: [] }, config))
       || worldHasPenetration(bodies, statics, bounds, config.normalEpsilon)) return undefined;
   }
   result.diagnostics.outsideSpeedRange = bodies.some(({ body }) => Math.hypot(body.velocity.x, body.velocity.y) > config.maxValidatedSpeed);
