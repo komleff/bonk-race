@@ -1,3 +1,13 @@
+## U2TagLab0.2.0 опубликован — BonkRacev0.6.4 (4 октября 2026)
+
+Оператор одобрил выпуск. PR44 слит; annotated tag v0.6.4 и GitHub Release опубликованы на SOURCE_SHA058fcc0e6d09673a4b1e0eaec8fede8b7bf488f9. Публичная игра: https://komleff.github.io/bonk-race/u2taglab/. Доступны жёсткая COM-сцепка front/rear, nearest4 свободный захват, исправленная повторная ссылка и компактная масса кг/т/кт/Мт. BonkLab и TugLab0.1.1 сохранены.
+
+Свежие435/435, npm test/check-version PASS; release metadata Quality APPROVED. PR packaging37200789859 и Pages build/deploy37201164371 SUCCESS. Merge tree побайтно совпадает с tested release head dd31d1f; отдельные stamped архивы построены на058fcc0, built14 root/nested PASS. Live Chrome390 подтвердил три HTTP200/режимы/stamp058fcc0/BONK0.6.4, U2v0.2.0, rendered401т, rigidfront/rear tangent+exactShare, userS/L180 Reset→sameURL;7 checks/errors[]. Два ранних live запуска получили ERR_SOCKET_NOT_CONNECTED до приложения получателя; повтор с HTTP/1.1 полностью прошёл. HTTPS verification не отключалась; публичный JS побайтно совпал с локальной release сборкой. Физический телефон не заявляется.
+
+Четыре release assets опубликованы; SOURCE_SHA обоих архивов, скачанные байты, SHA256-файлы и API digest сверены. Тег immutable058fcc0. Подробный итог: docs/reports/u2taglab-v0.2.0-release.md; человеческое описание: docs/releases/v0.6.4-release-notes.md. Task585 закрыт по фактическому выпуску.
+
+Отдельный Publish Docker Containers37201164381 повторил известный558: отсутствует /app/scripts/install-hooks.js при runtime npm ci. Pages/standalone archives от него не зависят; отказ записан в558 и не выдаётся за зелёный общийCI. Governor572/passiveB571/прямоугольники и следующие физические этапы остаются отдельными задачами. Исходный checkout/U2/stash сохранены, прямого push main не было.
+
 ## Выпуск BonkRace0.6.4 / U2TagLab0.2.0 — Task585 (4 октября 2026)
 
 Оператор явно одобрил релиз PR44. Подготовлены синхронизация версий и release notes с жёсткой сцепкой front/rear, повторными ссылками и единицами массы. Gameplay после принятого c596fcf не меняется; QA584 прошёл CI37199893441. Проверки нового release HEAD, merge/tag/Pages/GitHub Release выполняются PM. До подтверждения live выпуск не объявляется завершённым. Исходный checkout/stash/U2 сохраняются.
