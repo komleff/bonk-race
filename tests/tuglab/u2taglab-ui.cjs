@@ -13,6 +13,7 @@ const report={checks:[],errors:[],physicalAndroid:false};
  report.defaults=await page.evaluate(()=>({params:window.__bonkLab.exportSpaceShareSnapshot().params,coupling:window.__bonkLab.getState().towing.coupling,distance:window.__bonkLab.getState().towing.distance}));
  assert.equal(report.defaults.params['tow.length'],360);assert.equal(report.defaults.params['tow.dampingRatio'],1);assert.ok(Math.abs(report.defaults.coupling.k-360000)<1e-6);assert.ok(Math.abs(report.defaults.coupling.c-710000)<1e-6);assert.ok(Math.abs(report.defaults.distance-360)<1e-8);
  report.resources=await page.evaluate(()=>performance.getEntriesByType('resource').map(r=>r.name));if(process.env.U2TAGLAB_BUILT==='1'){assert.ok(report.resources.length>0);const prefix=process.env.U2TAGLAB_URL;assert.ok(report.resources.every(url=>url.startsWith(prefix)),JSON.stringify(report.resources));}
+ await require('./u2taglab-controls-checks.cjs')(page,report,out);
  const toolbarFA=await page.locator('.tug-race-toolbar').getByRole('button',{name:'Flight Assist',exact:true}).count();assert.equal(toolbarFA,0,'FA должен находиться внизу рядом с тормозом');
  for(const [width,height]of [[360,800],[390,844],[412,915],[844,390]]){
   await page.setViewportSize({width,height});await page.waitForTimeout(150);

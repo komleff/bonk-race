@@ -123,6 +123,23 @@ export interface LabToolbarProps {
 
 export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing = false, onClearInput, syncTrigger, onPanelVisibilityChanged, startupError, onStartupRecovered }: LabToolbarProps) {
     const space = lab.isSpace;
+    const [infoOpen, setInfoOpen] = useState(false);
+    const [brakeHeld, setBrakeHeld] = useState(false);
+    const brakePointer = useRef<number | null>(null);
+    const brakeButton = useRef<HTMLButtonElement>(null);
+    const clearSpaceBrake = useCallback((pointerId?: number) => {
+        if (pointerId !== undefined && pointerId !== brakePointer.current) return;
+        const captured = brakePointer.current; brakePointer.current = null;
+        lab.setSpaceBrake(false); setBrakeHeld(false);
+        if (captured !== null && brakeButton.current?.hasPointerCapture(captured)) brakeButton.current.releasePointerCapture(captured);
+    }, [lab]);
+    useEffect(() => {
+        if (!space) return;
+        const clear = () => clearSpaceBrake();
+        const hidden = () => { if (document.hidden) clear(); };
+        window.addEventListener("blur", clear); document.addEventListener("visibilitychange", hidden);
+        return () => { window.removeEventListener("blur", clear); document.removeEventListener("visibilitychange", hidden); clear(); };
+    }, [space, clearSpaceBrake]);
     const [fa, setFa] = useState(() => Boolean(lab.params["space.fa"]));
     // Inject styles once
     useEffect(() => {
@@ -181,6 +198,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     // Timer — poll elapsed time from lab state
     const [elapsed, setElapsed] = useState(0);
     const [towState, setTowState] = useState(() => lab.getState().towing);
+    useEffect(() => { if (space && towState?.paused) clearSpaceBrake(); }, [space, towState?.paused, clearSpaceBrake]);
     useEffect(() => {
         const id = setInterval(() => {
             setElapsed(lab.getState().elapsedTime);
@@ -372,7 +390,9 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
             {!space && <select class="lab-tb-select" aria-label="Пресет движения" value={activePreset} onChange={handlePreset}>
                 <option value={-1}>Custom</option>{PRESETS.map((preset, i) => <option key={i} value={i}>{preset.label}</option>)}
             </select>}
-            {space && <p>{SPACE_SOURCE.mass}<br />Космический мир: 6000×18000 м, станции, платформы, подвижные астероиды и локальные поля. Вне полей — вакуум.<br />Мышь/тач/WASD задают мировой курс и тягу. Space или кнопка «Тормоз» — двигательный тормоз.</p>}
+            {space && <Fragment><button type="button" class="lab-tb-btn" aria-expanded={infoOpen} aria-controls="space-intro-info"
+                onClick={() => setInfoOpen(!infoOpen)}>Инфо</button>
+                <div id="space-intro-info" hidden={!infoOpen}><p>{SPACE_SOURCE.mass}<br />Космический мир: 6000×18000 м, станции, платформы, подвижные астероиды и локальные поля. Вне полей — вакуум.<br />Мышь/тач/WASD задают мировой курс и тягу. Space или кнопка «Тормоз» — двигательный тормоз.</p></div></Fragment>}
             {space && <details><summary>Поля: законы и границы модели</summary>
                 <p>Плавный smoothstep по расстоянию до края — LAB. Дрейф геометрии задан seed и временем симуляции. Поля не меняют тягу, FA, топливо или параметры друг друга.</p>
                 {Object.entries(SPACE_FIELD_INFO).map(([key, info]) => <p key={key}><strong>{info.label}.</strong> {info.description}</p>)}
@@ -403,9 +423,18 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
             </div>
             {space && <div class="space-flight-controls">
                 <button class="lab-tb-btn" aria-label="Flight Assist" aria-pressed={fa}
+                    onPointerDown={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}
                     onClick={() => { const enabled = !Boolean(lab.params["space.fa"]); lab.setSpaceFA(enabled); setFa(enabled); onParamsChanged?.(); }}>FA {fa ? "ON" : "OFF"}</button>
-                <button class="lab-tb-btn space-brake" aria-label="Тормоз" onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); lab.setSpaceBrake(true); }}
-                onPointerUp={() => lab.setSpaceBrake(false)} onPointerCancel={() => lab.setSpaceBrake(false)} onLostPointerCapture={() => lab.setSpaceBrake(false)} onBlur={() => lab.setSpaceBrake(false)}>Тормоз</button></div>}
+                <button ref={brakeButton} class="lab-tb-btn space-brake" aria-label="Тормоз" aria-pressed={brakeHeld}
+                    onContextMenu={e => e.preventDefault()} onPointerDown={e => {
+                        e.preventDefault();
+                        // Второй палец может тормозить, пока первый управляет джойстиком.
+                        if (e.button !== 0 || brakePointer.current !== null) return;
+                        brakePointer.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId);
+                        lab.setSpaceBrake(true); setBrakeHeld(true);
+                    }}
+                    onPointerUp={e => clearSpaceBrake(e.pointerId)} onPointerCancel={e => clearSpaceBrake(e.pointerId)}
+                    onLostPointerCapture={e => clearSpaceBrake(e.pointerId)} onBlur={() => clearSpaceBrake()}>Тормоз</button></div>}
             <LabPanel lab={lab} towing panelOpen={panelOpen} onOpenChange={setPanelOpen} settingsContent={settings}
                 syncTrigger={syncTrigger} onPanelVisibilityChanged={onPanelVisibilityChanged} onParamChanged={onParamsChanged} />
             {shareLink && <div class="lab-modal-backdrop"><div class="lab-modal" role="dialog" aria-label="Поделиться заездом">
