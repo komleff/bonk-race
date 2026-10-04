@@ -1,0 +1,19 @@
+# Task582 — повторное открытие общей ссылки
+
+PM воспроизвёл на опубликованном v0.6.3 и изолированном checkout: exact schema3 S/L180 → настоящий «Сброс» M/L360 → переход к тому же URL оставляет M/L360; reload восстанавливает S/L180. Размеры и длина были закодированы правильно. RED сохранён в /tmp/bonk-rigid-logs/stale-red.log, release evidence у PM.
+
+Исправление shell удаляет только валидный устаревший #u2tag/#tug после изменения передаваемых настроек. Нормализованные снимки сравниваются через существующие валидаторы. Ошибочные ссылки и неизменные снимки остаются. Seed/random/Restart вызывают существующее уведомление панели; схемы и физика не менялись.
+
+Source GREEN11: точный пользовательский снимок S/L180; Reset, размер, длина123, тип, seed43, density, FA; повторный идентичный URL; неизменный Restart/pause/reload; schema4 front/rear; old TugLab длина25. errors[]. Harness ждёт два кадра синхронизации черновиков панели после импорта, прежде чем выполнять следующий пользовательский ввод. Ранний повторный source-run во время HMR не принял длину123; проверка после завершения синхронизации PASS, дополнительная правка продукта не сделана. Source log /tmp/bonk-rigid-logs/stale-green-final2.log; JSON рядом в stale-green-final2/report.json.
+
+Свежие test:tuglab434/434, npm test, tug/client typechecks, root build и отдельные lab/tug/u2 builds PASS. Готовые root/nested: UI15/sizes5/rigid6/stale10 на каждом пути PASS, errors[]. Артефакты /tmp/bonk-rigid-logs/final-built. Независимое ревью и доставка передаются PM.
+
+## Task583 — единицы массы приборов
+
+HUD автоматически выбирает кг/т/кт/Мт, форматирует до3 значащих цифр без лишних нулей и повышает округлённую тысячу в следующую единицу. 401200→401 т;1556800→1.56 кт;999500→1 кт. Одна функция форматирования отображения; параметры, модели и настройки не изменялись. Unit table RED→GREEN, полный435/435 PASS. Существующий Canvas harness расширен семью массами (30/1000/401200/1556800/999500/999500000/10⁹ кг), проверяет настоящий fillText и размещение внутри прежней панели, DPR1/2/3. Финальные готовые root/nested и независимая приёмка у PM.
+
+## Task584 — собственный endpoint старого TugLab в built QA
+
+PR44 CI задаёт TUGLAB_URL5194 до запуска соответствующего HTTP server; новый stale-share test наследовал этот адрес. Локальный RED с тем же недоступным5194 подтвердил ERR_CONNECTION_REFUSED в share-stale-browser.cjs:38 после успешных U2 UI/sizes/rigid. Исправлен только существующий built harness: /legacy-tuglab/ раздаёт client/dist-tuglab, дочерние проверки получают явный TUGLAB_URL того же временного сервера. Старые утверждения сохранены; workflow и продукт не менялись.
+
+С тем же глобальным TUGLAB_URL=http://127.0.0.1:5194 полный built root/nested GREEN: UI15/HUD151, sizes5, rigid6, stale11 на каждом пути (включая exact oldTug share), errors[]. node --check PASS. RED/артефакты: /tmp/bonk-rigid-logs/task584-red; GREEN: /tmp/bonk-rigid-logs/task584-green; общие логи с суффиксом .log рядом. Product suite435 повторно не запускалась: изменён только QA harness.

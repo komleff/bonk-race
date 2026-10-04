@@ -6,11 +6,11 @@ import { advanceCoupledInterval } from './coupledAdvance';
 
 const cloneBody = (body: BodyState): BodyState => ({ ...body, position: { ...body.position }, velocity: { ...body.velocity } });
 export function validCoupling(coupling: CouplingState): boolean {
-  return ['rod', 'rope', 'spring'].includes(coupling.type) && typeof coupling.connected === 'boolean'
+  return ['rod', 'rope', 'spring', 'rigid'].includes(coupling.type) && typeof coupling.connected === 'boolean'
     && ['nose', 'tail'].includes(coupling.attachmentA) && ['nose', 'tail'].includes(coupling.attachmentB)
     && [coupling.length, coupling.restLength, coupling.minLength, coupling.maxLength, coupling.k, coupling.c,
       coupling.lastNormal.x, coupling.lastNormal.y, coupling.accumulatedImpulse].every(Number.isFinite)
-    && coupling.restLength > 0 && coupling.minLength >= 0 && coupling.maxLength >= coupling.minLength && coupling.k >= 0 && coupling.c >= 0;
+    && (coupling.type === 'rigid' ? coupling.restLength === 0 && coupling.minLength === 0 && coupling.maxLength === 0 : coupling.restLength > 0) && coupling.minLength >= 0 && coupling.maxLength >= coupling.minLength && coupling.k >= 0 && coupling.c >= 0;
 }
 export function validNumerics(config: TugConfig): boolean {
   return [config.substeps, config.solverIterations, config.maxAdaptiveSubsteps, config.maxContactEvents]
@@ -77,7 +77,7 @@ export function advancePair(a: BodyState, b: BodyState, coupling: CouplingState,
   obstacles: readonly CircleObstacle[], bounds?: Bounds, applyVelocity?: ApplyVelocity): AdvanceResult {
   const fail = (stopReason: string): AdvanceResult => ({ A: a, B: b, coupling, contacts: [], stopReason,
     diagnostics: { couplingImpulse: 0, rodError: 0, outsideSpeedRange: false, solverSubsteps: 0 } });
-  if (!isValidBody(a) || !isValidBody(b) || !validCoupling(coupling) || !validNumerics(config) || !Number.isFinite(dt) || dt <= 0
+  if ((coupling.type === 'rigid' && coupling.connected) || !isValidBody(a) || !isValidBody(b) || !validCoupling(coupling) || !validNumerics(config) || !Number.isFinite(dt) || dt <= 0
     || obstacles.some(o => typeof o.id !== 'string' || ![o.position.x, o.position.y, o.radius].every(Number.isFinite)
       || o.radius <= 0 || (o.restitution !== undefined && (!Number.isFinite(o.restitution) || o.restitution < 0)))
     || (bounds && (![bounds.minX, bounds.maxX, bounds.minY, bounds.maxY].every(Number.isFinite)

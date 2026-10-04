@@ -1,0 +1,67 @@
+{
+  "schema": 3,
+  "model": "u2-space-circles-catalog-v4",
+  "geometry": {
+    "A": {
+      "length": 30,
+      "width": 13.5
+    },
+    "B": {
+      "length": 120,
+      "width": 54
+    }
+  },
+  "generator": "u2-space-world-area-catalog-v3",
+  "seed": 42,
+  "density": 5,
+  "params": {
+    "mass": 100300,
+    "space.fa": true,
+    "space.enginesEnabled": true,
+    "space.forwardForce": 5428000,
+    "space.reverseForce": 2326285.714285714,
+    "space.lateralForce": 1395771.4285714286,
+    "space.yawTorque": 7581229.414644961,
+    "space.speedLimit": 200,
+    "space.crewGLimit": 4.5,
+    "space.coastDeadzone": 1.5,
+    "space.comfortableBrakingTime": 3.5,
+    "space.emergencyBrakingTime": 0.2,
+    "space.lateralComfort": 20,
+    "space.yawLimit": 0.8377580409572781,
+    "space.yawStopTime": 1,
+    "tow.massRatio": 15.521435692921237,
+    "tow.radiusB": 49.758620689655174,
+    "tow.length": 180,
+    "tow.type": "spring",
+    "tow.stiffness": 240000,
+    "tow.dampingRatio": 1,
+    "tow.dampingMode": "fixed",
+    "tow.dampingCoefficient": 290000,
+    "tow.module": "S",
+    "arena.objectDensity": 5,
+    "space.asteroidMaxSpeed": 5,
+    "space.collisionRestitution": 0.8,
+    "space.fieldsEnabled": true,
+    "space.fieldPressure": 50,
+    "space.resistiveK": 0.5,
+    "trail.enabled": true,
+    "trail.maxAge": 1,
+    "trail.baseAlpha": 0.6,
+    "trail.pattern": "drift",
+    "trail.primaryColor": "#44aaff",
+    "trail.driftColor": "#ffff00",
+    "trail.rainbowPeriodSec": 2
+  },
+  "world": {
+    "radiusA": 24.879310344827587,
+    "radiusB": 49.758620689655174,
+    "couplingLength": 360,
+    "asteroidMaxSpeed": 5,
+    "fields": {
+      "fieldsEnabled": true,
+      "fieldPressure": 50,
+      "resistiveK": 0.5
+    }
+  }
+}

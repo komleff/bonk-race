@@ -59,10 +59,10 @@ export const SPRING_MODULES = { S: { k: 240000, c: 290000 }, M: { k: 360000, c: 
 export function spaceTowingProfile(profile: SpaceProfile): TowingProfile {
   return { defaults: { 'tow.massRatio': profile.massB / profile.massA, 'tow.radiusB': profile.radiusB,
     'tow.length': 360, 'tow.type': 'spring', 'tow.stiffness': 360000, 'tow.dampingRatio': 1,
-    'tow.dampingMode': 'fixed', 'tow.dampingCoefficient': 710000, 'tow.module': 'M' },
+    'tow.dampingMode': 'fixed', 'tow.dampingCoefficient': 710000, 'tow.module': 'M', 'tow.rigidArrangement': 'front' },
     springModules: SPRING_MODULES, ranges: SPACE_RANGES, inertiaB: mass => hullInertia(mass, profile.geometryB), reducedMass: true,
     ropeMinLength: 20, captureMinLength: 2, clearCoupling: true, spawnSearch: { depth: 2500, step: 100, lateral: 2500 },
-    maxValidatedSpeed: 1000 };
+    maxValidatedSpeed: 1000, rigidEnabled: true };
 }
 
 export const TUG_SIZES = ['S', 'M', 'L', 'XL'] as const;

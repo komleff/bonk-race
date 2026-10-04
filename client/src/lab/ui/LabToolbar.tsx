@@ -265,7 +265,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
         lab.reset();
         lab.start();
         setElapsed(0);
-    }, [lab, onClearInput]);
+        if (towing) onParamsChanged?.();
+    }, [lab, onClearInput, onParamsChanged, towing]);
 
     // ── Seed ──
     const handleSeedChange = useCallback(
@@ -278,9 +279,10 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 onClearInput?.();
                 lab.regenerateArena(v, density);
                 if (towing && wasRunning) lab.start();
+                if (towing) onParamsChanged?.();
             }
         },
-        [lab, density, towing, onClearInput],
+        [lab, density, towing, onClearInput, onParamsChanged],
     );
 
     const handleRandomSeed = useCallback(() => {
@@ -292,7 +294,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
         onClearInput?.();
         lab.regenerateArena(newSeed, density);
         if (towing && wasRunning) lab.start();
-    }, [lab, density, towing, onClearInput]);
+        if (towing) onParamsChanged?.();
+    }, [lab, density, towing, onClearInput, onParamsChanged]);
 
     // ── Density ──
     const handleDensityChange = useCallback(
@@ -446,7 +449,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
             <div class="tug-settings-actions"><button class="lab-tb-btn" onClick={handleResetParams}>Сброс</button>
                 <button class="lab-tb-btn" onClick={handleShare}>Поделиться</button></div>
             {space && <button class="lab-tb-btn" onClick={() => { lab.restoreSpaceRadiusB(); onParamsChanged?.(); }}>Радиус B по ТТХ</button>}
-            <span class="tug-build">{space ? "U2TagLab v0.1.0 · расчётный профиль" : "TugLab v0.1.1"} · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
+            <span class="tug-build">{space ? "U2TagLab v0.2.0 · расчётный профиль" : "TugLab v0.1.1"} · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
             {shareError && <p role="alert">{shareError}</p>}
         </div>;
         return <Fragment>
@@ -468,7 +471,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                     onClick={() => { clearConfirmation(); onClearInput?.(); setPanelOpen(!panelOpen); }}>⚙</button>
             </div>
             {!space && <div class="tug-status" aria-live="polite"><span class="lab-tb-timer">{formatTime(elapsed)}</span> ·
-                {{ rod: "Штанга", rope: "Трос", spring: "Пружина" }[towState.coupling.type]} · {towState.distance.toFixed(2)} м · {towState.coupling.connected ? "соединено" : "расцеплено"}
+                {{ rod: "Штанга", rope: "Трос", spring: "Пружина", rigid: "Жёсткая" }[towState.coupling.type]} · {towState.distance.toFixed(2)} м · {towState.coupling.connected ? "соединено" : "расцеплено"}
                 {towState.paused && " · пауза"}
                 {towState.reason && <span role="alert"> · {towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</span>}
             </div>}

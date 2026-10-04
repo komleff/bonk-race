@@ -6,6 +6,8 @@ export type SpaceParams = Record<string, number | boolean | string>;
 export interface SpaceWorldRecipe {
   radiusA?: number; radiusB: number; couplingLength: number; asteroidMaxSpeed: number; fields: SpaceFieldSettings;
 }
+export const RIGID_SPACE_SHARE_SCHEMA = 4;
+export const RIGID_SPACE_SHARE_MODEL = 'u2-space-circles-rigid-v5';
 export const CATALOG_SPACE_SHARE_SCHEMA = 3;
 export const CATALOG_SPACE_SHARE_MODEL = 'u2-space-circles-catalog-v4';
 export const SPACE_SHARE_SCHEMA = 2;
@@ -15,11 +17,11 @@ export const LEGACY_SPACE_SHARE_MODEL = 'u2-space-circles-disk-v2';
 export const SPACE_SHARE_GENERATOR = 'u2-space-world-area-catalog-v3';
 const MAX_FRAGMENT_LENGTH = 16000, MAX_JSON_LENGTH = 12000;
 export interface SpaceShareSnapshot {
-  schema: 1 | 2 | 3; model: typeof LEGACY_SPACE_SHARE_MODEL | typeof SPACE_SHARE_MODEL | typeof CATALOG_SPACE_SHARE_MODEL; geometry?: { A: HullGeometry; B: HullGeometry }; generator: typeof SPACE_SHARE_GENERATOR;
+  schema: 1 | 2 | 3 | 4; model: typeof LEGACY_SPACE_SHARE_MODEL | typeof SPACE_SHARE_MODEL | typeof CATALOG_SPACE_SHARE_MODEL | typeof RIGID_SPACE_SHARE_MODEL; geometry?: { A: HullGeometry; B: HullGeometry }; generator: typeof SPACE_SHARE_GENERATOR;
   seed: number; density: number; params: SpaceParams; world: SpaceWorldRecipe;
 }
 export const SPACE_SHARE_DEFAULTS: SpaceParams = {
-  ...spaceParams(createSpaceProfile()), ...spaceTowingProfile(createSpaceProfile()).defaults,
+  ...spaceParams(createSpaceProfile()), ...Object.fromEntries(Object.entries(spaceTowingProfile(createSpaceProfile()).defaults).filter(([key]) => key !== 'tow.rigidArrangement')),
   'arena.objectDensity': 5, 'space.asteroidMaxSpeed': SPACE_WORLD_DEFAULTS.asteroidMaxSpeed,
   'space.collisionRestitution': SPACE_WORLD_DEFAULTS.restitution,
   'space.fieldsEnabled': SPACE_FIELD_DEFAULTS.fieldsEnabled, 'space.fieldPressure': SPACE_FIELD_DEFAULTS.fieldPressure,
@@ -27,6 +29,7 @@ export const SPACE_SHARE_DEFAULTS: SpaceParams = {
   'trail.enabled': true, 'trail.maxAge': 1, 'trail.baseAlpha': 0.6, 'trail.pattern': 'drift',
   'trail.primaryColor': '#44aaff', 'trail.driftColor': '#ffff00', 'trail.rainbowPeriodSec': 2,
 };
+export const RIGID_SPACE_SHARE_DEFAULTS: SpaceParams = { ...SPACE_SHARE_DEFAULTS, 'tow.rigidArrangement': 'front' };
 export const LEGACY_SPACE_SHARE_KEYS = Object.keys(SPACE_SHARE_DEFAULTS).filter(key => !['tow.dampingMode', 'tow.dampingCoefficient', 'tow.module'].includes(key));
 const ranges: Record<string, readonly [number, number]> = {
   ...SPACE_RANGES, 'arena.objectDensity': [0.1, 25],
@@ -59,11 +62,12 @@ export function spaceProfileFromParams(params: SpaceParams, geometry?: { A: Hull
 }
 /** Проверяем весь контракт без доступа к изменяемому миру; результат не содержит ссылок на вход. */
 export function validateSpaceShareSnapshot(value: unknown): SpaceShareSnapshot {
-  const catalog = !!value && typeof value === 'object' && (value as Record<string, unknown>).schema === 3;
+  const rigid = !!value && typeof value === 'object' && (value as Record<string, unknown>).schema === 4;
+  const catalog = rigid || !!value && typeof value === 'object' && (value as Record<string, unknown>).schema === 3;
   const legacy = !!value && typeof value === 'object' && (value as Record<string, unknown>).schema === 1;
   if (!exact(value, ['schema', 'model', 'generator', 'seed', 'density', 'params', 'world', ...(legacy ? [] : ['geometry'])])) fail('повреждённый формат');
-  if (value.schema !== (legacy ? 1 : catalog ? CATALOG_SPACE_SHARE_SCHEMA : SPACE_SHARE_SCHEMA)) fail('неподдерживаемая версия');
-  if (value.model !== (legacy ? LEGACY_SPACE_SHARE_MODEL : catalog ? CATALOG_SPACE_SHARE_MODEL : SPACE_SHARE_MODEL)) fail('несовместимая физическая модель');
+  if (value.schema !== (legacy ? 1 : rigid ? RIGID_SPACE_SHARE_SCHEMA : catalog ? CATALOG_SPACE_SHARE_SCHEMA : SPACE_SHARE_SCHEMA)) fail('неподдерживаемая версия');
+  if (value.model !== (legacy ? LEGACY_SPACE_SHARE_MODEL : rigid ? RIGID_SPACE_SHARE_MODEL : catalog ? CATALOG_SPACE_SHARE_MODEL : SPACE_SHARE_MODEL)) fail('несовместимая физическая модель');
   let geometry: SpaceShareSnapshot['geometry'];
   if (!legacy) {
     if (!exact(value.geometry, ['A', 'B'])) fail('неполная геометрия');
@@ -79,20 +83,22 @@ export function validateSpaceShareSnapshot(value: unknown): SpaceShareSnapshot {
   if (value.generator !== SPACE_SHARE_GENERATOR) fail('несовместимый генератор мира');
   const seed = numeric(value.seed, 0, 0xffffffff, 'seed'); if (!Number.isInteger(seed)) fail('seed должен быть целым');
   const density = numeric(value.density, 0.1, 25, 'density');
-  const keys = legacy ? LEGACY_SPACE_SHARE_KEYS : Object.keys(SPACE_SHARE_DEFAULTS);
+  const defaults = rigid ? RIGID_SPACE_SHARE_DEFAULTS : SPACE_SHARE_DEFAULTS;
+  const keys = legacy ? LEGACY_SPACE_SHARE_KEYS : Object.keys(defaults);
   if (!exact(value.params, keys)) fail('неполный или неизвестный набор параметров');
   const params: SpaceParams = {};
   for (const key of keys) {
-    const initial = SPACE_SHARE_DEFAULTS[key];
+    const initial = defaults[key];
     const current = value.params[key];
     if (typeof current !== typeof initial) fail(`${key}: неверный тип`);
     if (typeof current === 'number') {
       const range = ranges[key]; if (!range) fail(`${key}: нет диапазона схемы`);
       numeric(current, range[0], range[1], key);
     } else if (typeof current === 'string') {
-      const valid = key === 'tow.module' ? ['S', 'M', 'L', 'XL', 'custom'].includes(current)
+      const valid = key === 'tow.rigidArrangement' ? ['front', 'rear'].includes(current)
+        : key === 'tow.module' ? ['S', 'M', 'L', 'XL', 'custom'].includes(current)
         : key === 'tow.dampingMode' ? ['fixed', 'legacy'].includes(current)
-        : key === 'tow.type' ? ['rod', 'rope', 'spring'].includes(current)
+        : key === 'tow.type' ? ['rod', 'rope', 'spring', ...(rigid ? ['rigid'] : [])].includes(current)
         : key === 'trail.pattern' ? ['off', 'drift', 'rainbow'].includes(current) : /^#[0-9a-fA-F]{6}$/.test(current);
       if (!valid) fail(`${key}: недопустимое значение`);
     }
@@ -120,7 +126,7 @@ export function validateSpaceShareSnapshot(value: unknown): SpaceShareSnapshot {
   if (world.asteroidMaxSpeed !== params['space.asteroidMaxSpeed']
     || Object.entries(world.fields).some(([key, current]) => current !== params[`space.${key}`])) fail('настройки движений или полей не соответствуют исходному миру');
   // Живые radiusB/length намеренно отделены от входов исходного генератора.
-  return { schema: legacy ? 1 : catalog ? 3 : SPACE_SHARE_SCHEMA, model: legacy ? LEGACY_SPACE_SHARE_MODEL : catalog ? CATALOG_SPACE_SHARE_MODEL : SPACE_SHARE_MODEL, ...(geometry ? { geometry } : {}), generator: SPACE_SHARE_GENERATOR, seed, density, params, world };
+  return { schema: legacy ? 1 : rigid ? 4 : catalog ? 3 : SPACE_SHARE_SCHEMA, model: legacy ? LEGACY_SPACE_SHARE_MODEL : rigid ? RIGID_SPACE_SHARE_MODEL : catalog ? CATALOG_SPACE_SHARE_MODEL : SPACE_SHARE_MODEL, ...(geometry ? { geometry } : {}), generator: SPACE_SHARE_GENERATOR, seed, density, params, world };
 }
 export function encodeSpaceShareFragment(snapshot: SpaceShareSnapshot): string {
   const json = JSON.stringify(validateSpaceShareSnapshot(snapshot));

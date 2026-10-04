@@ -1,4 +1,43 @@
+## Выпуск BonkRace0.6.4 / U2TagLab0.2.0 — Task585 (4 октября 2026)
+
+Оператор явно одобрил релиз PR44. Подготовлены синхронизация версий и release notes с жёсткой сцепкой front/rear, повторными ссылками и единицами массы. Gameplay после принятого c596fcf не меняется; QA584 прошёл CI37199893441. Проверки нового release HEAD, merge/tag/Pages/GitHub Release выполняются PM. До подтверждения live выпуск не объявляется завершённым. Исходный checkout/stash/U2 сохраняются.
+
+## Task584 — независимый legacy endpoint built QA
+
+CI PR44 выявил зависимость stale-share test от глобального TUGLAB_URL5194, чей сервер запускается позже. RED ERR_CONNECTION_REFUSED подтверждён локально. Существующий built harness теперь сам раздаёт dist-tuglab под /legacy-tuglab/ и передаёт явный ephemeral TUGLAB_URL дочерним тестам. Product/workflow/assertions прежние. С внешним недоступным5194 root/nested UI15/HUD151, sizes5, rigid6, stale11 (включая oldTug link) PASS/errors[]; node --check PASS. Передача commit/CI у PM; Beads не закрыт.
+
+## Текущий патч — Task555/582/583 готов к локальной приёмке (4 октября 2026)
+
+Продуктовый commit c596fcf: настоящая жёсткая COM-сцепка в U2TagLab, два стартовых положения, свободный nearest4 нос/хвост, массовое сближение и сохранение импульсов. Новая schema4 и прежние ссылки1/2/3; повторный переход после Reset/редактирования восстанавливает исходные настройки благодаря очистке устаревшего fragment. HUD автоматически показывает массу в кг/т/кт/Мт до3 значащих цифр; параметры/физика не менялись.
+
+Свежие435/435 и check-version PASS; npm test, типизации, общая и standalone сборки PASS. Готовые root/nested UI15/HUD151, sizes5, rigid6, stale10 без ошибок; PM отдельно18 физико-проб и14 built UI/capture/share проверок. Точная S/L180 ссылка и Native Chrome Reset→sameURL GREEN. Architecture/Quality/Security APPROVED, открытых замечаний0, найденные wall P1 и finite Minor закрыты. Подробности: docs/reports/u2taglab-rigid.md и u2taglab-share-reopen.md.
+
+Доставка в feat/u2taglab-rigid-coupling и draft PR; merge/публикация ждут локальной приёмки. 5175/u2taglab.html — действующий worktree. Исходный checkout/U2/stash сохранены; governor572, passiveB571 и физический телефон остаются отдельными задачами.
+
+## Task583 — компактная масса HUD
+
+Приборы используют кг/т/кт/Мт с порогами1000/10⁶/10⁹ кг, до3 значащих цифр и повышением единицы при округлении999500 кг→1 кт. Настройки и физические значения прежние. Boundary table RED→GREEN; существующий Canvas HUD harness проверяет семь масс, glyph bounds и разные DPR/размеры. Полный435/435 PASS; финальные gates и доставка у PM.
+
+## Task582 — повторное открытие ссылки
+
+Причина подтверждена на опубликованном v0.6.3: после Reset/edit URL оставался прежним, переход к идентичному hash не создавал hashchange. Shell сравнивает нормализованный экспорт с распознанной ссылкой после изменения настроек и удаляет только устаревший fragment через replaceState. Seed/random/Restart используют существующее уведомление панели. Physics/share schema не менялись. Exact user schema3 S/L180, sizes/length/type/seed/density/FA, неизменный Restart/pause/reload, schema4 front/rear и старый TugLab: source11 checks PASS/errors[]. Полный434/434 и npm test/types/builds PASS; финальные built root/nested у PM/Developer.
+
+## Task555 — адресные проверки после независимого ревью
+
+Architecture исправление622adfca принято: исходный e0 wall repro и66 регрессий PASS. Security обнаружил finite-overflow только в небounded core inputs; COM/M/I/L/E и спроецированные тела теперь проверяются до атомарного commit. Три случая переполнения RED→GREEN, полный test:tuglab434/434 PASS. Передача и остальные ревью у PM.
+
 ## U2TagLab 0.1.0 опубликован — BonkRace v0.6.3 (4 октября 2026)
+
+## Task555 — жёсткий состав U2TagLab, реализация для ревью (4 октября 2026)
+
+В изолированной ветке feat/u2taglab-rigid-coupling добавлена отдельная COM-модель: касательные прежние круги, параллельная ось инерции, двигатели только A, поля обоих корпусов и взаимные импульсы астероидов. Начальный A front/rear; свободный захват nearest4 допускает нос/нос и хвост/хвост с общей продольной осью. Snap сохраняет COM/P/L; несовместимая энергия/занятый путь атомарно отклоняется. Расцепка сохраняет point velocities/omega. Смена типа/arrangement/массы/радиуса требует Restart без перестановки корпусов в полёте.
+
+Schema4/circles-rigid-v5 записывает стартовую настройку и catalog geometry; прежние strict schema1/2/3 и spring default сохраняются. UI скрывает длину/k/c/module для rigid, справка и HUD показывают смысл/выбранные крепления; интерполяция через COM сохраняет касание. Непрерывный поиск использует нижние квадратичные/кубические оценки дуги; ограниченный численный бюджет и epsilon10⁻⁶ м не заменяют прочность или универсальную гарантию манёвров.
+
+Адресное Architecture замечание e0/tiny-rate касания стены исправлено без velocity/omega clamp;64 aligned cases +2 горизонта, GREEN96 focused/full431.
+
+Developer проверяет30 исходных новых физико-runtime тестов (включая48catalog arrangements), всю suite и root/nested/browser. Независимое итоговое ревью и push/PR выполняет PM; merge/публикация не выполнялись. Исходный checkout и U2 сохранены. Финальные результаты — docs/reports/u2taglab-rigid.md.
+
 
 Оператор принял версию и поручил продакшен. PR42 слит; tag v0.6.3 и GitHub Release опубликованы на SOURCE_SHA784ca3a9712d70fb850e162197adf50ffd020b25. Публичная игра: https://komleff.github.io/bonk-race/u2taglab/. Прежние BonkLab и TugLab0.1.1 сохранены. Release notes представляют режим человеку, напоминают управление/настройки/«Поделиться» и честно сохраняют ограничение572.
 

@@ -6,7 +6,7 @@
  */
 
 import type { SandboxState } from "./labTypes";
-import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT } from "../u2taglab/overlayLayout";
+import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT, formatHudMass } from "../u2taglab/overlayLayout";
 import { formatTime, ZONE_LABELS, FA_LABELS } from "./labConstants";
 
 // ─── Константы ──────────────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ export class TelemetryHUD {
 
         // Строка 3: Масса
         this.drawLabel(ctx, labelX, rowY, "Масса");
-        this.drawValue(ctx, valueX, rowY, `${Math.round(state.mass)} кг`);
+        this.drawValue(ctx, valueX, rowY, formatHudMass(state.mass));
         rowY += lineH;
 
         // Строка 4: Рассогласование
@@ -189,10 +189,10 @@ export class TelemetryHUD {
             this.drawValue(ctx, valueX, rowY, `${Math.round(state.distanceM)} м/${Math.round(state.progressPct * 100)}%`);
             rowY += lineH;
             const tow = state.towing, coupling = tow.coupling;
-            this.drawLabel(ctx, labelX, rowY, `${{ rod: "Штанга", rope: "Трос", spring: "Пружина" }[coupling.type]}: ${coupling.connected ? "соединено" : "расцеплено"}`);
+            this.drawLabel(ctx, labelX, rowY, `${{ rod: "Штанга", rope: "Трос", spring: "Пружина", rigid: "Жёсткая" }[coupling.type]}: ${coupling.connected ? "соединено" : "расцеплено"}`);
             rowY += lineH;
             ctx.font = "6px monospace";
-            this.drawLabel(ctx, labelX, rowY, `L ${Math.round(tow.distance)} / N ${Math.round(coupling.restLength)} м`);
+            this.drawLabel(ctx, labelX, rowY, coupling.type === 'rigid' ? `${coupling.attachmentA === 'nose' ? 'Нос' : 'Хвост'} A / ${coupling.attachmentB === 'nose' ? 'нос' : 'хвост'} B` : `L ${Math.round(tow.distance)} / N ${Math.round(coupling.restLength)} м`);
             rowY += lineH;
             if (coupling.type === "spring") {
                 // Абсолютная шкала относится к длиннейшей рекомендуемой пружине корпуса A.

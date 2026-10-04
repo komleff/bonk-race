@@ -9,9 +9,10 @@ export interface CouplingGeometry {
   radialVelocity: number; relativeSpeed: number; inverseMass: number;
 }
 export function createCoupling(config: TugConfig): CouplingState {
+  const length = config.couplingType === 'rigid' ? 0 : config.length;
   return { type: config.couplingType, connected: true, attachmentA: config.attachmentA, attachmentB: config.attachmentB,
-    length: config.length, restLength: config.length, minLength: config.length * config.springMinRatio,
-    maxLength: config.length * config.springMaxRatio, k: config.springStiffness,
+    length, restLength: length, minLength: length * config.springMinRatio,
+    maxLength: length * config.springMaxRatio, k: config.springStiffness,
     c: config.springDampingCoefficient ?? 2 * config.springDamping * Math.sqrt(config.springStiffness * config.springReferenceMass),
     lastNormal: { x: -1, y: 0 }, accumulatedImpulse: 0 };
 }
@@ -104,7 +105,7 @@ export function applySpring(a: BodyState, b: BodyState, coupling: CouplingState,
 }
 export function solveCoupling(a: BodyState, b: BodyState, coupling: CouplingState, dt: number, config: TugConfig,
   impulses: CouplingImpulses = { pull: 0, push: 0 }): void {
-  if (!coupling.connected) return;
+  if (!coupling.connected || coupling.type === 'rigid') return;
   if (coupling.type === 'rod') { solveRod(a, b, coupling, dt, config); return; }
   if (coupling.type === 'rope') {
     solveDistance(a, b, coupling, dt, config, coupling.restLength, 'pull', impulses);
