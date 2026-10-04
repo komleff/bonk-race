@@ -18,7 +18,7 @@ const report={checks:[],errors:[],physicalAndroid:false};
  await require('./u2taglab-controls-checks.cjs')(page,report,out);
  const toolbarFA=page.locator('.space-secondary-controls').getByRole('button',{name:'Flight Assist',exact:true});assert.equal(await toolbarFA.count(),1);assert.equal(await page.locator('.tug-race-toolbar .space-fa').count(),0);
  assert.deepEqual(await page.locator('.space-flight-controls button').allTextContents(),['FA ON','Расцепить','Тормоз']);
- const protectedClick=async(target,button)=>{await button.click();await target.getByRole('group',{name:'Подтверждение действия'}).getByRole('button',{name:/^Подтвердить/}).click();};
+ const protectedClick=async(target,button)=>{const direct=(await button.getAttribute('aria-label'))==='Flight Assist'||(await button.innerText())==='Сцепить';await button.click();if(direct)return;await target.getByRole('group',{name:'Подтверждение действия'}).getByRole('button',{name:/^Подтвердить/}).click();};
  report.layouts=[];
  for(const [width,height]of [[360,800],[390,844],[412,915],[844,390],[1280,900]]){
   await page.setViewportSize({width,height});
