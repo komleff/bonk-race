@@ -1,6 +1,10 @@
+## U2TagLab — контрастный джойстик Task573
+
+LabRenderer передаёт Boolean(state.spaceWorld) только в приватный drawTouchJoystick: U2 использует бирюзовые заливки и контуры основы/ручки, прочие оболочки сохраняют прежние серые цвета. Геометрия и ввод не менялись. U2-only padding верхних кнопок6px сохраняет строку52px и targets≥44px даже с FA OFF на360px; brake≥48px остаётся внизу.
+
 ## U2TagLab — мобильные контролы Task569
 
-«Инфо» — локальное состояние раскрытия Toolbar, доступная кнопка с aria-expanded/controls и hidden panel всего прежнего абзаца. Оно не входит в физический профиль/Share. CSS user-select и WebKit callout ограничены footer buttons/children; preventDefault/contextmenu стоят на двух кнопках, прочий текст и textarea остаются доступными для копирования.
+«Инфо» — локальное состояние раскрытия Toolbar, доступная кнопка с aria-expanded/controls и hidden panel всего прежнего абзаца. Оно не входит в физический профиль/Share. После Task573 FA расположен в toolbar перед сцепкой, нижняя группа содержит только тормоз. CSS user-select и WebKit callout ограничены space-fa и footer buttons/children; preventDefault/contextmenu стоят на двух кнопках, прочий текст и textarea остаются доступными для копирования.
 
 У тормоза один owner pointerId. clearSpaceBrake обнуляет владельца до releasePointerCapture; чужие окончания игнорируются. isPrimary не ограничивает второй палец с джойстиком, right mouse не начинает удержание. Cancel/lostcapture/blur/visibility/pause очищают owner/hold; move после отмены не включает тормоз. Runtime setSpaceBrake/FA и физика прежние. Новый browser helper подключён к существующему UI runner для source/root/nested QA.
 

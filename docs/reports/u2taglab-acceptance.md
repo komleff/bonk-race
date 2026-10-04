@@ -1,5 +1,20 @@
 # U2TagLab 0.1.0 — локальная приёмка
 
+## Task573 — FA наверху и бирюзовый джойстик (4 октября 2026)
+
+Код `3b0db7c`: FA ON/OFF в верхней группе непосредственно слева от «Расцепить / Сцепить»; внизу справа только «Тормоз». U2 основа и ручка джойстика бирюзовые с полупрозрачной заливкой и заметным контуром. Прежние цвета BonkLab/TugLab сохранены. Локальные защиты от выделения/меню остаются у обеих полётных кнопок; lifecycle тормоза и физика не изменены.
+
+| Проверка | Результат |
+|---|---|
+| Browser RED→GREEN |До переноса верхний FA actual0/expected1; после переноса source UI13/sizes4 группы PASS/errors[] |
+| Мобильный layout |360/390/412/844×390/1280, paused/running и paused FA OFF: одна строка52px, все верхние targets≥44px, тормоз≥48px, overflow=false |
+| Types/build/старый Tug UI |Typecheck, полный client build, U2 build, старый Tug UI PASS |
+| Stamped root+nested |В каждом UI13/sizes4 PASS/errors[]; asset Bj6qsaRq, stamp3b0db7c, SHA2568c163878c42621bb3bc67126201f09f6cc8f4be9d931bce9545d58bb1e7f0089 |
+| Независимые reviews |Quality/Security/Architecture Codex: APPROVED, замечаний0; bounded5file scope, готовые QA artifacts без повторения suites |
+| Самопроверка PM |Прочитаны итоговые JSON/logs/diff; просмотрены source390 и built360 actualtouch PNG: cyan основа/ручка отличаются от серых астероидов, порядок FA/сцепки верный |
+
+QA сохраняет FA touch/Enter exactlyonce, hold/release/cancel/lostcapture/blur/pause и joystick+brake двумя пальцами; Share copy не блокируется. Неизменённые physics suites локально не повторялись: они запускаются CI после push. Физический Android/iOS и WebKit не проверены; реальная мобильная приёмка остаётся tow.6. Дефекты572/571 и расчёт V_FA в этом UI-патче не изменены.
+
 ## Task569 — Инфо и удержание кнопок (4 октября 2026)
 
 Код `afff025` скрывает весь прежний mass/world/control абзац под настоящей кнопкой «Инфо», закрытой по умолчанию. Обе нижние кнопки сохраняют подписи; защита выделения, callout, pointer defaults и контекстного меню действует только на них. У тормоза один владелец pointerId: другой палец/кнопка не сбрасывает его удержание. Cancel, lostcapture, blur, уход вкладки и пауза снимают тормоз и capture; новый down необходим для повторного удержания. Второй палец на тормозе работает вместе с первым на джойстике. Копирование ссылки не блокируется.

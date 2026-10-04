@@ -1,3 +1,7 @@
+## Task573 — мобильная FA и контрастный джойстик приняты (4 октября 2026)
+
+Код3b0db7c: FA вверху непосредственно перед «Расцепить / Сцепить»; только тормоз остаётся справа внизу. U2 основа/ручка джойстика бирюзовые с контуром, старые оболочки сохраняют серые цвета. Guards обеих кнопок локальны, brake lifecycle/Share/physics прежние. Source и stamped root/nested UI13/sizes4 PASS/errors[]; paused/running360/390/412/844×390/1280 и FA OFF помещаются в одну52px строку, targets≥44/48px. Types/client/U2build/oldTug PASS;3 независимых scoped reviews APPROVED/0 замечаний. PM просмотрел actualtouch source390/built360 PNG, обновил руководство/patterns/приёмку;573 CLOSED. Физическое устройство не проверено, tow.6 сохраняется.572P1/571 и default250 не изменялись. Доставка в существующий draft PR42, без merge/deploy; исходный checkout/stash/U2 сохранены.
+
 ## Task570 — расчёт манёвренного V_FA
 
 Условные200/175/150/95м/с по actual90° уклонению отR500м на5км отA;8 corrected60/120Гц PASS, зазоры>250м. Общий safe cap не подтверждён: gentleturn governor bug572P1 и пассивное поперечное движение571 остаются отдельными задачами. Productcode/default250 неизменны, отчёт и Memory обновлены, старыеinvalidradiusprobes исключены. Straight10km50/57/67/105с — оценка крейсерской части, не всего рейса.
