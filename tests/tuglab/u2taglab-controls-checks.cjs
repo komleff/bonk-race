@@ -4,12 +4,13 @@ module.exports=async function checkControls(page,report,out){
  const viewport=page.viewportSize();await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{window.__bonkLab.pause();window.getSelection().removeAllRanges();document.addEventListener('pointerdown',e=>{if(e.target.closest('.space-brake'))window.__lastBrakePointer=e.pointerId;});});
  await page.getByRole('button',{name:'Настройки',exact:true}).click();
  const diagnostics=await page.evaluate(()=>{
-  const buttons=[...document.querySelectorAll('.space-flight-controls button')];
+  const buttons=[document.querySelector('[aria-label="Flight Assist"]'),document.querySelector('[aria-label="Тормоз"]')];
   const fa=buttons[0],pointer=new PointerEvent('pointerdown',{cancelable:true,bubbles:true,button:0,pointerId:991,pointerType:'touch'});fa.dispatchEvent(pointer);
   return {pointerPrevented:pointer.defaultPrevented,introVisible:[...document.querySelectorAll('.tug-settings-controls p')].some(p=>p.textContent.includes('Инженерный Industrial')&&p.getBoundingClientRect().height>0),guards:buttons.map(button=>{const style=getComputedStyle(button),context=new MouseEvent('contextmenu',{bubbles:true,cancelable:true});button.dispatchEvent(context);return {label:button.getAttribute('aria-label'),userSelect:style.userSelect,webkitUserSelect:style.webkitUserSelect,contextPrevented:context.defaultPrevented};})};
  });report.controlDiagnostics=diagnostics;
+ assert.deepEqual(diagnostics.guards.map(button=>button.label),['Flight Assist','Тормоз']);
  assert.equal(diagnostics.introVisible,false,'длинное вступление должно быть закрыто по умолчанию');
- assert.ok(diagnostics.guards.every(b=>b.userSelect==='none'&&b.webkitUserSelect==='none'&&b.contextPrevented),'footer должен отменять выделение и локальное contextmenu');
+ assert.ok(diagnostics.guards.every(b=>b.userSelect==='none'&&b.webkitUserSelect==='none'&&b.contextPrevented),'FA и тормоз должны отменять выделение и локальное contextmenu');
  const info=page.getByRole('button',{name:'Инфо',exact:true});assert.equal(await info.getAttribute('aria-expanded'),'false');const infoBox=await info.boundingBox();assert.ok(infoBox.width>=44&&infoBox.height>=44);
  const id=await info.getAttribute('aria-controls');assert.ok(id);const intro=page.locator('#'+id);await info.click();assert.equal(await info.getAttribute('aria-expanded'),'true');const text=await intro.innerText();assert.match(text,/Инженерный Industrial/);assert.match(text,/Космический мир: 6000×18000/);assert.match(text,/Мышь\/тач\/WASD/);
  await page.getByLabel('Масса A',{exact:true}).fill('401201');await page.getByLabel('Масса A',{exact:true}).press('Enter');assert.equal(await info.getAttribute('aria-expanded'),'true');assert.equal(await intro.innerText(),text);await info.click();assert.equal(await intro.isVisible(),false);await page.getByRole('button',{name:'Скрыть',exact:true}).click();

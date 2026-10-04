@@ -14,15 +14,37 @@ const report={checks:[],errors:[],physicalAndroid:false};
  assert.equal(report.defaults.params['tow.length'],360);assert.equal(report.defaults.params['tow.dampingRatio'],1);assert.ok(Math.abs(report.defaults.coupling.k-360000)<1e-6);assert.ok(Math.abs(report.defaults.coupling.c-710000)<1e-6);assert.ok(Math.abs(report.defaults.distance-360)<1e-8);
  report.resources=await page.evaluate(()=>performance.getEntriesByType('resource').map(r=>r.name));if(process.env.U2TAGLAB_BUILT==='1'){assert.ok(report.resources.length>0);const prefix=process.env.U2TAGLAB_URL;assert.ok(report.resources.every(url=>url.startsWith(prefix)),JSON.stringify(report.resources));}
  await require('./u2taglab-controls-checks.cjs')(page,report,out);
- const toolbarFA=await page.locator('.tug-race-toolbar').getByRole('button',{name:'Flight Assist',exact:true}).count();assert.equal(toolbarFA,0,'FA должен находиться внизу рядом с тормозом');
- for(const [width,height]of [[360,800],[390,844],[412,915],[844,390]]){
-  await page.setViewportSize({width,height});await page.waitForTimeout(150);
-  const fa=await page.getByRole('button',{name:'Flight Assist',exact:true}).boundingBox(),brake=await page.getByRole('button',{name:'Тормоз',exact:true}).boundingBox();
-  assert.ok(fa.width>=44&&fa.height>=44&&brake.width>=44&&brake.height>=44);assert.ok(fa.y>=height-100&&brake.y>=height-100&&fa.x+fa.width<=brake.x);
-  const layout=await page.evaluate(()=>({map:window.__minimapRect,dpr:devicePixelRatio,canvas:document.querySelector('canvas').getBoundingClientRect().toJSON(),toolbar:document.querySelector('.tug-race-toolbar').getBoundingClientRect().toJSON()}));
-  assert.ok(layout.map&&layout.map.y/layout.dpr<30,'карта должна быть вверху Canvas');assert.ok(layout.canvas.height>height-150);assert.equal(layout.toolbar.height,52);
-  assert.ok(layout.canvas.top+(layout.map.y+layout.map.h)/layout.dpr<fa.y,'карта не перекрывает тормоз/FA');
-  await page.screenshot({path:`${out}/layout-${width}x${height}.png`});report.checks.push(`layout ${width}x${height}`);
+ const toolbarFA=page.locator('.tug-race-toolbar .tug-actions').getByRole('button',{name:'Flight Assist',exact:true});assert.equal(await toolbarFA.count(),1,'FA должен находиться вверху в группе действий');
+ assert.deepEqual(await page.locator('.space-flight-controls button').allTextContents(),['Тормоз'],'внизу остаётся только тормоз');
+ report.layouts=[];
+ for(const [width,height]of [[360,800],[390,844],[412,915],[844,390],[1280,900]]){
+  await page.setViewportSize({width,height});
+  for(const paused of [true,false]){
+   await page.evaluate(paused=>paused?window.__bonkLab.pause():window.__bonkLab.resume(),paused);await page.waitForTimeout(150);
+   const fa=await toolbarFA.boundingBox(),brake=await page.getByRole('button',{name:'Тормоз',exact:true}).boundingBox();
+   const layout=await page.evaluate(()=>({map:window.__minimapRect,dpr:devicePixelRatio,canvas:document.querySelector('canvas').getBoundingClientRect().toJSON(),toolbar:document.querySelector('.tug-race-toolbar').getBoundingClientRect().toJSON(),buttons:[...document.querySelectorAll('.tug-race-toolbar button')].map(button=>({label:button.getAttribute('aria-label')||button.textContent,...button.getBoundingClientRect().toJSON()})),faNext:document.querySelector('[aria-label="Flight Assist"]').nextElementSibling.textContent,overflow:document.documentElement.scrollWidth>innerWidth}));
+   assert.ok(fa.width>=44&&fa.height>=44&&brake.width>=48&&brake.height>=48);assert.ok(brake.y>=height-100&&brake.x+brake.width<=width);
+   assert.match(layout.faNext,/^(Расцепить|Сцепить)$/,'FA расположен непосредственно перед сцепкой');
+   assert.ok(layout.buttons.every(button=>button.width>=44&&button.height>=44&&button.x>=0&&button.x+button.width<=width&&button.y===fa.y),'все верхние кнопки помещаются в одну строку');assert.equal(layout.overflow,false);
+   assert.ok(layout.map&&layout.map.y/layout.dpr<30,'карта должна быть вверху Canvas');assert.ok(layout.canvas.height>height-150);assert.equal(layout.toolbar.height,52);
+   assert.ok(fa.y+fa.height<=layout.canvas.top,'FA расположен выше Canvas');assert.ok(layout.canvas.top+(layout.map.y+layout.map.h)/layout.dpr<brake.y,'карта не перекрывает тормоз');
+   report.layouts.push({width,height,paused,fa:true,buttons:layout.buttons});
+   if(paused){
+    await toolbarFA.click();assert.equal(await toolbarFA.getAttribute('aria-pressed'),'false');
+    const offButtons=await page.locator('.tug-race-toolbar button').evaluateAll(buttons=>buttons.map(button=>button.getBoundingClientRect().toJSON()));
+    assert.ok(offButtons.every(button=>button.width>=44&&button.height>=44&&button.x>=0&&button.right<=width&&button.y===fa.y),'FA OFF тоже помещается в компактной строке');
+    report.layouts.push({width,height,paused,fa:false,buttons:offButtons});await page.screenshot({path:`${out}/layout-${width}x${height}-fa-off.png`});await toolbarFA.click();
+   }
+   await page.screenshot({path:`${out}/layout-${width}x${height}${paused?'':'-running'}.png`});
+  }
+  await page.evaluate(()=>window.__bonkLab.pause());
+  if(width===360||width===390){
+   const cdp=await page.context().newCDPSession(page),canvas=await page.locator('canvas').boundingBox(),point={x:100,y:canvas.y+330,id:7};
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...point,x:point.x+25,y:point.y-35}]});await page.waitForTimeout(150);
+   assert.ok(await page.evaluate(()=>window.__labInput.getState().isTouch&&window.__labInput.getState().magnitude>0));await page.screenshot({path:`${out}/joystick-${width}.png`});
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
+  }
+  report.checks.push(`layout ${width}x${height}: paused/running top FA order, targets, no overflow`);
  }
  // Проверяем реальные области касания всех слайдеров, включая раскрываемые группы.
  const mobile=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});

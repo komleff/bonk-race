@@ -265,7 +265,7 @@ export class LabRenderer {
 
         // ── Оверлей сенсорного джойстика (экранные координаты) ──
         if (input.isTouch && input.active) {
-            this.drawTouchJoystick(ctx, input);
+            this.drawTouchJoystick(ctx, input, Boolean(state.spaceWorld));
         }
 
         // ── Сообщение о дистанции смерти (экранные координаты) ──
@@ -859,6 +859,7 @@ export class LabRenderer {
     private drawTouchJoystick(
         ctx: CanvasRenderingContext2D,
         input: LabInputState,
+        space: boolean,
     ): void {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.cachedRect;
@@ -873,18 +874,18 @@ export class LabRenderer {
         // Базовый круг
         ctx.beginPath();
         ctx.arc(baseX, baseY, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.fillStyle = space ? "rgba(34, 211, 238, 0.16)" : "rgba(255, 255, 255, 0.08)";
         ctx.fill();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+        ctx.strokeStyle = space ? "rgba(34, 211, 238, 0.75)" : "rgba(255, 255, 255, 0.25)";
         ctx.lineWidth = 2 * dpr;
         ctx.stroke();
 
         // Ручка джойстика
         ctx.beginPath();
         ctx.arc(knobX, knobY, knobRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fillStyle = space ? "rgba(34, 211, 238, 0.38)" : "rgba(255, 255, 255, 0.3)";
         ctx.fill();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.strokeStyle = space ? "rgba(34, 211, 238, 0.95)" : "rgba(255, 255, 255, 0.5)";
         ctx.lineWidth = 1.5 * dpr;
         ctx.stroke();
     }

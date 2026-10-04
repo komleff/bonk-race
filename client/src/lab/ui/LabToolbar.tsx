@@ -411,6 +411,9 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                         disabled={towState.needsRestart || !!launchError} onClick={() => { onClearInput?.(); towState.paused ? lab.resume() : lab.pause(); setTowState(lab.getState().towing); }}>{towState.paused ? "▶" : "Ⅱ"}</button>
                     {towState.paused && <button class="lab-tb-btn" disabled={!lab.hasStarted || towState.needsRestart || !!launchError}
                         onClick={() => { onClearInput?.(); lab.stepOnce(); setTowState(lab.getState().towing); }}>Step</button>}
+                    {space && <button class="lab-tb-btn space-fa" aria-label="Flight Assist" aria-pressed={fa}
+                        onPointerDown={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}
+                        onClick={() => { const enabled = !Boolean(lab.params["space.fa"]); lab.setSpaceFA(enabled); setFa(enabled); onParamsChanged?.(); }}>FA {fa ? "ON" : "OFF"}</button>}
                     <button class="lab-tb-btn" onClick={() => { onClearInput?.(); lab.setTowingConnection(!towState.coupling.connected); setTowState(lab.getState().towing); }}>{towState.coupling.connected ? "Расцепить" : "Сцепить"}</button>
                 </div>
                 <button class="lab-tb-btn tug-settings-toggle" aria-label="Настройки" aria-expanded={panelOpen}
@@ -422,9 +425,6 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 {towState.reason && <span role="alert"> · {towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</span>}
             </div>
             {space && <div class="space-flight-controls">
-                <button class="lab-tb-btn" aria-label="Flight Assist" aria-pressed={fa}
-                    onPointerDown={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}
-                    onClick={() => { const enabled = !Boolean(lab.params["space.fa"]); lab.setSpaceFA(enabled); setFa(enabled); onParamsChanged?.(); }}>FA {fa ? "ON" : "OFF"}</button>
                 <button ref={brakeButton} class="lab-tb-btn space-brake" aria-label="Тормоз" aria-pressed={brakeHeld}
                     onContextMenu={e => e.preventDefault()} onPointerDown={e => {
                         e.preventDefault();
