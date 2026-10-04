@@ -195,20 +195,26 @@ export class TelemetryHUD {
             this.drawLabel(ctx, labelX, rowY, `L ${Math.round(tow.distance)} / N ${Math.round(coupling.restLength)} м`);
             rowY += lineH;
             if (coupling.type === "spring") {
-                // Шкала фиксирована по самому длинному рекомендованному модулю корпуса A.
-                const upper = { S: 180, M: 360, L: 720, XL: 1440 }[state.spaceTugSize as "S" | "M" | "L" | "XL"];
-                if (upper) {
-                    const min = upper * 0.5, max = upper * 1.5, width = panelW - pad * 2;
-                    const ratio = (length: number) => Math.max(0, Math.min(1, (length - min) / (max - min)));
+                // Абсолютная шкала относится к длиннейшей рекомендуемой пружине корпуса A.
+                const reference = { S: 180, M: 360, L: 720, XL: 1440 }[state.spaceTugSize as "S" | "M" | "L" | "XL"];
+                if (reference) {
+                    const max = reference * 2, width = panelW - pad * 2;
+                    const ratio = (length: number) => Math.max(0, Math.min(1, length / max));
                     ctx.fillStyle = COL_BAR_BG; ctx.fillRect(labelX, rowY, width, 3);
                     if (coupling.connected) {
-                        ctx.fillStyle = tow.distance < min || tow.distance > max ? COL_BAR_RED : "#63c9e5";
+                        ctx.fillStyle = tow.distance > max ? COL_BAR_RED : "#63c9e5";
                         ctx.fillRect(labelX, rowY, width * ratio(tow.distance), 3);
                     }
-                    ctx.fillStyle = coupling.connected ? "#ffffff" : "#777777";
-                    ctx.fillRect(labelX + Math.min(width - 1, width * ratio(coupling.restLength)), rowY - 1, 1, 5);
-                    const outside = (name: string, length: number) => length < min ? ` ${name}<` : length > max ? ` ${name}>` : "";
-                    this.drawLabel(ctx, labelX, rowY + 6, `${min}–${max} м${coupling.connected ? outside("L", tow.distance) : " —"}${outside("N", coupling.restLength)}`);
+                    // Светлая середина — эталон; оранжевая отметка — фактическая норма захвата.
+                    ctx.fillStyle = "#e0e0e0";
+                    ctx.fillRect(labelX + width / 2, rowY - 1, 1, 5);
+                    ctx.fillStyle = coupling.connected ? "#ffb05c" : "#aaaaaa";
+                    ctx.fillRect(labelX + Math.min(width - 1, width * ratio(coupling.restLength)), rowY - 2, 1, 7);
+                    const overflow = `${tow.distance > max ? " L>" : ""}${coupling.restLength > max ? " N>" : ""}`;
+                    this.drawLabel(ctx, labelX, rowY + 6, `0${coupling.connected ? "" : " —"}${overflow}`);
+                    ctx.fillStyle = COL_LABEL; ctx.textAlign = "center";
+                    ctx.fillText(String(reference), labelX + width / 2, rowY + 6);
+                    this.drawValue(ctx, valueX, rowY + 6, `${max} м`);
                 } else this.drawLabel(ctx, labelX, rowY + 6, "Шкала A: custom");
             }
             ctx.restore();
