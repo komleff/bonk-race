@@ -6,7 +6,7 @@
  */
 
 import type { SandboxState } from "./labTypes";
-import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT, SPACE_OVERLAY_MARGIN, SPACE_RADAR_SIDE, SPACE_RADAR_DIAMETER, SPACE_RADAR_RANGE_M } from "../u2taglab/overlayLayout";
+import { SPACE_OVERLAY_MARGIN, SPACE_RADAR_SIDE, SPACE_RADAR_DIAMETER, SPACE_RADAR_RANGE_M } from "../u2taglab/overlayLayout";
 import type { LabInputState } from "./LabInput";
 import { ZONE_LABELS } from "./labConstants";
 import {
@@ -1130,15 +1130,11 @@ export class LabRenderer {
         canvasH: number,
     ): void {
         if (state.spaceWorld) { this.drawSpaceRadar(ctx, state); return; }
-        const space = Boolean(state.spaceWorld);
-        const dprX = space ? ctx.canvas.width / (ctx.canvas.clientWidth || ctx.canvas.width) : 1;
-        const dprY = space ? ctx.canvas.height / (ctx.canvas.clientHeight || ctx.canvas.height) : 1;
         ctx.save();
-        if (space) ctx.scale(dprX, dprY);
-        const mapW = space ? SPACE_OVERLAY_WIDTH : MINIMAP_SIZE;
-        const mapH = space ? SPACE_OVERLAY_HEIGHT : MINIMAP_SIZE;
-        const mx = canvasW / dprX - mapW - MINIMAP_MARGIN;
-        const my = space ? MINIMAP_MARGIN : canvasH - mapH - MINIMAP_MARGIN;
+        const mapW = MINIMAP_SIZE;
+        const mapH = MINIMAP_SIZE;
+        const mx = canvasW - mapW - MINIMAP_MARGIN;
+        const my = canvasH - mapH - MINIMAP_MARGIN;
 
         // Фон
         ctx.fillStyle = MINIMAP_BG;
@@ -1176,7 +1172,7 @@ export class LabRenderer {
         }
 
         // Препятствия
-        for (const obs of state.spaceWorld ? [] : state.arena.obstacles) {
+        for (const obs of state.arena.obstacles) {
             if (obs.alive === false) continue;
             ctx.beginPath();
             ctx.arc(toMX(obs.x), toMY(obs.y), Math.max(obs.radius * ms, 1.5), 0, Math.PI * 2);
@@ -1184,14 +1180,6 @@ export class LabRenderer {
             ctx.globalAlpha = 0.6;
             ctx.fill();
             ctx.globalAlpha = 1;
-        }
-
-        if (state.spaceWorld) {
-            for (const object of [...state.spaceWorld.statics, ...state.spaceWorld.asteroids]) {
-                ctx.beginPath(); ctx.arc(toMX(object.position.x), toMY(object.position.y), Math.max(object.radius * ms, 1.5), 0, Math.PI * 2);
-                ctx.fillStyle = object.kind === "station" ? "#63c9e5" : object.kind === "derelict" ? "#b48b62" : "#91969e";
-                ctx.fill();
-            }
         }
 
         // Орбы (маленькие голубые точки)
