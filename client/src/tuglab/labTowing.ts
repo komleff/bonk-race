@@ -183,7 +183,7 @@ export class LabTowing {
         this.reason = reason;
         return { ok: false, reason, distance: g.distance, relativeSpeed: g.relativeSpeed };
       }
-      candidate.restLength = candidate.type === 'rope' && this.profile ? Number(this.params['tow.length']) : g.distance;
+      candidate.restLength = g.distance;
       candidate.minLength = candidate.restLength * defaults.springMinRatio;
       candidate.maxLength = candidate.restLength * defaults.springMaxRatio;
     }
