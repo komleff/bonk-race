@@ -1,3 +1,7 @@
+## Публичный выпуск U2TagLab0.1.0 / BonkRacev0.6.3 — завершён
+
+4 октября2026: PR42 merged, tag/release v0.6.3 на784ca3a, человеческие release notes и четыре standalone assets опубликованы. Pages deploy и tag checks/package SUCCESS. Live три URL HTTP200/stamp784ca3a/без ошибок; сцепка троса фиксирует actual200 вместо configured1000. Архивы и публичные загрузки сверены по SOURCE_SHA/SHA256. Beads581 закрыт. Docker558 повторился отдельно и остаётся открытым; игровые572/571 и дальнейшие этапы не расширялись.
+
 ## Task580 — длина троса при сцепке (4 октября 2026)
 
 Готово b2ec1f9: трос принимает фактическую дистанцию выбранных креплений как пружина/штанга. Configured length для допуска/Restart/Share сохраняется. Исправлена одна строка поведения и справка; добавлены реальные capture/solver/atomic regressions. 335/335, npm test, types/client/U2 builds и адресный stamped root/nested browser PASS. Три review области APPROVED без замечаний; полный отчёт в приёмке. Beads580 закрывается с доставкой в существующий PR42 без merge/deploy.

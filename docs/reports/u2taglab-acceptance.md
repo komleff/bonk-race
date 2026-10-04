@@ -1,4 +1,21 @@
-# U2TagLab 0.1.0 — локальная приёмка
+# U2TagLab 0.1.0 — приёмка и публичный выпуск
+
+## Публичный релиз v0.6.3 (4 октября 2026)
+
+Оператор: «фиксируем, принято, в продакш». PR42 слит; tag/release `v0.6.3` опубликован на `784ca3a9712d70fb850e162197adf50ffd020b25`. [Играть](https://komleff.github.io/bonk-race/u2taglab/) · [Релиз и архивы](https://github.com/komleff/bonk-race/releases/tag/v0.6.3). Release notes — человеческая презентация нового режима с управлением, настройками и повторяемым экспериментом.
+
+| Проверка | Результат |
+|---|---|
+| Перед выпуском | Свежие335/335 test:tuglab и npm test PASS; product reviews и factual release review APPROVED |
+| Pages | [build/deploy37194225611](https://github.com/komleff/bonk-race/actions/runs/37194225611) SUCCESS |
+| Tag package | [checks/package37194229502](https://github.com/komleff/bonk-race/actions/runs/37194229502) SUCCESS на exact release SHA |
+| Live Chrome390×844 | BonkLab/TugLab/U2TagLab HTTP200; canvas и соответствующий режим, ресурсы правильного пути, stamp784ca3a/v0.6.3, errors[] |
+| Новые действия live | FA сразу, CONNECT actual200/configured1000 без подтверждения, DISCONNECT с подтверждением, отмена; стартовый V_FA175 |
+| Release assets | Оба tar.gz и SHA256 опубликованы; SOURCE_SHA.txt=784ca3a; повторная загрузка из release совпала по байтам и hash |
+
+U2 архив90487байт, SHA256 `99d25fe3b2aab2e0b41ac525d6439ea80d436020d0e3b56d00e7011d4679a5d5`; Tug архив90439байт, SHA256 `dba5df419190b1fc717a8b5d0953dd7872d333824e00bf0b30dd77aa7a83e55d`. Evidence `/tmp/bonk-tuglab-tools/release-v0.6.3/`: live-smoke.json/PNG, release.json, assets-verified.json и логи. Это реальный публичный сайт в Chrome, не тест физического телефона.
+
+Параллельная Docker-публикация main/tag повторила существующий558: runtime npm ci не находит install-hooks.js, runs37194225596/37194228662. Ошибка записана в прежнюю задачу; она не является отказом Pages/standalone. Физические572/571 остаются отдельными известными задачами. Исходный checkout/U2/stash сохранены; direct push main не выполнялся. Последующие разделы — история явно указанных продуктовых SHA.
 
 ## Task580 — трос фиксирует расстояние захвата (4 октября 2026)
 
