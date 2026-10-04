@@ -1,5 +1,44 @@
 # U2TagLab 0.1.0 — локальная приёмка
 
+## Task569 — Инфо и удержание кнопок (4 октября 2026)
+
+Код `afff025` скрывает весь прежний mass/world/control абзац под настоящей кнопкой «Инфо», закрытой по умолчанию. Обе нижние кнопки сохраняют подписи; защита выделения, callout, pointer defaults и контекстного меню действует только на них. У тормоза один владелец pointerId: другой палец/кнопка не сбрасывает его удержание. Cancel, lostcapture, blur, уход вкладки и пауза снимают тормоз и capture; новый down необходим для повторного удержания. Второй палец на тормозе работает вместе с первым на джойстике. Копирование ссылки не блокируется.
+
+Root cause: intro всегда отображался; нижние кнопки имели лишь touch-action:none, без user-select/vendorcallout/contextmenu защиты и pointerdown.preventDefault. Исходный RED браузера подтвердил introVisible=true, footer selection=auto, uncancelled pointer/context defaults. Это проверка отсутствия browser guards, не воспроизведение системного меню ОС.
+
+| Проверка | Результат |
+|---|---|
+| Browser RED→GREEN |Info default/open/close/fulltext/persistence; 2×850ms hold/release/cancel/lostcapture/blur/pause, repeated/foreign pointers/right mouse/two fingers, FA touch/Enter, Space, Share selection/context PASS |
+| `test:tuglab`, typecheck, npm test |326/326, fail0/skip0; PASS, прежние test-secret предупреждения сохраняются |
+| Full client build, старый TugLab UI |PASS; физика/парсер/профили не изменены |
+| Source UI + size runner |PASS/errors[] |
+| Stamped root+nested UI + size runner |В каждом12+4 checks PASS/errors[]; загружен D_5FOn0x/stampafff025; SHA256dc7c2eea6e43a6a4f9bd6c61ae59773ff96b44f4cbf0f01bb60718b8ed524e66 |
+| Независимые review |Quality/Security GPT-6.1 Sol high, Architecture GPT-6 Astra high: все APPROVED C0/I0/M0; Quality отдельно проверил chord mouse buttons, owner не теряется |
+| Самопроверка PM |Прочитаны отчёты/итоговые JSON и просмотрены mobile control/size PNG; Инфо не расходует прежнее место, кнопки и скролл сохранены |
+
+Новый browser helper включён в существующий UI runner, поэтому CI проверяет эти случаи. Две промежуточные ошибки касались CDP touchEnd и ожидания RAF в harness; физика не изменялась ради ожиданий теста. Изменения локальны к интерфейсу, нет глобального запрета копирования или новых зависимостей. MDN: [user-select](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/user-select), [Safari touch-callout](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/-webkit-touch-callout). WebKit binary и физические Android/iOS отсутствовали: Chrome touch emulation подтверждает браузерные защиты и удержание, поведение настоящего меню ОС отдельно не заявляется. Реальная мобильная приёмка остаётся задачей tow.6.
+
+## Task568 — выбор размеров (4 октября 2026)
+
+Код `90227b8`, справочные тексты `6e76de6`: два ряда быстрых кнопок A S/M/L/XL и B XS/S/M/L/XL/XXL вместо быстрых коэффициентов B/A. A получает полный сухой оснащённый Industrial-профиль, силы, LAB-вращение и фиксированный модуль; B пассивен. Оба выбора подставляют массу/геометрию/радиус/инерцию и общую длину всех трёх сцепок,90–1440 м. Другой корпус сохраняет абсолютную массу; seed, исходный мир, настройки полей, FA и тип сцепки сохраняются. Успех возвращает время0/ожидание Start, невозможный старт отклоняется атомарно. Ручные поля и отдельный выбор только k/c остаются.
+
+| Проверка | Результат |
+|---|---|
+| TDD |5 initial RED→GREEN; regression effective-A-radius RED→GREEN и реальный UI RED→GREEN; итог8 focused tests PASS |
+| Полный `test:tuglab` |326/326, fail0/skip0; первый322/323 имел устаревший lower-bound .09, заменён на.0009 после расширения диапазона, повтор обоснован |
+| Typecheck / `npm test` / весь monorepo build |PASS; прежние default-secret предупреждения не изменены |
+| U2TagLab / TugLab / BonkLab builds |PASS; U2 финальный stamp6e76de6, ресурс D6sRkYHN, SHA256e8261252c2bebfc00b19cf6f3df62728a646e1454376f7268d3bb1facf92c6d0 |
+| Все24 пары ×3 типа сцепки |API: безопасный старт, реальные шаги и Restart; finite state/geometry/absolute masses/lengths/инерции проверены |
+| Реальные кнопки1280/360/390px |Все3типа, крайние размеры, numeric values, selected/custom, help; ≥48px и перенос строк |
+| Source и stamped root+nested |Существующий UI и новый size runner PASS/errors[]; каждый включает24API и две новые страницы Share |
+| Старый TugLab |UI и Share PASS |
+| Самопроверка PM |Посмотрен final mobile360 PNG; independent24 nominal-length расчёт соответствует4(RA+RB),90–1440 м |
+
+Снята настоящая BASE schema2/fixed-v3 fixture до изменения production; старые schema1/disk-v2 и schema2/fixed-v3 сохраняют явные данные и исходный контракт без редактирования. После выбора размеров — schema3/catalog-v4 с role-allowlist геометрии и исходным radiusA рецепта мира. B108×48 допускается как явно прежняя геометрия; выбор только A S/XL сохраняет её и абсолютную массу. Произвольная геометрия, размерные роли и исходный радиус вне каталога отклоняются. Замены geometry closures/current-radius проверены и при выборе, и при полном reset.
+
+Developer GPT-6.1 Sol high; независимые Quality и Security GPT-6.1 Sol high, Architecture GPT-6 Astra high одобрили bounded Task568 без Critical/Important. Единственный общий Minor радиусной справки исправлен одной волной только текста: radius(i) относится к текущему XS–XXL/legacy, M/L отмечены стартовыми примерами. Финальный U2 build и короткий stamped root/nested browser подтвердили текст и восстановление XS6.220/XXL199.034 м, errors[]; неизменённые физические тесты не повторялись. Scoped-copy Quality APPROVED:1/1 Minor устранён, открытых замечаний нет. PM записал границы: Android отдельно, Industrial yaw/материалы остаются LAB, прежний baseline не перепроверялся повторным полным review. Самопроверка PM_ERR/DOC_PR: существующая лаба в bonk-race, одна ограниченная продуктовая задача, полный sweep profile/runtime/UI/Share/help/reset; нет новых repo/pipeline и review-петли. Источники U2 remote252d17f повторно подтверждены PM; corrected pinned geometry path docs/specs/data/ship_dimensions_v1/ships.csv. Industrial torque и пределы размера обозначены LAB, не официальной завершённой производственной рецептурой. XXL/несоседние пары — эксперименты; прошлые48 осевых соседних проб не выдаются за испытания всей новой24-парной матрицы. Физический Android не проверен.
+
+
 ## Task567 — оснащённый профиль и фиксированные модули (4 октября 2026)
 
 Код `ca6e185cc66340b096bfb05f7b3afd1a83c84cf3`: A401200/B1556800 кг, геометрия60×27/120×54 м, общая начальная длина360 м. Модуль M k360000 Н/м и c710000 Н·с/м; S/M/L/XL имеют постоянныйc, выбор меняет толькоk/c, сохраняя configured/actualrest, тела, anchors, мир и время. Трос/штанга оставлены; неактивные spring-controls скрыты с сохранением значений.
