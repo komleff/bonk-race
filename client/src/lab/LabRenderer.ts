@@ -6,6 +6,7 @@
  */
 
 import type { SandboxState } from "./labTypes";
+import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT } from "../u2taglab/overlayLayout";
 import type { LabInputState } from "./LabInput";
 import { ZONE_LABELS } from "./labConstants";
 import {
@@ -1073,23 +1074,29 @@ export class LabRenderer {
         canvasW: number,
         canvasH: number,
     ): void {
-        const size = MINIMAP_SIZE;
-        const mx = canvasW - size - MINIMAP_MARGIN;
-        const my = state.spaceWorld ? MINIMAP_MARGIN : canvasH - size - MINIMAP_MARGIN;
+        const space = Boolean(state.spaceWorld);
+        const dprX = space ? ctx.canvas.width / (ctx.canvas.clientWidth || ctx.canvas.width) : 1;
+        const dprY = space ? ctx.canvas.height / (ctx.canvas.clientHeight || ctx.canvas.height) : 1;
+        ctx.save();
+        if (space) ctx.scale(dprX, dprY);
+        const mapW = space ? SPACE_OVERLAY_WIDTH : MINIMAP_SIZE;
+        const mapH = space ? SPACE_OVERLAY_HEIGHT : MINIMAP_SIZE;
+        const mx = canvasW / dprX - mapW - MINIMAP_MARGIN;
+        const my = space ? MINIMAP_MARGIN : canvasH - mapH - MINIMAP_MARGIN;
 
         // Фон
         ctx.fillStyle = MINIMAP_BG;
-        ctx.fillRect(mx, my, size, size);
+        ctx.fillRect(mx, my, mapW, mapH);
         ctx.strokeStyle = MINIMAP_BORDER;
         ctx.lineWidth = 1;
-        ctx.strokeRect(mx, my, size, size);
+        ctx.strokeRect(mx, my, mapW, mapH);
 
         // Масштаб: вписать арену в миникарту
         const arenaW = state.arena.width;
         const arenaH = state.arena.height;
-        const ms = Math.min(size / arenaW, size / arenaH) * 0.9;
-        const ocx = mx + size / 2;
-        const ocy = my + size / 2;
+        const ms = Math.min(mapW / arenaW, mapH / arenaH) * 0.9;
+        const ocx = mx + mapW / 2;
+        const ocy = my + mapH / 2;
 
         // Конвертер: мир → экран миникарты
         const toMX = (wx: number) => ocx + wx * ms;
@@ -1180,5 +1187,6 @@ export class LabRenderer {
             vpFullH * ms,
         );
         ctx.setLineDash([]);
+        ctx.restore();
     }
 }

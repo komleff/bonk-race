@@ -6,6 +6,7 @@
  */
 
 import type { SandboxState } from "./labTypes";
+import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT } from "../u2taglab/overlayLayout";
 import { formatTime, ZONE_LABELS, FA_LABELS } from "./labConstants";
 
 // ─── Константы ──────────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ const LINE_H = 20;
 const PANEL_W = 210;
 const PANEL_H = 9 * LINE_H + PAD * 2;
 const FONT = "14px monospace";
+const SPACE_SPEED_H = 46;
 const CORNER_R = 6;
 
 const COL_LABEL = "#888888";
@@ -50,17 +52,26 @@ export class TelemetryHUD {
         state: SandboxState,
         params: Record<string, number | boolean | string>,
     ): void {
-        const x0 = PAD;
-        const y0 = PAD;
+        const space = Boolean(state.spaceWorld);
+        const pad = space ? PAD / 2 : PAD;
+        const panelW = space ? SPACE_OVERLAY_WIDTH : PANEL_W;
+        const lineH = space ? LINE_H / 2 : LINE_H;
+        const x0 = pad;
+        const y0 = pad;
 
         // ── Фоновая панель ──
         ctx.save();
+        if (space) {
+            // CSS-размеры телеметрии сохраняют читаемость на экранах с высоким DPR.
+            ctx.scale(ctx.canvas.width / (ctx.canvas.clientWidth || ctx.canvas.width),
+                ctx.canvas.height / (ctx.canvas.clientHeight || ctx.canvas.height));
+        }
         ctx.beginPath();
-        this.roundRect(ctx, x0, y0, PANEL_W, PANEL_H, CORNER_R);
-        ctx.fillStyle = COL_BG;
+        this.roundRect(ctx, x0, y0, panelW, space ? SPACE_OVERLAY_HEIGHT : PANEL_H, space ? CORNER_R / 2 : CORNER_R);
+        ctx.fillStyle = space ? "rgba(0,0,0,0.35)" : COL_BG;
         ctx.fill();
 
-        ctx.font = FONT;
+        ctx.font = space ? "7px monospace" : FONT;
         ctx.textBaseline = "top";
 
         // ── Вычисление значений ──
@@ -84,69 +95,101 @@ export class TelemetryHUD {
         const timeStr = formatTime(state.elapsedTime, true);
 
         // ── Отрисовка строк ──
-        let rowY = y0 + PAD;
-        const labelX = x0 + PAD;
-        const valueX = x0 + PANEL_W - PAD;
+        let rowY = y0 + pad;
+        const labelX = x0 + pad;
+        const valueX = x0 + panelW - pad;
 
-        // Строка 1: Скорость с мини-шкалой
-        this.drawLabel(ctx, labelX, rowY, "Скорость");
-        const speedText = `${Math.round(speed)} / ${Math.round(speedLimit)}`;
-        this.drawValue(ctx, valueX - 60, rowY, speedText);
-        // Мини-шкала прогресса
-        const barX = valueX - 50;
-        const barW = 40;
-        const barH = 8;
-        const barY = rowY + 6;
-        const speedRatio = Math.min(speed / speedLimit, 1);
-        ctx.fillStyle = COL_BAR_BG;
-        ctx.fillRect(barX, barY, barW, barH);
-        ctx.fillStyle = speedBarColor(speedRatio);
-        ctx.fillRect(barX, barY, barW * speedRatio, barH);
-        rowY += LINE_H;
+        if (space) {
+            // Крупные цифры сохраняют читаемость внутри уменьшенной панели.
+            const speedY = rowY;
+            ctx.font = "6px monospace";
+            this.drawLabel(ctx, labelX, rowY, "Скорость");
+            rowY += 8;
+            ctx.font = "24px monospace";
+            let currentText = String(Math.round(speed));
+            const currentWidth = panelW - pad * 2 - 20;
+            if (ctx.measureText(currentText).width > currentWidth) {
+                currentText = speed.toExponential(1);
+                const size = Math.min(24, 24 * currentWidth / ctx.measureText(currentText).width);
+                ctx.font = `${size}px monospace`;
+            }
+            ctx.textAlign = "left";
+            ctx.fillStyle = COL_VALUE;
+            ctx.fillText(currentText, labelX, rowY);
+            const unitX = labelX + ctx.measureText(currentText).width + 3;
+            ctx.font = "7px monospace";
+            ctx.fillText("м/с", unitX, rowY + 15);
+            ctx.font = "6px monospace";
+            this.drawLabel(ctx, labelX, speedY + 34, `V_FA ${Math.round(speedLimit)} м/с`);
+            const barW = panelW - pad * 2;
+            const speedRatio = Math.max(0, Math.min(speed / speedLimit, 1));
+            ctx.fillStyle = COL_BAR_BG;
+            ctx.fillRect(labelX, speedY + 42, barW, 4);
+            ctx.fillStyle = speedBarColor(speedRatio);
+            ctx.fillRect(labelX, speedY + 42, barW * speedRatio, 4);
+            rowY = speedY + SPACE_SPEED_H;
+            ctx.font = "7px monospace";
+        } else {
+            // Строка 1: Скорость с мини-шкалой
+            this.drawLabel(ctx, labelX, rowY, "Скорость");
+            const speedText = `${Math.round(speed)} / ${Math.round(speedLimit)}`;
+            this.drawValue(ctx, valueX - 60, rowY, speedText);
+            // Мини-шкала прогресса
+            const barX = valueX - 50;
+            const barW = 40;
+            const barH = 8;
+            const barY = rowY + 6;
+            const speedRatio = Math.min(speed / speedLimit, 1);
+            ctx.fillStyle = COL_BAR_BG;
+            ctx.fillRect(barX, barY, barW, barH);
+            ctx.fillStyle = speedBarColor(speedRatio);
+            ctx.fillRect(barX, barY, barW * speedRatio, barH);
+            rowY += lineH;
+        }
 
         // Строка 2: Угловая скорость
         this.drawLabel(ctx, labelX, rowY, "Угл.скор.");
         this.drawValue(ctx, valueX, rowY, `${Math.round(angVelDeg)} / ${Math.round(angLimitDeg)} °/с`);
-        rowY += LINE_H;
+        rowY += lineH;
 
         // Строка 3: Масса
         this.drawLabel(ctx, labelX, rowY, "Масса");
         this.drawValue(ctx, valueX, rowY, `${Math.round(state.mass)} кг`);
-        rowY += LINE_H;
+        rowY += lineH;
 
         // Строка 4: Рассогласование
         this.drawLabel(ctx, labelX, rowY, "Рассогл.");
         this.drawValue(ctx, valueX, rowY, `${Math.round(misalignment)}°`);
-        rowY += LINE_H;
+        rowY += lineH;
 
         // Строка 5: Состояние FA
         this.drawLabel(ctx, labelX, rowY, "FA");
         this.drawValue(ctx, valueX, rowY, faLabel);
-        rowY += LINE_H;
+        rowY += lineH;
 
         // Строка 6: Зона
         this.drawLabel(ctx, labelX, rowY, "Зона");
         this.drawValue(ctx, valueX, rowY, zoneLabel);
-        rowY += LINE_H;
+        rowY += lineH;
 
         // Строка 7: Время
         this.drawLabel(ctx, labelX, rowY, "Время");
         this.drawValue(ctx, valueX, rowY, timeStr);
-        rowY += LINE_H;
+        rowY += lineH;
 
         // Строка 8: Дистанция
         this.drawLabel(ctx, labelX, rowY, "Дистанция");
         this.drawValue(ctx, valueX, rowY, `${Math.round(state.distanceM)} м`);
-        rowY += LINE_H;
+        rowY += lineH;
 
         // Строка 9: Прогресс-бар
         this.drawLabel(ctx, labelX, rowY, "Прогресс");
         const pctText = `${Math.round(state.progressPct * 100)}%`;
-        this.drawValue(ctx, valueX - 60, rowY, pctText);
-        const pBarX = valueX - 50;
-        const pBarW = 40;
-        const pBarH = 8;
-        const pBarY = rowY + 6;
+        this.drawValue(ctx, valueX - (space ? 30 : 60), rowY, pctText);
+        const pBarX = valueX - (space ? 25 : 50);
+        const pBarW = space ? 20 : 40;
+        const pBarH = space ? 4 : 8;
+        const pBarY = rowY + (space ? 3 : 6);
         ctx.fillStyle = COL_BAR_BG;
         ctx.fillRect(pBarX, pBarY, pBarW, pBarH);
         ctx.fillStyle = "#42a5f5";

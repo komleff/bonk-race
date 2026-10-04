@@ -8,11 +8,12 @@ const report={checks:[],errors:[],physicalAndroid:false};
  const track=page=>{page.on('pageerror',e=>report.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});page.on('response',r=>{if(r.status()>=400)report.errors.push(`HTTP ${r.status()} ${r.url()}`);});};
  try{
  const page=await browser.newPage({viewport:{width:1280,height:900}});track(page);
- await page.addInitScript(()=>{const draw=CanvasRenderingContext2D.prototype.fillRect;CanvasRenderingContext2D.prototype.fillRect=function(x,y,w,h){if(w===140&&h===140)window.__minimapRect={x,y,w,h};return draw.call(this,x,y,w,h);};});
+ await page.addInitScript(()=>{const draw=CanvasRenderingContext2D.prototype.fillRect;CanvasRenderingContext2D.prototype.fillRect=function(x,y,w,h){if((w===140&&h===140)||(w===105&&h===136)){const t=this.getTransform();window.__minimapRect={x:x*t.a+t.e,y:y*t.d+t.f,w:w*t.a,h:h*t.d};}return draw.call(this,x,y,w,h);};});
  await page.goto(process.env.U2TAGLAB_URL||'http://127.0.0.1:5175/u2taglab.html');await page.waitForFunction(()=>window.__bonkLab);
  report.defaults=await page.evaluate(()=>({params:window.__bonkLab.exportSpaceShareSnapshot().params,coupling:window.__bonkLab.getState().towing.coupling,distance:window.__bonkLab.getState().towing.distance}));
  assert.equal(report.defaults.params['tow.length'],360);assert.equal(report.defaults.params['tow.dampingRatio'],1);assert.ok(Math.abs(report.defaults.coupling.k-360000)<1e-6);assert.ok(Math.abs(report.defaults.coupling.c-710000)<1e-6);assert.ok(Math.abs(report.defaults.distance-360)<1e-8);
  report.resources=await page.evaluate(()=>performance.getEntriesByType('resource').map(r=>r.name));if(process.env.U2TAGLAB_BUILT==='1'){assert.ok(report.resources.length>0);const prefix=process.env.U2TAGLAB_URL;assert.ok(report.resources.every(url=>url.startsWith(prefix)),JSON.stringify(report.resources));}
+ await require('./u2taglab-hud-checks.cjs')(page,report,out);
  await require('./u2taglab-controls-checks.cjs')(page,report,out);
  const toolbarFA=page.locator('.tug-race-toolbar .tug-actions').getByRole('button',{name:'Flight Assist',exact:true});assert.equal(await toolbarFA.count(),1,'FA должен находиться вверху в группе действий');
  assert.deepEqual(await page.locator('.space-flight-controls button').allTextContents(),['Тормоз'],'внизу остаётся только тормоз');
