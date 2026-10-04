@@ -1,3 +1,7 @@
+## Публичный U2TagLab0.1.0 — 4 октября2026
+
+BonkRacev0.6.3, tag SOURCE_SHA784ca3a9712d70fb850e162197adf50ffd020b25. Существующий Pages pipeline публикует BonkLab в корне https://komleff.github.io/bonk-race/, TugLab в /tuglab/, U2TagLab в /u2taglab/. Release https://github.com/komleff/bonk-race/releases/tag/v0.6.3 содержит два static tar.gz и две SHA256; SOURCE_SHA.txt внутри каждого совпадает с тегом. Архивы запускаются через обычный HTTPserver; отдельного backend/API/новых зависимостей у U2TagLab нет. Публикация Pages прошла, прежний Docker postinstall558 остаётся отдельной ошибкой. Ниже — исторические локальные checkpoint.
+
 ## U2TagLab Q1 checkpoint (4 октября)
 
 Runtime d3fa317, docs c85e255,23sliders×4viewports44pxhit/4pxtrack/source+builtrootnestedPASS/errors[]; 5174/5175 сохранены. Scoped QualityAPPROVED плюс Architecture/SecurityAPPROVED предыдущего kernel (физика не менялась). Current local JS u2taglab-BwwxEXXP.js stamped d3fa317/0.6.3. InitialTask4/565/560closed; новый566калибровкисцепокактивен, no merge/deploy.
