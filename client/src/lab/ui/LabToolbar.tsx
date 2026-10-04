@@ -455,8 +455,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 <div class="tug-actions">
                     <button class="lab-tb-btn" aria-label={towState.paused ? (lab.hasStarted ? "Продолжить" : "Старт") : "Пауза"}
                         disabled={towState.needsRestart || !!launchError} onClick={() => { clearConfirmation(); onClearInput?.(); towState.paused ? lab.resume() : lab.pause(); setTowState(lab.getState().towing); }}>{towState.paused ? "▶" : "Ⅱ"}</button>
-                    {space && (towState.needsRestart && towState.reason ? <details class="space-stop-reason">
-                        <summary>Нужен Restart</summary><div role="alert">{towState.reason} — нужен Restart</div>
+                    {space && (towState.reason && (towState.needsRestart || !towState.reason.toLowerCase().includes("фокус")) ? <details class="space-stop-reason">
+                        <summary>{towState.needsRestart ? "Нужен Restart" : towState.reason.startsWith("Захват:") ? "Захват: отказ" : "Причина"}</summary><div role="alert">{towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</div>
                     </details> : <span class="space-pause-status" aria-live="polite" title={towState.reason ?? ""} aria-label={towState.reason || (towState.paused ? "Пауза" : "Полёт")}>
                         {towState.reason ? towState.reason.toLowerCase().includes("фокус") ? "Пауза: фокус" : towState.reason : towState.paused ? "Пауза" : "Полёт"}
                     </span>)}
