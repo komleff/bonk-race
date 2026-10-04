@@ -1,5 +1,13 @@
 ## U2TagLab — контрастный джойстик Task573
 
+## U2TagLab — актуальный интерфейс Task574–579 (4 октября)
+
+SPACE_OVERLAY_WIDTH105/HEIGHT136 CSS, HUD слева/фон0.35/крупная скорость24CSS, DPR компенсируется Canvas scale. Локальный радар справа136CSS/5км до центра liveobjects/heading-up/мировойNorth(0,-1)/cyanvelocity; nonspace minimap прежний. Старый промежуточный wholemap574 заменён577. Текущая телеметрия сцепки в HUD, время одно, тело строк шаг8CSS; spring scale0…2×referenceA180/360/720/1440, reference50%, capturedrest отдельнойотличимойметкой, fillactualdistance/overflow. SnapshotspaceTugSize берет actualgeometryA, module/B/manualmass/configuredlength не источникмасштаба; solver unchanged. U2statusstrip отсутствует/canvas.top52, pausefocus у верхней кнопки, rare error через44pxdetails.
+
+Тормоз складывает независимые pointer/keyboard-командыOR и очищает ихstop/pause/reset. spaceBrake snapshot — actual command, не вычисленная сила; HUD BRAKE и persistent pressed CSS следуют ему. Nonpassive touch guards только у тормоза. Стабильный keyedDOM при popup сохраняетcapture; вторичный touch активируется наpointerup и дедуплицируетcompatibilityclick. FA и CONNECT сразу; DISCONNECT черезcapturedrefconfirm и stale scene/pause/time guards. ЛевыеFA/сцепка вертикальны, BRBrake96x72, центрконтейнера пропускает input. Actions второго пальца сохраняютjoystick/hold, settings/pause/reset/focus сохраняютcleanup. Прежняя раскладкаFAверх573 ниже — историческая.
+
+V_FA recommendation mapS200/M175/L150/XL95 применён в полном sizeAprofile/startM175; B/module/manualexplicitsharecaps сохраняются. Схемы Share и геометрическая валидация не менялись.
+
 LabRenderer передаёт Boolean(state.spaceWorld) только в приватный drawTouchJoystick: U2 использует бирюзовые заливки и контуры основы/ручки, прочие оболочки сохраняют прежние серые цвета. Геометрия и ввод не менялись. U2-only padding верхних кнопок6px сохраняет строку52px и targets≥44px даже с FA OFF на360px; brake≥48px остаётся внизу.
 
 ## U2TagLab — мобильные контролы Task569

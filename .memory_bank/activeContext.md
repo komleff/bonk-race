@@ -1,3 +1,13 @@
+## Текущий результат — Task574–579 приняты (4 октября 2026)
+
+Продуктовый HEADb55cd81. HUD слева105×136 CSS/alpha0.35/скорость24px, круглый heading-up радар справа136px/5км/СеверN/направление скорости. Телеметрия сцепки внутри HUD, причина паузы у верхней кнопки, отказ захвата компактен с полным текстом по тапу. FA/Сцепить одним нажатием; только Расцепить с подтверждением. FA/сцепка вертикально слева внизу, тормоз96×72 справа. Два пальца сохраняют джойстик/тормоз и позволяют нажимать вторичные кнопки.
+
+V_FA S200/M175/L150/XL95 активирован в выбореA, стартовыйM175; ручные cap/B/module/явные старые ссылки сохраняются. Последняя абсолютная шкала spring по размеруA:0…2×reference180/360/720/1440, reference50%, отдельныйcapturednormal иactualdistancefill/overflow. M0–720/эталон360/capture104≈14.4%; configured tow.length не меняет масштаб. Физический solver/controller не менялся.
+
+329/329, types/client/U2 builds, sourceUI/sizes, oldTug и финальные stamped root/nested PASS. Финальный assetw6kMiDTE/stampb55cd81, каждый путь130 HUDcases/18radarcases/2actualcapturedenial. Quality/независимый Architecture/Security APPROVED, открытых замечаний0; Minor длинной причины отказа исправлен. Guide/acceptance/fitted report/patterns обновлены, доставка в существующий draft PR42. Исходный checkout/stash/U2 сохранены; публичный deploy/merge не выполняются.
+
+Оператор подтвердил на Chrome Samsung Z Fold8 Wide: «Сейчас тормоз работает хорошо». Это приёмка native удержания; новый joystick+secondary отдельно проверен CDP. Первоначальный полусекундный сброс CDP не повторил, независимая ошибка Spacekeyup→pointercommand воспроизведена и исправлена. Тормоз двигательный, без привязки к точке. Отдельные572 governor/571 passiveB и физические этапы остаются backlog. Более ранняя раскладка FA наверху ниже — история, заменена578.
+
 ## Task573 — мобильная FA и контрастный джойстик приняты (4 октября 2026)
 
 Код3b0db7c: FA вверху непосредственно перед «Расцепить / Сцепить»; только тормоз остаётся справа внизу. U2 основа/ручка джойстика бирюзовые с контуром, старые оболочки сохраняют серые цвета. Guards обеих кнопок локальны, brake lifecycle/Share/physics прежние. Source и stamped root/nested UI13/sizes4 PASS/errors[]; paused/running360/390/412/844×390/1280 и FA OFF помещаются в одну52px строку, targets≥44/48px. Types/client/U2build/oldTug PASS;3 независимых scoped reviews APPROVED/0 замечаний. PM просмотрел actualtouch source390/built360 PNG, обновил руководство/patterns/приёмку;573 CLOSED. Физическое устройство не проверено, tow.6 сохраняется.572P1/571 и default250 не изменялись. Доставка в существующий draft PR42, без merge/deploy; исходный checkout/stash/U2 сохранены.
