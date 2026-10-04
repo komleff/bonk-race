@@ -1,3 +1,7 @@
+## Выпуск BonkRace0.6.4 / U2TagLab0.2.0 — Task585 (4 октября 2026)
+
+Оператор явно одобрил релиз PR44. Подготовлены синхронизация версий и release notes с жёсткой сцепкой front/rear, повторными ссылками и единицами массы. Gameplay после принятого c596fcf не меняется; QA584 прошёл CI37199893441. Проверки нового release HEAD, merge/tag/Pages/GitHub Release выполняются PM. До подтверждения live выпуск не объявляется завершённым. Исходный checkout/stash/U2 сохраняются.
+
 ## Task584 — независимый legacy endpoint built QA
 
 CI PR44 выявил зависимость stale-share test от глобального TUGLAB_URL5194, чей сервер запускается позже. RED ERR_CONNECTION_REFUSED подтверждён локально. Существующий built harness теперь сам раздаёт dist-tuglab под /legacy-tuglab/ и передаёт явный ephemeral TUGLAB_URL дочерним тестам. Product/workflow/assertions прежние. С внешним недоступным5194 root/nested UI15/HUD151, sizes5, rigid6, stale11 (включая oldTug link) PASS/errors[]; node --check PASS. Передача commit/CI у PM; Beads не закрыт.

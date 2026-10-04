@@ -449,7 +449,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
             <div class="tug-settings-actions"><button class="lab-tb-btn" onClick={handleResetParams}>Сброс</button>
                 <button class="lab-tb-btn" onClick={handleShare}>Поделиться</button></div>
             {space && <button class="lab-tb-btn" onClick={() => { lab.restoreSpaceRadiusB(); onParamsChanged?.(); }}>Радиус B по ТТХ</button>}
-            <span class="tug-build">{space ? "U2TagLab v0.1.0 · расчётный профиль" : "TugLab v0.1.1"} · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
+            <span class="tug-build">{space ? "U2TagLab v0.2.0 · расчётный профиль" : "TugLab v0.1.1"} · {__TUGLAB_COMMIT__} · BonkRace v{__APP_VERSION__}</span>
             {shareError && <p role="alert">{shareError}</p>}
         </div>;
         return <Fragment>
