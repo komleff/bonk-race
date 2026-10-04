@@ -13,7 +13,7 @@ const server=http.createServer((req,res)=>{
  try{
   for(const [name,prefix]of [['root','/'],['nested','/bonk-race/u2taglab/']]){
    const url=`http://127.0.0.1:${server.address().port}${prefix}`,dir=path.resolve(output,name);fs.mkdirSync(dir,{recursive:true});
-   for(const script of ['u2taglab-ui.cjs','u2taglab-sizes-browser.cjs','u2taglab-rigid-browser.cjs']) {
+   for(const script of ['u2taglab-ui.cjs','u2taglab-sizes-browser.cjs','u2taglab-rigid-browser.cjs','share-stale-browser.cjs']) {
    const scriptDir=path.join(dir,script.replace('.cjs',''));fs.mkdirSync(scriptDir,{recursive:true});
    const log=fs.openSync(path.join(scriptDir,'browser.log'),'w');
    const code=await new Promise((resolve,reject)=>{const child=spawn(process.execPath,['tests/tuglab/'+script],{env:{...process.env,U2TAGLAB_URL:url,U2TAGLAB_QA_DIR:scriptDir,U2TAGLAB_BUILT:'1'},stdio:['ignore',log,log]});child.once('error',reject);child.once('exit',resolve);});fs.closeSync(log);

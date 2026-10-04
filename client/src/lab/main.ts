@@ -10,7 +10,7 @@ import { LabToolbar } from "./ui/LabToolbar";
 import tuglabCss from "./ui/tuglab.css?raw";
 import { injectStyles } from "../ui/utils/injectStyles";
 import { decodeSpaceShareFragment } from "../u2taglab/share";
-import { decodeShareFragment } from "../tuglab/share";
+import { decodeShareFragment, validateShareSnapshot } from "../tuglab/share";
 import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
 const root = document.getElementById("lab-root")!;
@@ -109,7 +109,20 @@ function renderToolbar(): void {
     );
 }
 
+function clearStaleShareFragment(): void {
+    if (!towing || !(space ? location.hash.startsWith("#u2tag=") : location.hash.startsWith("#tug="))) return;
+    try {
+        const shared = space ? decodeSpaceShareFragment(location.hash) : decodeShareFragment(location.hash, lab.getDefaults());
+        const current = space ? lab.exportSpaceShareSnapshot() : validateShareSnapshot(lab.exportShareSnapshot(), lab.getDefaults());
+        // Устаревший fragment блокировал повторный переход к той же ссылке: hashchange не возникал.
+        if (JSON.stringify(current) !== JSON.stringify(shared)) {
+            history.replaceState(history.state, "", location.pathname + location.search);
+        }
+    } catch { /* Повреждённая ссылка сохраняется для существующего диалога ошибки. */ }
+}
+
 function renderPanel(): void {
+    clearStaleShareFragment();
     syncTrigger++;
     if (towing) { renderToolbar(); onResize(); return; }
     render(

@@ -1,3 +1,7 @@
+## Task582 — повторное открытие ссылки
+
+Причина подтверждена на опубликованном v0.6.3: после Reset/edit URL оставался прежним, переход к идентичному hash не создавал hashchange. Shell сравнивает нормализованный экспорт с распознанной ссылкой после изменения настроек и удаляет только устаревший fragment через replaceState. Seed/random/Restart используют существующее уведомление панели. Physics/share schema не менялись. Exact user schema3 S/L180, sizes/length/type/seed/density/FA, неизменный Restart/pause/reload, schema4 front/rear и старый TugLab: source11 checks PASS/errors[]. Полный434/434 и npm test/types/builds PASS; финальные built root/nested у PM/Developer.
+
 ## Task555 — адресные проверки после независимого ревью
 
 Architecture исправление622adfca принято: исходный e0 wall repro и66 регрессий PASS. Security обнаружил finite-overflow только в небounded core inputs; COM/M/I/L/E и спроецированные тела теперь проверяются до атомарного commit. Три случая переполнения RED→GREEN, полный test:tuglab434/434 PASS. Передача и остальные ревью у PM.

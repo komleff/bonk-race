@@ -265,7 +265,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
         lab.reset();
         lab.start();
         setElapsed(0);
-    }, [lab, onClearInput]);
+        if (towing) onParamsChanged?.();
+    }, [lab, onClearInput, onParamsChanged, towing]);
 
     // ── Seed ──
     const handleSeedChange = useCallback(
@@ -278,9 +279,10 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 onClearInput?.();
                 lab.regenerateArena(v, density);
                 if (towing && wasRunning) lab.start();
+                if (towing) onParamsChanged?.();
             }
         },
-        [lab, density, towing, onClearInput],
+        [lab, density, towing, onClearInput, onParamsChanged],
     );
 
     const handleRandomSeed = useCallback(() => {
@@ -292,7 +294,8 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
         onClearInput?.();
         lab.regenerateArena(newSeed, density);
         if (towing && wasRunning) lab.start();
-    }, [lab, density, towing, onClearInput]);
+        if (towing) onParamsChanged?.();
+    }, [lab, density, towing, onClearInput, onParamsChanged]);
 
     // ── Density ──
     const handleDensityChange = useCallback(
