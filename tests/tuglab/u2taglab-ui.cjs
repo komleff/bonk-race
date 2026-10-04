@@ -16,8 +16,9 @@ const report={checks:[],errors:[],physicalAndroid:false};
  await require('./u2taglab-hud-checks.cjs')(page,report,out);
  await require('./u2taglab-radar-checks.cjs')(page,report,out);
  await require('./u2taglab-controls-checks.cjs')(page,report,out);
- const toolbarFA=page.locator('.tug-race-toolbar .tug-actions').getByRole('button',{name:'Flight Assist',exact:true});assert.equal(await toolbarFA.count(),1,'FA должен находиться вверху в группе действий');
- assert.deepEqual(await page.locator('.space-flight-controls button').allTextContents(),['Тормоз'],'внизу остаётся только тормоз');
+ const toolbarFA=page.locator('.space-secondary-controls').getByRole('button',{name:'Flight Assist',exact:true});assert.equal(await toolbarFA.count(),1);assert.equal(await page.locator('.tug-race-toolbar .space-fa').count(),0);
+ assert.deepEqual(await page.locator('.space-flight-controls button').allTextContents(),['FA ON','Расцепить','Тормоз']);
+ const protectedClick=async(target,button)=>{await button.click();await target.getByRole('group',{name:'Подтверждение действия'}).getByRole('button',{name:/^Подтвердить/}).click();};
  report.layouts=[];
  for(const [width,height]of [[360,800],[390,844],[412,915],[844,390],[1280,900]]){
   await page.setViewportSize({width,height});
@@ -25,17 +26,17 @@ const report={checks:[],errors:[],physicalAndroid:false};
    await page.evaluate(paused=>paused?window.__bonkLab.pause():window.__bonkLab.resume(),paused);await page.waitForTimeout(150);
    const fa=await toolbarFA.boundingBox(),brake=await page.getByRole('button',{name:'Тормоз',exact:true}).boundingBox();
    const layout=await page.evaluate(()=>({map:window.__minimapRect,dpr:devicePixelRatio,canvas:document.querySelector('canvas').getBoundingClientRect().toJSON(),toolbar:document.querySelector('.tug-race-toolbar').getBoundingClientRect().toJSON(),buttons:[...document.querySelectorAll('.tug-race-toolbar button')].map(button=>({label:button.getAttribute('aria-label')||button.textContent,...button.getBoundingClientRect().toJSON()})),faNext:document.querySelector('[aria-label="Flight Assist"]').nextElementSibling.textContent,overflow:document.documentElement.scrollWidth>innerWidth}));
-   assert.ok(fa.width>=44&&fa.height>=44&&brake.width>=48&&brake.height>=48);assert.ok(brake.y>=height-100&&brake.x+brake.width<=width);
+   assert.ok(fa.width>=44&&fa.height>=44&&brake.width>=96&&brake.height>=64);assert.ok(brake.y>=height-100&&brake.x+brake.width<=width);
    assert.match(layout.faNext,/^(Расцепить|Сцепить)$/,'FA расположен непосредственно перед сцепкой');
-   assert.ok(layout.buttons.every(button=>button.width>=44&&button.height>=44&&button.x>=0&&button.x+button.width<=width&&button.y===fa.y),'все верхние кнопки помещаются в одну строку');assert.equal(layout.overflow,false);
+   assert.ok(layout.buttons.every(button=>button.width>=44&&button.height>=44&&button.x>=0&&button.x+button.width<=width&&button.y===layout.buttons[0].y),'все верхние кнопки помещаются в одну строку');assert.equal(layout.overflow,false);
    assert.ok(layout.map&&layout.map.y/layout.dpr<30,'карта должна быть вверху Canvas');assert.ok(layout.canvas.height>height-150);assert.equal(layout.toolbar.height,52);
-   assert.ok(fa.y+fa.height<=layout.canvas.top,'FA расположен выше Canvas');assert.ok(layout.canvas.top+(layout.map.y+layout.map.h)/layout.dpr<brake.y,'карта не перекрывает тормоз');
+   const coupling=await page.locator('.space-secondary-controls button').last().boundingBox();assert.ok(brake.x-(coupling.x+coupling.width)>=16);assert.ok(fa.x<=12&&fa.y>=height-150&&coupling.y>=fa.y+fa.height);assert.ok(coupling.x<=12);assert.ok(layout.canvas.top+(layout.map.y+layout.map.h)/layout.dpr<brake.y,'карта не перекрывает тормоз');
    report.layouts.push({width,height,paused,fa:true,buttons:layout.buttons});
    if(paused){
-    await toolbarFA.click();assert.equal(await toolbarFA.getAttribute('aria-pressed'),'false');
+    await protectedClick(page,toolbarFA);assert.equal(await toolbarFA.getAttribute('aria-pressed'),'false');
     const offButtons=await page.locator('.tug-race-toolbar button').evaluateAll(buttons=>buttons.map(button=>button.getBoundingClientRect().toJSON()));
-    assert.ok(offButtons.every(button=>button.width>=44&&button.height>=44&&button.x>=0&&button.right<=width&&button.y===fa.y),'FA OFF тоже помещается в компактной строке');
-    report.layouts.push({width,height,paused,fa:false,buttons:offButtons});await page.screenshot({path:`${out}/layout-${width}x${height}-fa-off.png`});await toolbarFA.click();
+    assert.ok(offButtons.every(button=>button.width>=44&&button.height>=44&&button.x>=0&&button.right<=width&&button.y===offButtons[0].y),'FA OFF тоже помещается в компактной строке');
+    report.layouts.push({width,height,paused,fa:false,buttons:offButtons});await page.screenshot({path:`${out}/layout-${width}x${height}-fa-off.png`});await protectedClick(page,toolbarFA);
    }
    await page.screenshot({path:`${out}/layout-${width}x${height}${paused?'':'-running'}.png`});
   }
@@ -46,7 +47,7 @@ const report={checks:[],errors:[],physicalAndroid:false};
    assert.ok(await page.evaluate(()=>window.__labInput.getState().isTouch&&window.__labInput.getState().magnitude>0));await page.screenshot({path:`${out}/joystick-${width}.png`});
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
   }
-  report.checks.push(`layout ${width}x${height}: paused/running top FA order, targets, no overflow`);
+  report.checks.push(`layout ${width}x${height}: paused/running protected footer FA order, targets, no overflow`);
  }
  // Проверяем реальные области касания всех слайдеров, включая раскрываемые группы.
  const mobile=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
@@ -145,8 +146,8 @@ const report={checks:[],errors:[],physicalAndroid:false};
  const lengthRow=page.locator('.lab-param').filter({has:page.getByLabel('Длина между креплениями',{exact:true})});await lengthRow.getByRole('button',{name:'i',exact:true}).click();assert.match(await lengthRow.locator('.lab-param-tooltip').innerText(),/20–2000/);assert.match(await lengthRow.locator('.lab-param-tooltip').innerText(),/360/);
  await page.getByLabel('Масса A',{exact:true}).focus();await page.keyboard.down('w');assert.equal(await page.evaluate(()=>window.__labInput.getState().magnitude),0);await page.keyboard.up('w');
  await page.screenshot({path:out+'/desktop-help.png'});
- await page.getByRole('button',{name:'Скрыть',exact:true}).click();await page.getByRole('button',{name:'Flight Assist',exact:true}).click();
- const before=await page.evaluate(()=>window.__bonkLab.getState());await page.getByRole('button',{name:'Flight Assist',exact:true}).click();assert.deepEqual(await page.evaluate(()=>window.__bonkLab.getState()),before);await page.getByRole('button',{name:'Flight Assist',exact:true}).click();
+ await page.getByRole('button',{name:'Скрыть',exact:true}).click();await protectedClick(page,page.getByRole('button',{name:'Flight Assist',exact:true}));
+ const before=await page.evaluate(()=>window.__bonkLab.getState());await protectedClick(page,page.getByRole('button',{name:'Flight Assist',exact:true}));assert.deepEqual(await page.evaluate(()=>window.__bonkLab.getState()),before);await protectedClick(page,page.getByRole('button',{name:'Flight Assist',exact:true}));
  assert.equal(await page.getByRole('button',{name:'Flight Assist',exact:true}).innerText(),'FA OFF');
  const brakeButton=page.getByRole('button',{name:'Тормоз',exact:true}),brakeBox=await brakeButton.boundingBox();await page.mouse.move(brakeBox.x+10,brakeBox.y+10);await page.mouse.down();assert.equal(await page.evaluate(()=>window.__bonkLab.spaceBrake),true);
  await brakeButton.dispatchEvent('pointercancel',{pointerId:1});assert.equal(await page.evaluate(()=>window.__bonkLab.spaceBrake),false);await page.mouse.up();
@@ -161,8 +162,8 @@ const report={checks:[],errors:[],physicalAndroid:false};
   assert.equal(scene.started,false);assert.equal(scene.running,false);assert.equal(scene.s.elapsedTime,0);assert.equal(scene.s.spaceWorld.time,0);assert.deepEqual(scene.s.spaceWorld,initialWorld);assert.deepEqual(scene.params,sourceParams);assert.equal(scene.s.towing.needsRestart,false);
   scenes.push(scene);await target.screenshot({path:`${out}/shared-page-${i}.png`});
   if(i===1){await target.getByRole('button',{name:'Старт',exact:true}).click();await target.waitForFunction(()=>window.__bonkLab.getState().startCountdown<=0);await target.getByRole('button',{name:'Пауза',exact:true}).click();const clock=await target.evaluate(()=>window.__bonkLab.getState().spaceWorld.time);await target.getByRole('button',{name:'Step',exact:true}).click();assert.ok(Math.abs(await target.evaluate(()=>window.__bonkLab.getState().spaceWorld.time)-clock-1/60)<1e-9);
-   await target.getByRole('button',{name:'Расцепить',exact:true}).click();assert.equal(await target.evaluate(()=>window.__bonkLab.getState().towing.coupling.connected),false);
-   await target.getByRole('button',{name:'Сцепить',exact:true}).click();assert.equal(await target.evaluate(()=>window.__bonkLab.getState().towing.coupling.connected),true);
+   await protectedClick(target,target.getByRole('button',{name:'Расцепить',exact:true}));assert.equal(await target.evaluate(()=>window.__bonkLab.getState().towing.coupling.connected),false);
+   await protectedClick(target,target.getByRole('button',{name:'Сцепить',exact:true}));assert.equal(await target.evaluate(()=>window.__bonkLab.getState().towing.coupling.connected),true);
    await target.getByRole('button',{name:'Restart',exact:true}).click();await target.getByRole('button',{name:'Пауза',exact:true}).click();assert.deepEqual(await target.evaluate(()=>window.__bonkLab.getState().spaceWorld),initialWorld);
    await target.getByRole('button',{name:'Настройки',exact:true}).click();await target.getByRole('button',{name:'Радиус B по ТТХ',exact:true}).click();assert.ok(Math.abs(await target.evaluate(()=>window.__bonkLab.params['tow.radiusB'])-49.75862068965517)<1e-9);
    await target.locator('.lab-group-header').filter({hasText:'FA и вращение A'}).click();await target.getByLabel('Остановка вращения',{exact:true}).scrollIntoViewIfNeeded();assert.equal(await target.evaluate(()=>window.__labInput.getState().magnitude),0);await target.screenshot({path:out+'/mobile-scroll.png'});

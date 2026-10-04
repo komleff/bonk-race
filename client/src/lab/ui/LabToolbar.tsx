@@ -121,9 +121,23 @@ export interface LabToolbarProps {
     externalParamChange?: number;
 }
 
+type FlightConfirmation = {
+    kind: "fa" | "coupling";
+    enabled: boolean;
+    sceneToken: number | undefined;
+    seed: number;
+    density: number;
+    paused: boolean;
+    worldTime: number;
+};
+
 export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing = false, onClearInput, syncTrigger, onPanelVisibilityChanged, startupError, onStartupRecovered }: LabToolbarProps) {
     const space = lab.isSpace;
     const [infoOpen, setInfoOpen] = useState(false);
+    const [confirmation, setConfirmation] = useState<FlightConfirmation | null>(null);
+    const confirmationRef = useRef<FlightConfirmation | null>(null);
+    const clearConfirmation = useCallback(() => { confirmationRef.current = null; setConfirmation(null); }, []);
+    useLayoutEffect(clearConfirmation, [syncTrigger, externalParamChange, startupError]);
     const [brakeHeld, setBrakeHeld] = useState(false);
     const brakePointer = useRef<number | null>(null);
     const brakeButton = useRef<HTMLButtonElement>(null);
@@ -136,7 +150,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     useEffect(() => {
         if (!space) return;
         const clear = () => clearSpaceBrake();
-        const hidden = () => { if (document.hidden) clear(); };
+        const hidden = () => { if (document.hidden) { clear(); clearConfirmation(); } };
         window.addEventListener("blur", clear); document.addEventListener("visibilitychange", hidden);
         return () => { window.removeEventListener("blur", clear); document.removeEventListener("visibilitychange", hidden); clear(); };
     }, [space, clearSpaceBrake]);
@@ -207,7 +221,23 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     // Timer — poll elapsed time from lab state
     const [elapsed, setElapsed] = useState(0);
     const [towState, setTowState] = useState(() => lab.getState().towing);
-    useEffect(() => { if (space && towState?.paused) clearSpaceBrake(); }, [space, towState?.paused, clearSpaceBrake]);
+    useEffect(() => { if (space && towState?.paused) { clearSpaceBrake(); clearConfirmation(); } }, [space, towState?.paused, clearSpaceBrake]);
+    const openConfirmation = (kind: FlightConfirmation["kind"]) => {
+        const state = lab.getState(), scenario = lab.getScenarioInfo();
+        const pending: FlightConfirmation = { kind, enabled: kind === "fa" ? !Boolean(lab.params["space.fa"]) : !Boolean(state.towing?.coupling.connected),
+            sceneToken: syncTrigger, seed: scenario.seed, density: scenario.density, paused: Boolean(state.towing?.paused), worldTime: state.elapsedTime };
+        confirmationRef.current = pending; setConfirmation(pending);
+    };
+    const confirmFlightAction = () => {
+        const pending = confirmationRef.current;
+        clearConfirmation();
+        if (!pending) return;
+        const state = lab.getState(), scenario = lab.getScenarioInfo();
+        if (pending.sceneToken !== syncTrigger || pending.seed !== scenario.seed || pending.density !== scenario.density ||
+            pending.paused !== Boolean(state.towing?.paused) || state.elapsedTime < pending.worldTime) return;
+        if (pending.kind === "fa") { lab.setSpaceFA(pending.enabled); setFa(pending.enabled); onParamsChanged?.(); }
+        else { onClearInput?.(); lab.setTowingConnection(pending.enabled); setTowState(lab.getState().towing); }
+    };
     useEffect(() => {
         const id = setInterval(() => {
             setElapsed(lab.getState().elapsedTime);
@@ -223,7 +253,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
 
     // ── Restart (countdown управляется BonkLab.start()) ──
     const handleRestart = useCallback(() => {
-        if (space) clearSpaceBrake();
+        if (space) { clearSpaceBrake(); clearConfirmation(); }
         onClearInput?.();
         lab.stop();
         lab.reset();
@@ -418,16 +448,13 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 <button class="lab-tb-btn lab-tb-btn--accent" onClick={handleRestart} disabled={!!launchError}>Restart</button>
                 <div class="tug-actions">
                     <button class="lab-tb-btn" aria-label={towState.paused ? (lab.hasStarted ? "Продолжить" : "Старт") : "Пауза"}
-                        disabled={towState.needsRestart || !!launchError} onClick={() => { onClearInput?.(); towState.paused ? lab.resume() : lab.pause(); setTowState(lab.getState().towing); }}>{towState.paused ? "▶" : "Ⅱ"}</button>
+                        disabled={towState.needsRestart || !!launchError} onClick={() => { clearConfirmation(); onClearInput?.(); towState.paused ? lab.resume() : lab.pause(); setTowState(lab.getState().towing); }}>{towState.paused ? "▶" : "Ⅱ"}</button>
                     {towState.paused && <button class="lab-tb-btn" disabled={!lab.hasStarted || towState.needsRestart || !!launchError}
                         onClick={() => { onClearInput?.(); lab.stepOnce(); setTowState(lab.getState().towing); }}>Step</button>}
-                    {space && <button class="lab-tb-btn space-fa" aria-label="Flight Assist" aria-pressed={fa}
-                        onPointerDown={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}
-                        onClick={() => { const enabled = !Boolean(lab.params["space.fa"]); lab.setSpaceFA(enabled); setFa(enabled); onParamsChanged?.(); }}>FA {fa ? "ON" : "OFF"}</button>}
-                    <button class="lab-tb-btn" onClick={() => { onClearInput?.(); lab.setTowingConnection(!towState.coupling.connected); setTowState(lab.getState().towing); }}>{towState.coupling.connected ? "Расцепить" : "Сцепить"}</button>
+                    {!space && <button class="lab-tb-btn" onClick={() => { onClearInput?.(); lab.setTowingConnection(!towState.coupling.connected); setTowState(lab.getState().towing); }}>{towState.coupling.connected ? "Расцепить" : "Сцепить"}</button>}
                 </div>
                 <button class="lab-tb-btn tug-settings-toggle" aria-label="Настройки" aria-expanded={panelOpen}
-                    onClick={() => { onClearInput?.(); setPanelOpen(!panelOpen); }}>⚙</button>
+                    onClick={() => { clearConfirmation(); onClearInput?.(); setPanelOpen(!panelOpen); }}>⚙</button>
             </div>
             <div class="tug-status" aria-live="polite"><span class="lab-tb-timer">{formatTime(elapsed)}</span> ·
                 {{ rod: "Штанга", rope: "Трос", spring: "Пружина" }[towState.coupling.type]} · {towState.distance.toFixed(2)} м · {towState.coupling.connected ? "соединено" : "расцеплено"}
@@ -435,7 +462,14 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 {towState.reason && <span role="alert"> · {towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</span>}
             </div>
             {space && <div class="space-flight-controls">
-                <button ref={brakeButton} class="lab-tb-btn space-brake" aria-label="Тормоз" aria-pressed={brakeHeld}
+                <div class="space-secondary-controls">
+                    <button key="fa" class="lab-tb-btn space-fa" aria-label="Flight Assist" aria-pressed={fa}
+                        onPointerDown={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}
+                        onPointerUp={e => { if (e.pointerType === "touch") openConfirmation("fa"); }} onClick={() => openConfirmation("fa")}>FA {fa ? "ON" : "OFF"}</button>
+                    <button key="coupling" class="lab-tb-btn" onPointerDown={e => e.preventDefault()} onContextMenu={e => e.preventDefault()}
+                        onPointerUp={e => { if (e.pointerType === "touch") openConfirmation("coupling"); }} onClick={() => openConfirmation("coupling")}>{towState.coupling.connected ? "Расцепить" : "Сцепить"}</button>
+                </div>
+                <button key="brake" ref={brakeButton} class="lab-tb-btn space-brake" aria-label="Тормоз" aria-pressed={brakeHeld}
                     onContextMenu={e => e.preventDefault()} onPointerDown={e => {
                         e.preventDefault();
                         // Второй палец может тормозить, пока первый управляет джойстиком.
@@ -444,8 +478,15 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                         lab.setSpaceBrake(true); setBrakeHeld(true);
                     }}
                     onPointerUp={e => clearSpaceBrake(e.pointerId)} onPointerCancel={e => clearSpaceBrake(e.pointerId)}
-                    onLostPointerCapture={e => clearSpaceBrake(e.pointerId)} onBlur={() => clearSpaceBrake()}>Тормоз</button></div>}
-            <LabPanel lab={lab} towing panelOpen={panelOpen} onOpenChange={setPanelOpen} settingsContent={settings}
+                    onLostPointerCapture={e => clearSpaceBrake(e.pointerId)} onBlur={() => { if (brakePointer.current === null) clearSpaceBrake(); }}>Тормоз</button>
+                {confirmation && <div class="space-confirmation" role="group" aria-label="Подтверждение действия">
+                    <span>{confirmation.kind === "fa" ? `FA ${confirmation.enabled ? "ON" : "OFF"}?` : confirmation.enabled ? "Сцепить состав?" : "Расцепить состав?"}</span>
+                    <div><button class="lab-tb-btn" aria-label={confirmation.kind === "fa" ? `Подтвердить FA ${confirmation.enabled ? "ON" : "OFF"}` : confirmation.enabled ? "Подтвердить сцепление" : "Подтвердить расцепление"}
+                        onPointerDown={e => e.preventDefault()} onPointerUp={e => { if (e.pointerType === "touch") confirmFlightAction(); }} onClick={confirmFlightAction}>Подтвердить</button>
+                    <button class="lab-tb-btn" onPointerDown={e => e.preventDefault()} onPointerUp={e => { if (e.pointerType === "touch") clearConfirmation(); }} onClick={clearConfirmation}>Отмена</button></div>
+                </div>}
+            </div>}
+            <LabPanel lab={lab} towing panelOpen={panelOpen} onOpenChange={open => { if (open) clearConfirmation(); setPanelOpen(open); }} settingsContent={settings}
                 syncTrigger={syncTrigger} onPanelVisibilityChanged={onPanelVisibilityChanged} onParamChanged={onParamsChanged} />
             {shareLink && <div class="lab-modal-backdrop"><div class="lab-modal" role="dialog" aria-label="Поделиться заездом">
                 <h3>Поделиться заездом</h3><p aria-live="polite">{shareNotice}</p>

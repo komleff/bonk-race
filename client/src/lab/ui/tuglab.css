@@ -45,8 +45,12 @@ body[data-lab-mode="towing"] .tug-settings-controls .lab-tb-seed-input { flex: 1
 }
 
 /* Космический тормоз доступен независимо от открытой панели параметров. */
-.space-flight-controls { position: fixed; right: 12px; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 100; display: flex; gap: 8px; }
-body[data-space-mode="true"] .space-flight-controls .lab-tb-btn { min-width: 80px; min-height: 48px; touch-action: none; }
+.space-flight-controls { position: fixed; left: 12px; right: 12px; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 100; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; pointer-events: none; }
+body[data-space-mode="true"] .space-flight-controls .lab-tb-btn { min-width: 44px; min-height: 44px; padding: 8px; font-size: 12px; touch-action: none; pointer-events: auto; }
+.space-secondary-controls { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+body[data-space-mode="true"] .space-flight-controls .space-brake { width: 96px; height: 72px; font-size: 16px; }
+.space-confirmation { position: absolute; bottom: calc(100% + 8px); left: 0; width: 224px; max-width: calc(100vw - 144px); box-sizing: border-box; padding: 8px; border: 1px solid #777; border-radius: 8px; background: #202030; color: white; font-size: 13px; pointer-events: auto; }
+.space-confirmation > div { display: flex; gap: 8px; margin-top: 6px; }
 body[data-space-mode="true"] .tug-density .lab-param-info { align-self: flex-start; }
 
 /* Область касания шире дорожки; прежние оболочки сохраняют свои слайдеры. */
