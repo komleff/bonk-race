@@ -13,12 +13,16 @@ function curvedSweep(sample: (t: number) => GapSample, acceleration: number, dt:
   let time = 0;
   for (let iteration = 0; iteration < 4096; iteration++) {
     const s = sample(time);
-    if (s.gap < -epsilon || (s.gap <= epsilon && (s.rate < -epsilon || (time > 0 && s.rate < 0)))) {
+    const remaining = dt - time;
+    const linearWouldPenetrate = acceleration === 0 && s.rate < 0 && s.gap + s.rate * remaining < -epsilon / 4;
+    if (s.gap < -epsilon || (s.gap <= epsilon && (s.rate < -epsilon || (time > 0 && s.rate < 0) || linearWouldPenetrate))) {
       return { time, normal: s.normal, penetration: Math.max(0, -s.gap) };
     }
     if (time >= dt) return;
     let safe: number;
-    if (acceleration === 0) safe = s.rate < 0 ? Math.max(0, s.gap / -s.rate) : dt - time;
+    // Остаток скорости после e=0 не требует нулевого шага, если весь линейный путь укладывается в допуск.
+    if (acceleration === 0) safe = s.rate < 0 && s.gap + s.rate * remaining < -epsilon / 4
+      ? Math.max(0, s.gap / -s.rate) : remaining;
     else if (s.gap <= epsilon) {
       // После e=0 нормальная скорость равна нулю. Локальная кубическая оценка
       // допускает только четверть геометрического epsilon и остаётся непрерывной.

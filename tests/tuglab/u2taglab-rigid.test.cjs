@@ -112,3 +112,19 @@ for(const gap of [0,49,51])test(`rigid diameter capture threshold accepts or rej
  const {a,t}=pair();t.B.position.x=-(a.radius+t.B.radius+gap);t.params['tow.length']=2000;const before=structuredClone({a,B:t.B,c:t.coupling});
  const r=t.setConnection(true,a,175,empty());assert.equal(r.ok,gap<=a.radius*2);if(!r.ok)assert.deepEqual({a,B:t.B,c:t.coupling},before);
 });
+for(const wall of ['minX','maxX','minY','maxY'])for(const masses of [[401200,1556800],[1000,1000],[100300,24908800],[6419200,24371.875]])for(const e of [0,1])for(const speed of [.3,100])test(`aligned rigid ${wall} e${e} masses ${masses.join('/')} speed${speed} completes tangent wall contact`,()=>{
+ const {createCoupling}=require('../../.cache/tuglab-tests/client/src/tuglab/physics/coupling.js'),defaults=require('../../.cache/tuglab-tests/client/src/tuglab/config/tuglab_defaults.json');
+ const positive=wall.startsWith('max'),vertical=wall.endsWith('Y'),sign=positive?1:-1,angle=vertical?sign*-Math.PI/2:positive?Math.PI:0;
+ const a={position:{x:vertical?0:sign*49,y:vertical?sign*49:0},velocity:{x:vertical?0:sign*speed,y:vertical?sign*speed:0},angle,angularVelocity:0,mass:masses[0],radius:1,inertia:masses[0]};
+ const b=structuredClone(a);b.position.x+=2*Math.cos(angle);b.position.y+=2*Math.sin(angle);b.mass=b.inertia=masses[1];
+ const config={...defaults,couplingType:'rigid',attachmentA:'nose',attachmentB:'tail',restitution:e,substeps:1},c=createCoupling(config),w=space();w.width=w.height=100;
+ const r=advanceSpaceWorld(a,b,c,w,1/60,config);assert.equal(r.stopReason,undefined,r.stopReason);assert.ok(r.contacts.some(c=>c.other===`bounds:${wall}`));
+ for(const body of [r.A,r.B])assert.ok(Math.abs(body.position[vertical?'y':'x'])+1<=50+config.normalEpsilon);
+ assert.ok(r.A.velocity[vertical?'y':'x']*sign<=1e-12);
+});
+for(const dt of [1/60,1000])test(`rigid zero-curvature tiny closing rate is safely resolved for horizon ${dt}`,()=>{
+ const {createCoupling}=require('../../.cache/tuglab-tests/client/src/tuglab/physics/coupling.js'),defaults=require('../../.cache/tuglab-tests/client/src/tuglab/config/tuglab_defaults.json');
+ const a={position:{x:-49,y:0},velocity:{x:-1e-9,y:0},angle:0,angularVelocity:0,mass:401200,radius:1,inertia:401200},b={...structuredClone(a),position:{x:-47,y:0},mass:1556800,inertia:1556800};
+ const config={...defaults,couplingType:'rigid',attachmentA:'nose',attachmentB:'tail',restitution:0,substeps:1},w=space();w.width=w.height=100;
+ const r=advanceSpaceWorld(a,b,createCoupling(config),w,dt,config);assert.equal(r.stopReason,undefined,r.stopReason);assert.ok(r.A.position.x>=-49-config.normalEpsilon/4);assert.ok(r.A.velocity.x>=-1e-15);
+});

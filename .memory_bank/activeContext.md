@@ -6,7 +6,9 @@
 
 Schema4/circles-rigid-v5 записывает стартовую настройку и catalog geometry; прежние strict schema1/2/3 и spring default сохраняются. UI скрывает длину/k/c/module для rigid, справка и HUD показывают смысл/выбранные крепления; интерполяция через COM сохраняет касание. Непрерывный поиск использует нижние квадратичные/кубические оценки дуги; ограниченный численный бюджет и epsilon10⁻⁶ м не заменяют прочность или универсальную гарантию манёвров.
 
-Developer проверяет30 новых физико-runtime тестов (включая48catalog arrangements), всю suite и root/nested/browser. Независимое итоговое ревью и push/PR выполняет PM; merge/публикация не выполнялись. Исходный checkout и U2 сохранены. Финальные результаты — docs/reports/u2taglab-rigid.md.
+Адресное Architecture замечание e0/tiny-rate касания стены исправлено без velocity/omega clamp;64 aligned cases +2 горизонта, GREEN96 focused/full431.
+
+Developer проверяет30 исходных новых физико-runtime тестов (включая48catalog arrangements), всю suite и root/nested/browser. Независимое итоговое ревью и push/PR выполняет PM; merge/публикация не выполнялись. Исходный checkout и U2 сохранены. Финальные результаты — docs/reports/u2taglab-rigid.md.
 
 
 Оператор принял версию и поручил продакшен. PR42 слит; tag v0.6.3 и GitHub Release опубликованы на SOURCE_SHA784ca3a9712d70fb850e162197adf50ffd020b25. Публичная игра: https://komleff.github.io/bonk-race/u2taglab/. Прежние BonkLab и TugLab0.1.1 сохранены. Release notes представляют режим человеку, напоминают управление/настройки/«Поделиться» и честно сохраняют ограничение572.
