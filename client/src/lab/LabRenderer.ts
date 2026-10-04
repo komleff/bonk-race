@@ -6,7 +6,7 @@
  */
 
 import type { SandboxState } from "./labTypes";
-import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT } from "../u2taglab/overlayLayout";
+import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT, SPACE_OVERLAY_MARGIN, SPACE_RADAR_SIDE, SPACE_RADAR_DIAMETER, SPACE_RADAR_RANGE_M } from "../u2taglab/overlayLayout";
 import type { LabInputState } from "./LabInput";
 import { ZONE_LABELS } from "./labConstants";
 import {
@@ -1068,12 +1068,68 @@ export class LabRenderer {
         ctx.restore();
     }
 
+    private drawSpaceRadar(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const world = state.spaceWorld;
+        if (!world) return;
+        const dprX = ctx.canvas.width / (ctx.canvas.clientWidth || ctx.canvas.width);
+        const dprY = ctx.canvas.height / (ctx.canvas.clientHeight || ctx.canvas.height);
+        const radius = SPACE_RADAR_DIAMETER / 2;
+        const cx = SPACE_RADAR_SIDE === 'right' ? ctx.canvas.width / dprX - radius - SPACE_OVERLAY_MARGIN : radius + SPACE_OVERLAY_MARGIN;
+        const cy = radius + SPACE_OVERLAY_MARGIN;
+        const scale = radius / SPACE_RADAR_RANGE_M;
+        const forwardX = Math.cos(state.angle), forwardY = Math.sin(state.angle);
+        // Нос всегда вверх; правая ось согласована с двумерным миром, где Y направлен вниз.
+        const project = (x: number, y: number) => ({
+            x: cx + (-forwardY * x + forwardX * y) * scale,
+            y: cy - (forwardX * x + forwardY * y) * scale,
+        });
+        ctx.save();
+        ctx.scale(dprX, dprY);
+        ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(99,201,229,0.45)"; ctx.lineWidth = 1; ctx.stroke();
+        ctx.clip();
+        // Наблюдаем центры живых тел в радиусе 5 км; это отрисовка, а не логика датчиков.
+        const dot = (position: { x: number; y: number }, bodyRadius: number, color: string, minRadius = 2) => {
+            const dx = position.x - state.x, dy = position.y - state.y;
+            if (Math.hypot(dx, dy) > SPACE_RADAR_RANGE_M) return;
+            const point = project(dx, dy);
+            ctx.beginPath(); ctx.arc(point.x, point.y, Math.max(bodyRadius * scale, minRadius), 0, Math.PI * 2);
+            ctx.fillStyle = color; ctx.fill();
+        };
+        for (const object of world.statics) dot(object.position, object.radius, object.kind === "station" ? "#63c9e5" : "#b48b62");
+        for (const object of world.asteroids) dot(object.position, object.radius, "#91969e");
+        if (state.towing) dot(state.towing.B.position, state.towing.B.radius, "#ddaa55", 3);
+        const speed = Math.hypot(state.vx, state.vy);
+        if (speed > 0.5) {
+            const velocity = project(state.vx / speed * SPACE_RADAR_RANGE_M * 0.65, state.vy / speed * SPACE_RADAR_RANGE_M * 0.65);
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(velocity.x, velocity.y);
+            ctx.strokeStyle = "#63c9e5"; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 18);
+        ctx.moveTo(cx - 4, cy - 12); ctx.lineTo(cx, cy - 18); ctx.lineTo(cx + 4, cy - 12);
+        ctx.strokeStyle = "#44aaff"; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = "#44aaff"; ctx.fill();
+        // Мировой Север — отрицательная ось Y; указатель вращается вместе с локальной проекцией.
+        const north = project(0, -SPACE_RADAR_RANGE_M * 0.78);
+        const tickStart = project(0, -SPACE_RADAR_RANGE_M * 0.86), tickEnd = project(0, -SPACE_RADAR_RANGE_M * 0.94);
+        ctx.beginPath(); ctx.moveTo(tickStart.x, tickStart.y); ctx.lineTo(tickEnd.x, tickEnd.y);
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffffff"; ctx.fillText("N", north.x, north.y);
+        // На южном ходе Север оказывается снизу: переносим дальность наверх, чтобы подписи не пересекались.
+        const rangeY = north.y > cy + radius - 20 && Math.abs(north.x - cx) < 25 ? cy - radius + 15 : cy + radius - 5;
+        ctx.font = "9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.fillStyle = "#63c9e5"; ctx.fillText("5 км", cx, rangeY);
+        ctx.restore();
+    }
+
     private drawMinimap(
         ctx: CanvasRenderingContext2D,
         state: SandboxState,
         canvasW: number,
         canvasH: number,
     ): void {
+        if (state.spaceWorld) { this.drawSpaceRadar(ctx, state); return; }
         const space = Boolean(state.spaceWorld);
         const dprX = space ? ctx.canvas.width / (ctx.canvas.clientWidth || ctx.canvas.width) : 1;
         const dprY = space ? ctx.canvas.height / (ctx.canvas.clientHeight || ctx.canvas.height) : 1;
