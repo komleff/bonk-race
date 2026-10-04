@@ -74,7 +74,7 @@ if (sharedLaunch) {
 function onResize(): void {
     if (towing) {
         const toolbarHeight = toolbarContainer.querySelector(".lab-toolbar")?.getBoundingClientRect().height ?? 56;
-        const statusHeight = toolbarContainer.querySelector(".tug-status")?.getBoundingClientRect().height ?? 24;
+        const statusHeight = toolbarContainer.querySelector(".tug-status")?.getBoundingClientRect().height ?? (space ? 0 : 24);
         const top = toolbarHeight + statusHeight;
         document.body.style.setProperty("--toolbar-height", `${toolbarHeight}px`);
         document.body.style.setProperty("--lab-top", `${top}px`);

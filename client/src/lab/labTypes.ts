@@ -31,6 +31,8 @@ export interface SandboxState {
     spaceWorld?: SpaceWorld;
     /** Фактическая команда тормоза, включая независимое удержание Space. */
     spaceBrake?: boolean;
+    /** Размер фактического корпуса A для шкалы рекомендованной пружины. */
+    spaceTugSize?: "XS" | "S" | "M" | "L" | "XL" | "XXL";
     // Персонаж
     x: number;
     y: number;

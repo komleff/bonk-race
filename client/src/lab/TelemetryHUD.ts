@@ -55,7 +55,7 @@ export class TelemetryHUD {
         const space = Boolean(state.spaceWorld);
         const pad = space ? PAD / 2 : PAD;
         const panelW = space ? SPACE_OVERLAY_WIDTH : PANEL_W;
-        const lineH = space ? LINE_H / 2 : LINE_H;
+        const lineH = space ? 8 : LINE_H;
         const x0 = pad;
         const y0 = pad;
 
@@ -183,6 +183,37 @@ export class TelemetryHUD {
         this.drawLabel(ctx, labelX, rowY, "Время");
         this.drawValue(ctx, valueX, rowY, timeStr);
         rowY += lineH;
+
+        if (space && state.towing) {
+            this.drawLabel(ctx, labelX, rowY, "Путь/прогр.");
+            this.drawValue(ctx, valueX, rowY, `${Math.round(state.distanceM)} м/${Math.round(state.progressPct * 100)}%`);
+            rowY += lineH;
+            const tow = state.towing, coupling = tow.coupling;
+            this.drawLabel(ctx, labelX, rowY, `${{ rod: "Штанга", rope: "Трос", spring: "Пружина" }[coupling.type]}: ${coupling.connected ? "соединено" : "расцеплено"}`);
+            rowY += lineH;
+            ctx.font = "6px monospace";
+            this.drawLabel(ctx, labelX, rowY, `L ${Math.round(tow.distance)} / N ${Math.round(coupling.restLength)} м`);
+            rowY += lineH;
+            if (coupling.type === "spring") {
+                // Шкала фиксирована по самому длинному рекомендованному модулю корпуса A.
+                const upper = { S: 180, M: 360, L: 720, XL: 1440 }[state.spaceTugSize as "S" | "M" | "L" | "XL"];
+                if (upper) {
+                    const min = upper * 0.5, max = upper * 1.5, width = panelW - pad * 2;
+                    const ratio = (length: number) => Math.max(0, Math.min(1, (length - min) / (max - min)));
+                    ctx.fillStyle = COL_BAR_BG; ctx.fillRect(labelX, rowY, width, 3);
+                    if (coupling.connected) {
+                        ctx.fillStyle = tow.distance < min || tow.distance > max ? COL_BAR_RED : "#63c9e5";
+                        ctx.fillRect(labelX, rowY, width * ratio(tow.distance), 3);
+                    }
+                    ctx.fillStyle = coupling.connected ? "#ffffff" : "#777777";
+                    ctx.fillRect(labelX + Math.min(width - 1, width * ratio(coupling.restLength)), rowY - 1, 1, 5);
+                    const outside = (name: string, length: number) => length < min ? ` ${name}<` : length > max ? ` ${name}>` : "";
+                    this.drawLabel(ctx, labelX, rowY + 6, `${min}–${max} м${coupling.connected ? outside("L", tow.distance) : " —"}${outside("N", coupling.restLength)}`);
+                } else this.drawLabel(ctx, labelX, rowY + 6, "Шкала A: custom");
+            }
+            ctx.restore();
+            return;
+        }
 
         // Строка 8: Дистанция
         this.drawLabel(ctx, labelX, rowY, "Дистанция");

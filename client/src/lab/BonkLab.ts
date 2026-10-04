@@ -623,7 +623,7 @@ export class BonkLab {
     getState(): SandboxState {
         return {
             ...(this.towing ? { towing: this.towing.snapshot(this.towingBodyA(), !this.running) } : {}),
-            ...(this.spaceWorld ? { spaceWorld: cloneSpaceWorld(this.spaceWorld), spaceBrake: this.spaceBrake } : {}),
+            ...(this.spaceWorld ? { spaceWorld: cloneSpaceWorld(this.spaceWorld), spaceBrake: this.spaceBrake, spaceTugSize: this.space ? geometrySize(this.space.geometryA) : undefined } : {}),
             x: this.x,
             y: this.y,
             vx: this.vx,

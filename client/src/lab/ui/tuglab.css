@@ -85,3 +85,8 @@ body[data-space-mode="true"] .space-brake[aria-pressed="true"] {
   border-color: #ffb05c;
   color: #fff;
 }
+
+.space-pause-status { font-size: 10px; line-height: 12px; max-width: 90px; white-space: normal; }
+.space-stop-reason { position: relative; width: 90px; font-size: 10px; line-height: 12px; }
+.space-stop-reason summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.space-stop-reason > div { position: fixed; top: 52px; left: 12px; width: min(280px, calc(100vw - 24px)); box-sizing: border-box; padding: 8px; color: white; background: #202030; border: 1px solid #777; border-radius: 6px; z-index: 300; }

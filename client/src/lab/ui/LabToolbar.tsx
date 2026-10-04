@@ -455,6 +455,11 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 <div class="tug-actions">
                     <button class="lab-tb-btn" aria-label={towState.paused ? (lab.hasStarted ? "Продолжить" : "Старт") : "Пауза"}
                         disabled={towState.needsRestart || !!launchError} onClick={() => { clearConfirmation(); onClearInput?.(); towState.paused ? lab.resume() : lab.pause(); setTowState(lab.getState().towing); }}>{towState.paused ? "▶" : "Ⅱ"}</button>
+                    {space && (towState.needsRestart && towState.reason ? <details class="space-stop-reason">
+                        <summary>Нужен Restart</summary><div role="alert">{towState.reason} — нужен Restart</div>
+                    </details> : <span class="space-pause-status" aria-live="polite" title={towState.reason ?? ""} aria-label={towState.reason || (towState.paused ? "Пауза" : "Полёт")}>
+                        {towState.reason ? towState.reason.toLowerCase().includes("фокус") ? "Пауза: фокус" : towState.reason : towState.paused ? "Пауза" : "Полёт"}
+                    </span>)}
                     {towState.paused && <button class="lab-tb-btn" disabled={!lab.hasStarted || towState.needsRestart || !!launchError}
                         onClick={() => { onClearInput?.(); lab.stepOnce(); setTowState(lab.getState().towing); }}>Step</button>}
                     {!space && <button class="lab-tb-btn" onClick={() => { onClearInput?.(); lab.setTowingConnection(!towState.coupling.connected); setTowState(lab.getState().towing); }}>{towState.coupling.connected ? "Расцепить" : "Сцепить"}</button>}
@@ -462,11 +467,11 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
                 <button class="lab-tb-btn tug-settings-toggle" aria-label="Настройки" aria-expanded={panelOpen}
                     onClick={() => { clearConfirmation(); onClearInput?.(); setPanelOpen(!panelOpen); }}>⚙</button>
             </div>
-            <div class="tug-status" aria-live="polite"><span class="lab-tb-timer">{formatTime(elapsed)}</span> ·
+            {!space && <div class="tug-status" aria-live="polite"><span class="lab-tb-timer">{formatTime(elapsed)}</span> ·
                 {{ rod: "Штанга", rope: "Трос", spring: "Пружина" }[towState.coupling.type]} · {towState.distance.toFixed(2)} м · {towState.coupling.connected ? "соединено" : "расцеплено"}
                 {towState.paused && " · пауза"}
                 {towState.reason && <span role="alert"> · {towState.reason}{towState.needsRestart ? " — нужен Restart" : ""}</span>}
-            </div>
+            </div>}
             {space && <div class="space-flight-controls">
                 <div class="space-secondary-controls">
                     <button key="fa" class="lab-tb-btn space-fa" aria-label="Flight Assist" aria-pressed={fa}
