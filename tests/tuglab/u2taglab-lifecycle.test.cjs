@@ -51,7 +51,7 @@ test('long seeded start reserves entire composition and restores exact spawn',()
  assert.ok(s.arena.obstacles.every(o=>Math.hypot(o.x-(a.x+b.x)/2,o.y-(a.y+b.y)/2)>=o.radius+1));
 });
 test('space reconnect uses V_FA in either mode and keeps nearest attachments',()=>{
- for(const fa of [true,false]) {const lab=make();lab.setSpaceFA(fa);lab.setTowingConnection(false);lab.towing.B.velocity.x=200;
+ for(const fa of [true,false]) {const lab=make();lab.updateParams('space.speedLimit',250);lab.setSpaceFA(fa);lab.setTowingConnection(false);lab.towing.B.velocity.x=200;
  assert.equal(lab.setTowingConnection(true).ok,true);lab.setTowingConnection(false);lab.towing.B.velocity.x=251;
  const before=lab.getState().towing.B;assert.equal(lab.setTowingConnection(true).ok,false);assert.deepEqual(lab.getState().towing.B,before);}
 });
