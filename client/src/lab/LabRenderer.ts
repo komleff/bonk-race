@@ -6,6 +6,7 @@
  */
 
 import type { SandboxState } from "./labTypes";
+import { SPACE_OVERLAY_MARGIN, SPACE_RADAR_SIDE, SPACE_RADAR_DIAMETER, SPACE_RADAR_RANGE_M } from "../u2taglab/overlayLayout";
 import type { LabInputState } from "./LabInput";
 import { ZONE_LABELS } from "./labConstants";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@bonk-race/shared";
 import { drawFinishLine } from "../rendering/track";
 import { lerpColor, hslToHex, getDriftAngle } from "./colorUtils";
+import { spaceFieldCenter, SPACE_FIELD_INFO } from "../u2taglab/fields";
 
 // ─── Константы ───────────────────────────────────────────────────────────────
 
@@ -141,6 +143,12 @@ export class LabRenderer {
 
     // ── Публичный API ─────────────────────────────────────────────────────────
 
+    setViewRange(range: number): void {
+        if (!Number.isFinite(range) || range <= 0 || Math.abs(range - this.viewRange) < 0.5) return;
+        this.viewRange = range;
+        this.resize();
+    }
+
     setArrowScale(scale: number): void {
         this.arrowScale = scale;
     }
@@ -226,9 +234,11 @@ export class LabRenderer {
         // ── Рисуем слои от заднего к переднему ──
         this.drawGrid(ctx, state);
         this.drawZones(ctx, state);
+        if (state.spaceWorld) this.drawSpaceFields(ctx, state);
         this.drawSpawnAndFinish(ctx, state);
         this.drawWalls(ctx, state);
-        this.drawObstacles(ctx, state);
+        if (state.spaceWorld) this.drawSpaceWorld(ctx, state);
+        else this.drawObstacles(ctx, state);
         this.drawOrbs(ctx, state);
         if (state.towing) this.drawTowing(ctx, state);
 
@@ -256,7 +266,7 @@ export class LabRenderer {
 
         // ── Оверлей сенсорного джойстика (экранные координаты) ──
         if (input.isTouch && input.active) {
-            this.drawTouchJoystick(ctx, input);
+            this.drawTouchJoystick(ctx, input, Boolean(state.spaceWorld));
         }
 
         // ── Сообщение о дистанции смерти (экранные координаты) ──
@@ -384,6 +394,75 @@ export class LabRenderer {
     }
 
     // ── Слой: Орбы ──────────────────────────────────────────────────────────
+
+    private drawSpaceFields(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const world = state.spaceWorld!;
+        for (const field of world.fields) {
+            const center = spaceFieldCenter(field, world.time), r = field.radius, info = SPACE_FIELD_INFO[field.kind];
+            const mechanical = field.kind === "plasma" || field.kind === "resistive";
+            ctx.save(); ctx.translate(center.x, center.y);
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+            for (const [position, alpha] of [[0, "2e"], [0.25, "27"], [0.5, "17"], [0.75, "07"], [1, "00"]] as const) {
+                gradient.addColorStop(position, info.color + alpha);
+            }
+            ctx.fillStyle = gradient; ctx.strokeStyle = info.color; ctx.lineWidth = 1.5 / this.scale;
+            if (!mechanical) ctx.setLineDash([8 / this.scale, 6 / this.scale]);
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = info.color; ctx.font = `${13 / this.scale}px sans-serif`; ctx.textAlign = "center";
+            ctx.fillText(info.label + (field.kind === "plasma" && field.topology === "vortex" ? " · вихрь" : ""), 0, -r * 0.65);
+            ctx.font = `${11 / this.scale}px sans-serif`;
+            ctx.fillText(field.kind === "plasma" ? `${field.pressure} Па · LAB` : field.kind === "resistive"
+                ? `${field.resistiveK} Н·с/м³ · LAB` : "визуально", 0, -r * 0.65 + 17 / this.scale);
+            if (field.kind === "plasma") {
+                if (field.topology === "vortex") {
+                    ctx.beginPath(); ctx.arc(0, 0, r * 0.25, 0.15, Math.PI * 1.8); ctx.stroke();
+                    const end = Math.PI * 1.8;
+                    ctx.translate(Math.cos(end) * r * 0.25, Math.sin(end) * r * 0.25); ctx.rotate(end + Math.PI / 2);
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-12 / this.scale, -7 / this.scale);
+                    ctx.moveTo(0, 0); ctx.lineTo(-12 / this.scale, 7 / this.scale); ctx.stroke();
+                } else {
+                    const angle = Math.atan2(field.direction.y, field.direction.x), length = r * 0.22;
+                    ctx.rotate(angle); ctx.beginPath(); ctx.moveTo(-length, 0); ctx.lineTo(length, 0);
+                    ctx.lineTo(length - 12 / this.scale, -7 / this.scale); ctx.moveTo(length, 0);
+                    ctx.lineTo(length - 12 / this.scale, 7 / this.scale); ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+    }
+
+    private drawSpaceWorld(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const world = state.spaceWorld!;
+        for (const object of world.statics) {
+            const { x, y } = object.position, r = object.radius;
+            const station = object.kind === "station";
+            ctx.save(); ctx.translate(x, y);
+            ctx.fillStyle = station ? "#152a36" : "#322b25";
+            ctx.strokeStyle = station ? "#63c9e5" : "#b48b62";
+            ctx.lineWidth = 2 / this.scale;
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0, 0, r * (station ? 0.55 : 0.75), 0, 2 * Math.PI); ctx.stroke();
+            const spokes = station ? 4 : 8;
+            for (let i = 0; i < spokes; i++) {
+                const angle = i * 2 * Math.PI / spokes;
+                ctx.beginPath(); ctx.moveTo(Math.cos(angle) * r * 0.2, Math.sin(angle) * r * 0.2);
+                ctx.lineTo(Math.cos(angle) * r * 0.94, Math.sin(angle) * r * 0.94); ctx.stroke();
+            }
+            ctx.font = `${14 / this.scale}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = station ? "#8cdeef" : "#d0a780";
+            ctx.fillText(station ? "СТАНЦИЯ" : "ЗАБРОШЕННАЯ ПЛАТФОРМА", 0, -r - 12 / this.scale);
+            ctx.restore();
+        }
+        for (const body of world.asteroids) {
+            const r = body.radius;
+            ctx.save(); ctx.translate(body.position.x, body.position.y); ctx.rotate(body.angle);
+            ctx.fillStyle = "#4c515b"; ctx.strokeStyle = "#91969e"; ctx.lineWidth = 1.5 / this.scale;
+            ctx.beginPath(); ctx.arc(0, 0, r, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = "#343842";
+            ctx.beginPath(); ctx.arc(-r * 0.25, -r * 0.18, r * 0.25, 0, 2 * Math.PI); ctx.stroke();
+            ctx.beginPath(); ctx.arc(r * 0.33, r * 0.2, r * 0.16, 0, 2 * Math.PI); ctx.stroke();
+            ctx.restore();
+        }
+    }
 
     private drawOrbs(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         for (const orb of state.orbs) {
@@ -781,6 +860,7 @@ export class LabRenderer {
     private drawTouchJoystick(
         ctx: CanvasRenderingContext2D,
         input: LabInputState,
+        space: boolean,
     ): void {
         const dpr = window.devicePixelRatio || 1;
         const rect = this.cachedRect;
@@ -795,18 +875,18 @@ export class LabRenderer {
         // Базовый круг
         ctx.beginPath();
         ctx.arc(baseX, baseY, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+        ctx.fillStyle = space ? "rgba(34, 211, 238, 0.16)" : "rgba(255, 255, 255, 0.08)";
         ctx.fill();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+        ctx.strokeStyle = space ? "rgba(34, 211, 238, 0.75)" : "rgba(255, 255, 255, 0.25)";
         ctx.lineWidth = 2 * dpr;
         ctx.stroke();
 
         // Ручка джойстика
         ctx.beginPath();
         ctx.arc(knobX, knobY, knobRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        ctx.fillStyle = space ? "rgba(34, 211, 238, 0.38)" : "rgba(255, 255, 255, 0.3)";
         ctx.fill();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.strokeStyle = space ? "rgba(34, 211, 238, 0.95)" : "rgba(255, 255, 255, 0.5)";
         ctx.lineWidth = 1.5 * dpr;
         ctx.stroke();
     }
@@ -988,29 +1068,87 @@ export class LabRenderer {
         ctx.restore();
     }
 
+    private drawSpaceRadar(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const world = state.spaceWorld;
+        if (!world) return;
+        const dprX = ctx.canvas.width / (ctx.canvas.clientWidth || ctx.canvas.width);
+        const dprY = ctx.canvas.height / (ctx.canvas.clientHeight || ctx.canvas.height);
+        const radius = SPACE_RADAR_DIAMETER / 2;
+        const cx = SPACE_RADAR_SIDE === 'right' ? ctx.canvas.width / dprX - radius - SPACE_OVERLAY_MARGIN : radius + SPACE_OVERLAY_MARGIN;
+        const cy = radius + SPACE_OVERLAY_MARGIN;
+        const scale = radius / SPACE_RADAR_RANGE_M;
+        const forwardX = Math.cos(state.angle), forwardY = Math.sin(state.angle);
+        // Нос всегда вверх; правая ось согласована с двумерным миром, где Y направлен вниз.
+        const project = (x: number, y: number) => ({
+            x: cx + (-forwardY * x + forwardX * y) * scale,
+            y: cy - (forwardX * x + forwardY * y) * scale,
+        });
+        ctx.save();
+        ctx.scale(dprX, dprY);
+        ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(99,201,229,0.45)"; ctx.lineWidth = 1; ctx.stroke();
+        ctx.clip();
+        // Наблюдаем центры живых тел в радиусе 5 км; это отрисовка, а не логика датчиков.
+        const dot = (position: { x: number; y: number }, bodyRadius: number, color: string, minRadius = 2) => {
+            const dx = position.x - state.x, dy = position.y - state.y;
+            if (Math.hypot(dx, dy) > SPACE_RADAR_RANGE_M) return;
+            const point = project(dx, dy);
+            ctx.beginPath(); ctx.arc(point.x, point.y, Math.max(bodyRadius * scale, minRadius), 0, Math.PI * 2);
+            ctx.fillStyle = color; ctx.fill();
+        };
+        for (const object of world.statics) dot(object.position, object.radius, object.kind === "station" ? "#63c9e5" : "#b48b62");
+        for (const object of world.asteroids) dot(object.position, object.radius, "#91969e");
+        if (state.towing) dot(state.towing.B.position, state.towing.B.radius, "#ddaa55", 3);
+        const speed = Math.hypot(state.vx, state.vy);
+        if (speed > 0.5) {
+            const velocity = project(state.vx / speed * SPACE_RADAR_RANGE_M * 0.65, state.vy / speed * SPACE_RADAR_RANGE_M * 0.65);
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(velocity.x, velocity.y);
+            ctx.strokeStyle = "#63c9e5"; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 18);
+        ctx.moveTo(cx - 4, cy - 12); ctx.lineTo(cx, cy - 18); ctx.lineTo(cx + 4, cy - 12);
+        ctx.strokeStyle = "#44aaff"; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = "#44aaff"; ctx.fill();
+        // Мировой Север — отрицательная ось Y; указатель вращается вместе с локальной проекцией.
+        const north = project(0, -SPACE_RADAR_RANGE_M * 0.78);
+        const tickStart = project(0, -SPACE_RADAR_RANGE_M * 0.86), tickEnd = project(0, -SPACE_RADAR_RANGE_M * 0.94);
+        ctx.beginPath(); ctx.moveTo(tickStart.x, tickStart.y); ctx.lineTo(tickEnd.x, tickEnd.y);
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.font = "10px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffffff"; ctx.fillText("N", north.x, north.y);
+        // На южном ходе Север оказывается снизу: переносим дальность наверх, чтобы подписи не пересекались.
+        const rangeY = north.y > cy + radius - 20 && Math.abs(north.x - cx) < 25 ? cy - radius + 15 : cy + radius - 5;
+        ctx.font = "9px monospace"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+        ctx.fillStyle = "#63c9e5"; ctx.fillText("5 км", cx, rangeY);
+        ctx.restore();
+    }
+
     private drawMinimap(
         ctx: CanvasRenderingContext2D,
         state: SandboxState,
         canvasW: number,
         canvasH: number,
     ): void {
-        const size = MINIMAP_SIZE;
-        const mx = canvasW - size - MINIMAP_MARGIN;
-        const my = canvasH - size - MINIMAP_MARGIN;
+        if (state.spaceWorld) { this.drawSpaceRadar(ctx, state); return; }
+        ctx.save();
+        const mapW = MINIMAP_SIZE;
+        const mapH = MINIMAP_SIZE;
+        const mx = canvasW - mapW - MINIMAP_MARGIN;
+        const my = canvasH - mapH - MINIMAP_MARGIN;
 
         // Фон
         ctx.fillStyle = MINIMAP_BG;
-        ctx.fillRect(mx, my, size, size);
+        ctx.fillRect(mx, my, mapW, mapH);
         ctx.strokeStyle = MINIMAP_BORDER;
         ctx.lineWidth = 1;
-        ctx.strokeRect(mx, my, size, size);
+        ctx.strokeRect(mx, my, mapW, mapH);
 
         // Масштаб: вписать арену в миникарту
         const arenaW = state.arena.width;
         const arenaH = state.arena.height;
-        const ms = Math.min(size / arenaW, size / arenaH) * 0.9;
-        const ocx = mx + size / 2;
-        const ocy = my + size / 2;
+        const ms = Math.min(mapW / arenaW, mapH / arenaH) * 0.9;
+        const ocx = mx + mapW / 2;
+        const ocy = my + mapH / 2;
 
         // Конвертер: мир → экран миникарты
         const toMX = (wx: number) => ocx + wx * ms;
@@ -1093,5 +1231,6 @@ export class LabRenderer {
             vpFullH * ms,
         );
         ctx.setLineDash([]);
+        ctx.restore();
     }
 }

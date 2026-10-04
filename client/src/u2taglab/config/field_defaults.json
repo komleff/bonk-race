@@ -1,0 +1,5 @@
+{
+  "fieldsEnabled": true, "fieldPressure": 50, "resistiveK": 0.5,
+  "maxPressure": 1000, "maxResistiveK": 100,
+  "minRadius": 350, "maxRadius": 750, "driftSpeed": 5, "fieldsPerDensity": 2, "startVacuumLength": 2000
+}

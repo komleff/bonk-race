@@ -39,6 +39,7 @@ export interface TugConfig {
   forwardForce: number; reverseForce: number; lateralForce: number; yawTorque: number;
   couplingType: CouplingType; attachmentA: Attachment; attachmentB: Attachment; length: number;
   springFrequency: number; springStiffness: number; springDamping: number; springReferenceMass: number;
+  springDampingCoefficient?: number;
   springMinRatio: number; springMaxRatio: number; restitution: number;
   fa: boolean; enginesEnabled: boolean; yawLimit: number; yawDampingTime: number; lateralComfort: number;
   tickRate: number; substeps: number; solverIterations: number; maxPositionBias: number;

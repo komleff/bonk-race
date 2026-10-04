@@ -6,6 +6,7 @@
  */
 
 import type { TowingSnapshot } from "../tuglab/labTowing";
+import type { SpaceWorld } from "../u2taglab/world";
 
 import type { Arena } from "@bonk-race/shared";
 
@@ -27,6 +28,11 @@ export interface SandboxOrb {
 
 export interface SandboxState {
     towing?: TowingSnapshot;
+    spaceWorld?: SpaceWorld;
+    /** Фактическая команда тормоза, включая независимое удержание Space. */
+    spaceBrake?: boolean;
+    /** Размер фактического корпуса A для шкалы рекомендованной пружины. */
+    spaceTugSize?: "XS" | "S" | "M" | "L" | "XL" | "XXL";
     // Персонаж
     x: number;
     y: number;

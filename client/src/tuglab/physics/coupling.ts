@@ -12,7 +12,7 @@ export function createCoupling(config: TugConfig): CouplingState {
   return { type: config.couplingType, connected: true, attachmentA: config.attachmentA, attachmentB: config.attachmentB,
     length: config.length, restLength: config.length, minLength: config.length * config.springMinRatio,
     maxLength: config.length * config.springMaxRatio, k: config.springStiffness,
-    c: 2 * config.springDamping * Math.sqrt(config.springStiffness * config.springReferenceMass),
+    c: config.springDampingCoefficient ?? 2 * config.springDamping * Math.sqrt(config.springStiffness * config.springReferenceMass),
     lastNormal: { x: -1, y: 0 }, accumulatedImpulse: 0 };
 }
 export function attachmentState(body: BodyState, attachment: Attachment): AttachmentState {

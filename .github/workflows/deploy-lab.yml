@@ -6,10 +6,13 @@ on:
     paths:
       - 'client/src/lab/**'
       - 'client/src/tuglab/**'
+      - 'client/src/u2taglab/**'
       - 'client/lab.html'
       - 'client/tuglab.html'
+      - 'client/u2taglab.html'
       - 'client/vite.config.lab.ts'
       - 'client/vite.config.tuglab.ts'
+      - 'client/vite.config.u2taglab.ts'
       - 'shared/src/**'
       - 'config/balance.json'
       - 'version.json'
@@ -22,10 +25,13 @@ on:
     paths:
       - 'client/src/lab/**'
       - 'client/src/tuglab/**'
+      - 'client/src/u2taglab/**'
       - 'client/lab.html'
       - 'client/tuglab.html'
+      - 'client/u2taglab.html'
       - 'client/vite.config.lab.ts'
       - 'client/vite.config.tuglab.ts'
+      - 'client/vite.config.u2taglab.ts'
       - 'shared/src/**'
       - 'config/balance.json'
       - 'version.json'
@@ -61,9 +67,12 @@ jobs:
 
       - run: npm run build:tuglab
 
-      # Обе сборки закончены: очистка dist-lab больше не удалит TugLab.
+      - run: npm run build:u2taglab
+
+      # Все сборки закончены: очистка dist-lab больше не удалит дочерние оболочки.
       - run: mv client/dist-lab/lab.html client/dist-lab/index.html
       - run: mv client/dist-tuglab client/dist-lab/tuglab
+      - run: mv client/dist-u2taglab client/dist-lab/u2taglab
 
       - uses: actions/upload-pages-artifact@v3
         with:

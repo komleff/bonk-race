@@ -1,3 +1,51 @@
+## U2TagLab — длина повторного захвата Task580
+
+LabTowing.setConnection после выбора ближайшей пары нос/хвост и проверки допуска задаёт coupling.restLength измеренной дистанцией для троса, штанги и пружины. У троса этот restLength является пределом одностороннего натяжения; при сближении он провисает. Рабочий захват отделён от params[tow.length]: настройка остаётся пределом допуска и источником начальной длины для Restart/Share. Корабли и их скорости при захвате не изменяются, отказ атомарен. Независимые mass/module edits сохраняют захват; явные type/length edits по прежнему контракту используют настройку. Абсолютная HUD-шкала размера A не зависит от захвата.
+
+## U2TagLab — контрастный джойстик Task573
+
+## U2TagLab — актуальный интерфейс Task574–579 (4 октября)
+
+SPACE_OVERLAY_WIDTH105/HEIGHT136 CSS, HUD слева/фон0.35/крупная скорость24CSS, DPR компенсируется Canvas scale. Локальный радар справа136CSS/5км до центра liveobjects/heading-up/мировойNorth(0,-1)/cyanvelocity; nonspace minimap прежний. Старый промежуточный wholemap574 заменён577. Текущая телеметрия сцепки в HUD, время одно, тело строк шаг8CSS; spring scale0…2×referenceA180/360/720/1440, reference50%, capturedrest отдельнойотличимойметкой, fillactualdistance/overflow. SnapshotspaceTugSize берет actualgeometryA, module/B/manualmass/configuredlength не источникмасштаба; solver unchanged. U2statusstrip отсутствует/canvas.top52, pausefocus у верхней кнопки, rare error через44pxdetails.
+
+Тормоз складывает независимые pointer/keyboard-командыOR и очищает ихstop/pause/reset. spaceBrake snapshot — actual command, не вычисленная сила; HUD BRAKE и persistent pressed CSS следуют ему. Nonpassive touch guards только у тормоза. Стабильный keyedDOM при popup сохраняетcapture; вторичный touch активируется наpointerup и дедуплицируетcompatibilityclick. FA и CONNECT сразу; DISCONNECT черезcapturedrefconfirm и stale scene/pause/time guards. ЛевыеFA/сцепка вертикальны, BRBrake96x72, центрконтейнера пропускает input. Actions второго пальца сохраняютjoystick/hold, settings/pause/reset/focus сохраняютcleanup. Прежняя раскладкаFAверх573 ниже — историческая.
+
+V_FA recommendation mapS200/M175/L150/XL95 применён в полном sizeAprofile/startM175; B/module/manualexplicitsharecaps сохраняются. Схемы Share и геометрическая валидация не менялись.
+
+LabRenderer передаёт Boolean(state.spaceWorld) только в приватный drawTouchJoystick: U2 использует бирюзовые заливки и контуры основы/ручки, прочие оболочки сохраняют прежние серые цвета. Геометрия и ввод не менялись. U2-only padding верхних кнопок6px сохраняет строку52px и targets≥44px даже с FA OFF на360px; brake≥48px остаётся внизу.
+
+## U2TagLab — мобильные контролы Task569
+
+«Инфо» — локальное состояние раскрытия Toolbar, доступная кнопка с aria-expanded/controls и hidden panel всего прежнего абзаца. Оно не входит в физический профиль/Share. После Task573 FA расположен в toolbar перед сцепкой, нижняя группа содержит только тормоз. CSS user-select и WebKit callout ограничены space-fa и footer buttons/children; preventDefault/contextmenu стоят на двух кнопках, прочий текст и textarea остаются доступными для копирования.
+
+У тормоза один owner pointerId. clearSpaceBrake обнуляет владельца до releasePointerCapture; чужие окончания игнорируются. isPrimary не ограничивает второй палец с джойстиком, right mouse не начинает удержание. Cancel/lostcapture/blur/visibility/pause очищают owner/hold; move после отмены не включает тормоз. Runtime setSpaceBrake/FA и физика прежние. Новый browser helper подключён к существующему UI runner для source/root/nested QA.
+
+## U2TagLab — выбор размеров Task568 (4 октября)
+
+selectSpaceSize собирает полный кандидат через strict Share и safe-start до изменения живого состояния. A S–XL получает оснащённую массу, двигатели, LAB-вращение и фиксированный модуль; B XS–XXL — пассивную оснащённую массу и геометрию. Масса другого тела сохраняется абсолютной. Текущие L/W задают радиус, прямоугольную инерцию и площадь полей. Геометрические замыкания заменяются при импорте и полном сбросе; radiusA синхронизируется также с плоскими params. Кнопки48px подсвечиваются по фактическому fitted-профилю; ручное изменение снимает соответствующее совпадение.
+
+Выбор размеров создаёт schema3/model u2-space-circles-catalog-v4. Геометрия ограничена каталогом по роли, B допускает прежние108×48. world.radiusA сохраняет исходную карту при смене A; старые schema1/2 остаются прежними до выбора размеров. Невозможный старт сохраняет состояние целиком. Диапазоны ratio0.001–250, forward150 МН и torque2 ГН·м охватывают24 пары; прежний TugLab не изменён. Длина90–1440 м основана на принятой соседней таблице и явно экспериментальном расширении, одинакова для всех трёх типов.
+
+## Task567 — постоянный c и два контракта Share
+
+Новый оснащённый круговой профиль: M401200/L1556800 кг, геометрия60×27/120×54 м. У пружины отдельный физический c; опциональный путь shared TugConfig оставляет прежний TugLab на ζ. LabTowing сохраняет c при refresh/mass/reset/capture, preset меняет толькоk/c, сохраняя configured/actualrest и движение; ручная правка помечает модуль как Custom. Трос и штанга не используют эти коэффициенты, скрытые значения сохраняются.
+
+Новый strict-share schema2/model u2-space-circles-fixed-v3 содержит geometryA/B, tow.dampingMode fixed|legacy, tow.dampingCoefficient, tow.module S|M|L|XL|custom. Генератор area-catalog-v3 прежний. Настоящий старый schema1/disk-v2 имеет свою точную key schema и известную старую геометрию60×27/108×48; старые данные проверяются до дополнения внутреннего представления. Неконвертированный legacy экспортируется как schema1. После применения fixed/module переход в schema2 необратим для этой сессии: обратный выбор legacy-режима сохраняет новый скрытыйc/геометрию при обмене. Candidate import остаётся off-state/атомарным. Полный reset создаёт новый профиль и новую inertiaB closure, исключая утечку геометрии из прежнего импорта. Итог567 принят:318/318,types/builds/source+stamped root/nested,oldUI/share,matrix и три независимых review прошли.
+
+## Применимость свойств сцепки (уточнение4окт)
+
+Source: applySpring использует k/c только spring; rod fixed-distance bilateral impulseconstraint, rope unilateral max-distance/slack, нет физических stiffness/damping/friction/break/masslink. Task566: k/ζ скрываются вне spring, но сохраняются в params/share. Общий начальный length288 м и диапазон20–2000 м всехтрёхтипов; rope>=288/XL требование отменено. Новаяпружина k328718.2527 Н/м, ζ1 (f.20 Гц для sourceM/L), cпо текущейμ. Переключение сохраняетвыбраннуюдлину, тип не меняет worldrecipe/clock/FA. Новыеdefaults не заменяют явно записанные значения прежних ссылок; model/generator IDs сохраняются, поскольку физическиезаконы и encoded recipe не меняются. All newsliders CSS body[data-space-mode=true] hit44/visual4, oldBonk/Tug preserved.
+
+## U2TagLab — принятая космическая физика/мир/поля (3 октября 2026)
+
+Opt-in BonkLab(canvas,{towing:true,space:true}) сохраняет ввод/Canvas/панели и старые пути. profile.ts хранит SI-массы/силы/геометрию и явно LAB FA-калибровку. Инерция корабля m(L²+W²)/12 независимо от collision radius. spaceEngineWrench возвращает силу/момент; двигатель толькоA. FA ON/OFF живой, один предел модуля V_FA, yaw damping в обоих; фон linear/angular drag0, B пассивен.
+
+SpaceWorld имеет seeded стабильные station/derelict/asteroid IDs; statics неизменны, итоговое поручение4окт заменяет астероиды sphere на 2D-диски: m=1000*pi*r², I=mr²/2, глобальный loguniform1–200000т независимо massA (Task4 в реализации). advanceSpaceWorld клонирует весь мир и применяет общий dt/substep/CCD/clock, отказ возвращает A/B/coupling/asteroids/time/tick целиком. Прежний advancePair и новый Nbody используют один advanceCoupledInterval для coupling/contact horizon и бюджета. SpaceForceSampler читает копии всех pre-step тел до любой интеграции, simulationtime/subDt; callback чистый/retry-safe.
+
+Fields immutable/seeded, geometry(t)=center0+drift*t. Самплер отдельно A/B/астероиды; статике силы не нужны. Resistive F=-w*k_R*A*v_sector; LAB pressure F=w*p*A*n и torque0; smoothstep один раз, overlap ID-ordered. A кораблей pi*weightedR(sourceL/W)², не collider override; астероид pi*r². sampleSpaceFieldResponse объединяет engine+wind+drag через analytic average с expm1: extreme сопротивление не создаёт эйлеров reversal/энергию. Thermal/Dust/EM только визуальны с явной справкой об отсутствующих системах.
+
+Task4 bde6982: отдельная strictspace schema1/modelu2-space-circles-disk-v2/generatoru2-space-world-area-catalog-v3; ограниченный UTF8/base64url fragment, exactkeys/finite/ranges. Actual initialworldrecipe (radiusB/length/speed/fields) отделён от liveoverrides. Candidate/world/fullpair проверяются off-state до атомарного импорта, time/distance/progress0 waitingStart; невалидный API import сохраняет весь state, shellhasherror может pause/clearinput по прежней политике. ImportedRestart retainsactualrecipe до явной geometryregeneration. Oldshare-v1 отделён. Геометрия новых прямоугольников и новые сцепки отдельно после круговой приёмки.
+
 ## TugLab: полный снимок начальных условий
 
 BonkLab.exportShareSnapshot берёт lastSeed/lastDensity и orbDensityManual, полный params; arena.objectDensity синхронизируется с фактическим генератором. share.ts строго проверяет schema1/generator bonklab-arena-v1, точные ключи и типы, конечные числа/диапазоны/enums до изменений. applyShareSnapshot применяет все параметры без промежуточных генераций, один раз вызывает regenerateArena/reset и оставляет симуляцию в ожидании. Штатный нестрогий JSON import не используется. Настройки в TugLab принадлежат controlled LabPanel внутри Toolbar; layout sync выполняется до paint. На ширине <900 панель перекрывает canvas без desktop-отступа; ResizeObserver и visualViewport.resize поддерживают высоту.

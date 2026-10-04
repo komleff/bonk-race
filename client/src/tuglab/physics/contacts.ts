@@ -5,7 +5,7 @@ export interface SweptContact {
   time: number; body: 'A' | 'B'; other: string; normal: Vec2;
   penetration: number; restitution: number; pair: boolean;
 }
-function circleSweep(body: BodyState, position: Vec2, velocity: Vec2, radius: number,
+export function circleSweep(body: BodyState, position: Vec2, velocity: Vec2, radius: number,
   dt: number, epsilon: number): Pick<SweptContact, 'time' | 'normal' | 'penetration'> | undefined {
   const delta = { x: body.position.x - position.x, y: body.position.y - position.y };
   const relative = { x: body.velocity.x - velocity.x, y: body.velocity.y - velocity.y };
