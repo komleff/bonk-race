@@ -60,3 +60,8 @@ test('schema4 strict rejection, sticky settings and malformed links preserve run
  for(const fragment of ['#u2tag=e30','#u2tag='+ 'a'.repeat(16001),'#u2tag=%%%'])assert.throws(()=>share.decodeSpaceShareFragment(fragment));
  lab.updateParams('tow.type','spring');const converted=lab.exportSpaceShareSnapshot();assert.equal(converted.schema,4);assert.equal(converted.params['tow.rigidArrangement'],'rear');lab.reset();near(lab.getState().towing.distance,360,1e-7);
 });
+
+test('HUD mass uses three significant digits and promotes rounded unit boundaries',()=>{
+ const {formatHudMass}=require('../../.cache/tuglab-tests/client/src/u2taglab/overlayLayout.js');
+ for(const [mass,text]of [[30,'30 кг'],[0,'0 кг'],[999,'999 кг'],[1000,'1 т'],[401200,'401 т'],[1556800,'1.56 кт'],[1e9,'1 Мт'],[999499,'999 т'],[999500,'1 кт'],[999500000,'1 Мт'],[1e12,'1000 Мт']])assert.equal(formatHudMass(mass),text);
+});

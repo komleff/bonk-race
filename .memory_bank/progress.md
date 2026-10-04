@@ -1,3 +1,7 @@
+## Task583 — компактная масса HUD
+
+Приборы используют кг/т/кт/Мт с порогами1000/10⁶/10⁹ кг, до3 значащих цифр и повышением единицы при округлении999500 кг→1 кт. Настройки и физические значения прежние. Boundary table RED→GREEN; существующий Canvas HUD harness проверяет семь масс, glyph bounds и разные DPR/размеры. Полный435/435 PASS; финальные gates и доставка у PM.
+
 ## Task582 — повторное открытие ссылки
 
 Причина подтверждена на опубликованном v0.6.3: после Reset/edit URL оставался прежним, переход к идентичному hash не создавал hashchange. Shell сравнивает нормализованный экспорт с распознанной ссылкой после изменения настроек и удаляет только устаревший fragment через replaceState. Seed/random/Restart используют существующее уведомление панели. Physics/share schema не менялись. Exact user schema3 S/L180, sizes/length/type/seed/density/FA, неизменный Restart/pause/reload, schema4 front/rear и старый TugLab: source11 checks PASS/errors[]. Полный434/434 и npm test/types/builds PASS; финальные built root/nested у PM/Developer.

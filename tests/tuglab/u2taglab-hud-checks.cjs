@@ -17,6 +17,7 @@ module.exports=async function checkHUD(page,report,out){
     {size:'M',rest:800,distance:721,min:0,max:720,reference:360},
     {size:'M',rest:360,distance:361,min:0,max:720,reference:360,connected:false}, {size:'M',rest:360,distance:721,min:0,max:720,reference:360,connected:false},
     {size:'M',rest:360,distance:360,type:'rod'}, {size:'M',rest:360,distance:360,type:'rope'}])cases.push([175,250,fixture]);
+   if(width===360&&paused)for(const [mass,massText]of [[30,'30 кг'],[1000,'1 т'],[401200,'401 т'],[1556800,'1.56 кт'],[999500,'1 кт'],[999500000,'1 Мт'],[1e9,'1 Мт']])cases.push([175,250,{size:'M',rest:360,distance:360,min:0,max:720,reference:360,mass,massText}]);
    for(const [speed,limit,fixture]of cases){
     const frame=await page.evaluate(async({speed,limit,fixture})=>{
      const lab=window.__bonkLab,originalState=lab.getState,originalInterpolated=lab.getInterpolatedState,oldLimit=lab.params['space.speedLimit'],oldLength=lab.params['tow.length'],wasPaused=lab.getState().towing.paused;
@@ -38,10 +39,11 @@ module.exports=async function checkHUD(page,report,out){
      patch('fillRect',function(x,y,w,h){if(this.canvas.id==='lab-canvas'){if((w===140&&h===140)||(w===105&&h===136)){const a=point(this,x,y),b=point(this,x+w,y+h);map={left:a.x,right:b.x,top:a.y,bottom:b.y};}if(active){const a=point(this,x,y),b=point(this,x+w,y+h);calls.bars.push({left:a.x,right:b.x,top:a.y,bottom:b.y,color:this.fillStyle});}}return originals.fillRect.call(this,x,y,w,h);});
      // Пауза исключает физические шаги с временным лимитом; скорость меняется только в снимке.
      lab.pause();lab.updateParams('space.speedLimit',limit);if(fixture?.configured)lab.updateParams('tow.length',fixture.configured);const before=originalState.call(lab);
-     lab.getInterpolatedState=function(alpha){const snapshot=originalInterpolated.call(this,alpha);return {...snapshot,vx:speed*0.6,vy:speed*0.8,...(fixture?{spaceTugSize:fixture.size,towing:{...snapshot.towing,distance:fixture.distance,coupling:{...snapshot.towing.coupling,restLength:fixture.rest,type:fixture.type||'spring',connected:fixture.connected!==false}}}:{})};};
+     lab.getInterpolatedState=function(alpha){const snapshot=originalInterpolated.call(this,alpha);return {...snapshot,vx:speed*0.6,vy:speed*0.8,...(fixture?.mass!==undefined?{mass:fixture.mass}:{}),...(fixture?{spaceTugSize:fixture.size,towing:{...snapshot.towing,distance:fixture.distance,coupling:{...snapshot.towing.coupling,restLength:fixture.rest,type:fixture.type||'spring',connected:fixture.connected!==false}}}:{})};};
      try{await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));return {...calls,map,dpr,image:canvas.toDataURL(),beforeVelocity:[before.vx,before.vy],afterVelocity:[originalState.call(lab).vx,originalState.call(lab).vy]};}
      finally{lab.getInterpolatedState=originalInterpolated;lab.updateParams('space.speedLimit',oldLimit);if(fixture?.configured)lab.updateParams('tow.length',oldLength);if(!wasPaused)lab.resume();for(const [name,original]of Object.entries(originals))proto[name]=original;}
     },{speed,limit,fixture});
+    assert.ok(frame.texts.some(t=>t.text===(fixture?.massText||'401 т')),'масса в реальном Canvas: компактная единица и граничное округление');
     const label=frame.texts[0],current=frame.texts[1],overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
     assert.equal(label.text,'Скорость');assert.equal(overlap(label,current),false,`Скорость перекрывает ${current.text}: ${JSON.stringify({label,current})}`);
     assert.equal(frame.panel.right-frame.panel.left,105);assert.equal(frame.panel.bottom-frame.panel.top,136);assert.ok(frame.alpha<=0.4,'полупрозрачный фон панели');

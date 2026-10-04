@@ -6,7 +6,7 @@
  */
 
 import type { SandboxState } from "./labTypes";
-import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT } from "../u2taglab/overlayLayout";
+import { SPACE_OVERLAY_WIDTH, SPACE_OVERLAY_HEIGHT, formatHudMass } from "../u2taglab/overlayLayout";
 import { formatTime, ZONE_LABELS, FA_LABELS } from "./labConstants";
 
 // ─── Константы ──────────────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ export class TelemetryHUD {
 
         // Строка 3: Масса
         this.drawLabel(ctx, labelX, rowY, "Масса");
-        this.drawValue(ctx, valueX, rowY, `${Math.round(state.mass)} кг`);
+        this.drawValue(ctx, valueX, rowY, formatHudMass(state.mass));
         rowY += lineH;
 
         // Строка 4: Рассогласование
