@@ -11,3 +11,9 @@ Source GREEN11: точный пользовательский снимок S/L18
 ## Task583 — единицы массы приборов
 
 HUD автоматически выбирает кг/т/кт/Мт, форматирует до3 значащих цифр без лишних нулей и повышает округлённую тысячу в следующую единицу. 401200→401 т;1556800→1.56 кт;999500→1 кт. Одна функция форматирования отображения; параметры, модели и настройки не изменялись. Unit table RED→GREEN, полный435/435 PASS. Существующий Canvas harness расширен семью массами (30/1000/401200/1556800/999500/999500000/10⁹ кг), проверяет настоящий fillText и размещение внутри прежней панели, DPR1/2/3. Финальные готовые root/nested и независимая приёмка у PM.
+
+## Task584 — собственный endpoint старого TugLab в built QA
+
+PR44 CI задаёт TUGLAB_URL5194 до запуска соответствующего HTTP server; новый stale-share test наследовал этот адрес. Локальный RED с тем же недоступным5194 подтвердил ERR_CONNECTION_REFUSED в share-stale-browser.cjs:38 после успешных U2 UI/sizes/rigid. Исправлен только существующий built harness: /legacy-tuglab/ раздаёт client/dist-tuglab, дочерние проверки получают явный TUGLAB_URL того же временного сервера. Старые утверждения сохранены; workflow и продукт не менялись.
+
+С тем же глобальным TUGLAB_URL=http://127.0.0.1:5194 полный built root/nested GREEN: UI15/HUD151, sizes5, rigid6, stale11 на каждом пути (включая exact oldTug share), errors[]. node --check PASS. RED/артефакты: /tmp/bonk-rigid-logs/task584-red; GREEN: /tmp/bonk-rigid-logs/task584-green; общие логи с суффиксом .log рядом. Product suite435 повторно не запускалась: изменён только QA harness.

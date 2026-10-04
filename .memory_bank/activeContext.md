@@ -1,3 +1,7 @@
+## Task584 — независимый legacy endpoint built QA
+
+CI PR44 выявил зависимость stale-share test от глобального TUGLAB_URL5194, чей сервер запускается позже. RED ERR_CONNECTION_REFUSED подтверждён локально. Существующий built harness теперь сам раздаёт dist-tuglab под /legacy-tuglab/ и передаёт явный ephemeral TUGLAB_URL дочерним тестам. Product/workflow/assertions прежние. С внешним недоступным5194 root/nested UI15/HUD151, sizes5, rigid6, stale11 (включая oldTug link) PASS/errors[]; node --check PASS. Передача commit/CI у PM; Beads не закрыт.
+
 ## Текущий патч — Task555/582/583 готов к локальной приёмке (4 октября 2026)
 
 Продуктовый commit c596fcf: настоящая жёсткая COM-сцепка в U2TagLab, два стартовых положения, свободный nearest4 нос/хвост, массовое сближение и сохранение импульсов. Новая schema4 и прежние ссылки1/2/3; повторный переход после Reset/редактирования восстанавливает исходные настройки благодаря очистке устаревшего fragment. HUD автоматически показывает массу в кг/т/кт/Мт до3 значащих цифр; параметры/физика не менялись.
