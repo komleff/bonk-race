@@ -81,7 +81,7 @@ test('space rope capture keeps configured length and slack without pulling bodie
 test('space physical damping stays fixed across mass changes, and invalid edits are atomic',()=>{
  const lab=make();lab.updateParams('tow.massRatio',1);const c=lab.getState().towing.coupling.c;
  near(c,710000,1e-6);lab.updateParams('mass',600000);near(lab.getState().towing.coupling.c,c,1e-6);
- const before=lab.params,s=lab.getState();for(const [key,value] of [['mass',NaN],['mass',1e8],['space.forwardForce',Infinity],['space.yawStopTime',0],['tow.radiusB',251],['tow.massRatio',0.09],['tow.stiffness',1e9]])lab.updateParams(key,value);
+ const before=lab.params,s=lab.getState();for(const [key,value] of [['mass',NaN],['mass',1e8],['space.forwardForce',Infinity],['space.yawStopTime',0],['tow.radiusB',251],['tow.massRatio',0.0009],['tow.stiffness',1e9]])lab.updateParams(key,value);
  assert.deepEqual(lab.params,before);assert.deepEqual(lab.getState(),s);
 });
 test('mode-owned settings never reintroduce stock drag, FA or mass torque scaling',()=>{

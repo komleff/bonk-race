@@ -54,3 +54,9 @@ body[data-space-mode="true"] .lab-param-slider { height: 44px; background: trans
 body[data-space-mode="true"] .lab-param-slider::-webkit-slider-runnable-track { height: 4px; background: #333; border-radius: 2px; }
 body[data-space-mode="true"] .lab-param-slider::-webkit-slider-thumb { margin-top: -4px; }
 body[data-space-mode="true"] .lab-param-slider::-moz-range-track { height: 4px; background: #333; border-radius: 2px; }
+
+.tug-size-picker { margin: 8px 0 12px; }
+.tug-size-row { margin: 8px 0; font-size: 12px; color: #ddd; }
+.tug-size-row .lab-param-info { margin-left: 8px; }
+.tug-size-row button[aria-pressed="true"] { border-color: #66aaff; background: #263e64; color: #fff; }
+.tug-size-help { font-size: 12px; line-height: 1.5; color: #ccc; }
