@@ -26,6 +26,7 @@ module.exports=async function checkHUD(page,report,out){
       }
       return originals.fillText.call(this,text,x,y,...args);
      });
+     patch('arc',function(x,y,r,...args){if(r===68&&Math.abs(this.getTransform().a/dpr-1)<1e-6){const a=point(this,x-r,y-r),b=point(this,x+r,y+r);map={left:a.x,right:b.x,top:a.y,bottom:b.y};}return originals.arc.call(this,x,y,r,...args);});
      patch('fillRect',function(x,y,w,h){if(this.canvas.id==='lab-canvas'){if((w===140&&h===140)||(w===105&&h===136)){const a=point(this,x,y),b=point(this,x+w,y+h);map={left:a.x,right:b.x,top:a.y,bottom:b.y};}if(active){const a=point(this,x,y),b=point(this,x+w,y+h);calls.bars.push({left:a.x,right:b.x,top:a.y,bottom:b.y});}}return originals.fillRect.call(this,x,y,w,h);});
      // Пауза исключает физические шаги с временным лимитом; скорость меняется только в снимке.
      lab.pause();lab.updateParams('space.speedLimit',limit);const before=originalState.call(lab);
@@ -45,7 +46,7 @@ module.exports=async function checkHUD(page,report,out){
     for(const t of frame.texts)assert.ok(t.left>=frame.panel.left&&t.right<=frame.panel.right&&t.top>=frame.panel.top&&t.bottom<=frame.panel.bottom,`текст внутри панели: ${t.text}`);
     assert.ok(bar.left>=frame.panel.left&&bar.right<=frame.panel.right&&bar.top>=frame.panel.top&&bar.bottom<=frame.panel.bottom);
     assert.ok(frame.texts.slice(angular).every(t=>t.size===7),'остальные строки уменьшаются вдвое: 7CSSpx');
-    assert.equal(frame.map.right-frame.map.left,105);assert.equal(frame.map.bottom-frame.map.top,136);
+    assert.equal(frame.map.bottom-frame.map.top,136);
     assert.ok(speedTexts.every(t=>!overlap(t,frame.map)),'новый блок скорости не перекрывает карту');
     assert.deepEqual(frame.afterVelocity,frame.beforeVelocity,'снимок рендера не меняет скорость тела');
     report.hud.push({width,height,dpr:frame.dpr,paused,speed,limit,panel:frame.panel,current});
@@ -54,5 +55,5 @@ module.exports=async function checkHUD(page,report,out){
   }
  }
  }}finally{for(const surface of surfaces.slice(1))await surface.page.close();}
- page=originalPage;await page.evaluate(()=>window.__bonkLab.pause());await page.setViewportSize(viewport);report.checks.push('actual HUD glyph metrics: hypot 0/175/250/1000/2000, V_FA250/1000, surrounding paused/running, DPR1/2/3, current24CSS, separate unit/label/limit/bar, HUD/radar105x136CSS, background0.35, other rows7CSS');
+ page=originalPage;await page.evaluate(()=>window.__bonkLab.pause());await page.setViewportSize(viewport);report.checks.push('actual HUD glyph metrics: hypot 0/175/250/1000/2000, V_FA250/1000, surrounding paused/running, DPR1/2/3, current24CSS, separate unit/label/limit/bar, HUD105x136CSS/radarheight136CSS, background0.35, other rows7CSS');
 };

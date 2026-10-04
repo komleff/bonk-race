@@ -56,7 +56,9 @@ const hud = new TelemetryHUD();
 const onBrakeKey = (event: KeyboardEvent) => {
     if (!space || event.code !== "Space") return;
     if (event.type === "keydown" && document.activeElement !== document.body && document.activeElement !== canvas) return;
-    event.preventDefault(); lab.setSpaceBrake(event.type === "keydown");
+    event.preventDefault();
+    if (event.type === "keydown" && event.repeat) return;
+    lab.setSpaceBrake(event.type === "keydown", "keyboard");
 };
 if (space) { window.addEventListener("keydown", onBrakeKey); window.addEventListener("keyup", onBrakeKey); }
 if (towing) lab.reset();

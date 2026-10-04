@@ -104,6 +104,13 @@ export class TelemetryHUD {
             const speedY = rowY;
             ctx.font = "6px monospace";
             this.drawLabel(ctx, labelX, rowY, "Скорость");
+            if (state.spaceBrake) {
+                // Индикатор показывает удерживаемую команду даже при нулевой силе.
+                ctx.font = "8px monospace";
+                ctx.fillStyle = "#ffb05c";
+                ctx.textAlign = "right";
+                ctx.fillText("BRAKE", valueX, rowY);
+            }
             rowY += 8;
             ctx.font = "24px monospace";
             let currentText = String(Math.round(speed));

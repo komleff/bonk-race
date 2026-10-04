@@ -29,6 +29,8 @@ export interface SandboxOrb {
 export interface SandboxState {
     towing?: TowingSnapshot;
     spaceWorld?: SpaceWorld;
+    /** Фактическая команда тормоза, включая независимое удержание Space. */
+    spaceBrake?: boolean;
     // Персонаж
     x: number;
     y: number;

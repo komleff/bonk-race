@@ -74,3 +74,10 @@ body[data-space-mode="true"] .space-flight-controls button * {
 
 /* FA сохраняет компактную строку действий на узком экране. */
 body[data-space-mode="true"] .tug-race-toolbar .lab-tb-btn { padding: 0 6px; }
+
+/* Команда удержания видна независимо от кратковременного браузерного :active. */
+body[data-space-mode="true"] .space-brake[aria-pressed="true"] {
+  background: #a94915;
+  border-color: #ffb05c;
+  color: #fff;
+}

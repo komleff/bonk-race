@@ -164,6 +164,8 @@ export class BonkLab {
     private prevAsteroids?: SpaceWorld["asteroids"];
     private spaceFA = true;
     private spaceBrake = false;
+    private spaceBrakePointer = false;
+    private spaceBrakeKeyboard = false;
     private prevB?: BodyState;
     private started = false;
     private readonly onBlur = (): void => { this.pause("Потеря фокуса: нажмите Продолжить"); };
@@ -313,7 +315,16 @@ export class BonkLab {
         this.spaceFA = enabled;
         return true;
     }
-    setSpaceBrake(enabled: boolean): void { this.spaceBrake = this.isSpace && enabled; }
+    setSpaceBrake(enabled: boolean, source: "pointer" | "keyboard" = "pointer"): void {
+        if (!this.isSpace) return;
+        // Отпускание клавиши не отменяет удержание пальцем и наоборот.
+        if (source === "keyboard") this.spaceBrakeKeyboard = enabled;
+        else this.spaceBrakePointer = enabled;
+        this.spaceBrake = this.spaceBrakePointer || this.spaceBrakeKeyboard;
+    }
+    private clearSpaceBrakeCommand(): void {
+        this.spaceBrakePointer = this.spaceBrakeKeyboard = this.spaceBrake = false;
+    }
     resetSpaceParams(): void {
         if (!this.space || !this.towing) return;
         this.space = createSpaceProfile(); this.spaceFA = true;
@@ -346,6 +357,7 @@ export class BonkLab {
     }
 
     stop(): void {
+        this.clearSpaceBrakeCommand();
         this.listenForFocus(false);
         if (!this.running) return;
         this.running = false;
@@ -359,7 +371,7 @@ export class BonkLab {
         this.running = false;
         this.listenForFocus(true);
         this.accumulator = 0;
-        this.inputX = this.inputY = this.inputMagnitude = 0; this.spaceBrake = false;
+        this.inputX = this.inputY = this.inputMagnitude = 0; this.clearSpaceBrakeCommand();
         if (reason && !this.towing.needsRestart) this.towing.reason = reason;
         this.syncPrevState();
     }
@@ -449,7 +461,7 @@ export class BonkLab {
         this.yawSignHistory.length = 0;
         this.inputX = 0;
         this.inputY = 0;
-        this.inputMagnitude = 0; this.spaceBrake = false;
+        this.inputMagnitude = 0; this.clearSpaceBrakeCommand();
         this.lastFaOutput = { assistFx: 0, assistFy: 0, assistTorque: 0 };
         this.lastFaState = "idle";
         this.correctionFx = 0;
@@ -611,7 +623,7 @@ export class BonkLab {
     getState(): SandboxState {
         return {
             ...(this.towing ? { towing: this.towing.snapshot(this.towingBodyA(), !this.running) } : {}),
-            ...(this.spaceWorld ? { spaceWorld: cloneSpaceWorld(this.spaceWorld) } : {}),
+            ...(this.spaceWorld ? { spaceWorld: cloneSpaceWorld(this.spaceWorld), spaceBrake: this.spaceBrake } : {}),
             x: this.x,
             y: this.y,
             vx: this.vx,

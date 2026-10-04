@@ -130,7 +130,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
     const clearSpaceBrake = useCallback((pointerId?: number) => {
         if (pointerId !== undefined && pointerId !== brakePointer.current) return;
         const captured = brakePointer.current; brakePointer.current = null;
-        lab.setSpaceBrake(false); setBrakeHeld(false);
+        lab.setSpaceBrake(false); setBrakeHeld(Boolean(lab.getState().spaceBrake));
         if (captured !== null && brakeButton.current?.hasPointerCapture(captured)) brakeButton.current.releasePointerCapture(captured);
     }, [lab]);
     useEffect(() => {
@@ -140,6 +140,15 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
         window.addEventListener("blur", clear); document.addEventListener("visibilitychange", hidden);
         return () => { window.removeEventListener("blur", clear); document.removeEventListener("visibilitychange", hidden); clear(); };
     }, [space, clearSpaceBrake]);
+    useLayoutEffect(() => {
+        const button = brakeButton.current;
+        if (!space || !button) return;
+        // Нативное действие тапа подавляется локально до долгого удержания.
+        const guard = (event: TouchEvent) => { if (event.cancelable) event.preventDefault(); };
+        button.addEventListener("touchstart", guard, { passive: false });
+        button.addEventListener("touchend", guard, { passive: false });
+        return () => { button.removeEventListener("touchstart", guard); button.removeEventListener("touchend", guard); };
+    }, [space]);
     const [fa, setFa] = useState(() => Boolean(lab.params["space.fa"]));
     // Inject styles once
     useEffect(() => {
@@ -203,7 +212,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
         const id = setInterval(() => {
             setElapsed(lab.getState().elapsedTime);
             if (towing) setTowState(lab.getState().towing);
-            if (space) setFa(Boolean(lab.params["space.fa"]));
+            if (space) { setFa(Boolean(lab.params["space.fa"])); setBrakeHeld(Boolean(lab.getState().spaceBrake)); }
         }, 100);
         return () => clearInterval(id);
     }, [lab, towing]);
@@ -214,6 +223,7 @@ export function LabToolbar({ lab, onParamsChanged, externalParamChange, towing =
 
     // ── Restart (countdown управляется BonkLab.start()) ──
     const handleRestart = useCallback(() => {
+        if (space) clearSpaceBrake();
         onClearInput?.();
         lab.stop();
         lab.reset();
