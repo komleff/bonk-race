@@ -1,5 +1,11 @@
 ## TugLab-2 — первый играбельный поезд (11 октября 2026)
 
+## TugLab-2 — полная оболочка Task 3 (12 октября 2026)
+
+Developer передаёт UI на независимое ревью: TrainSession, основные/экспертные настройки, независимые профили/сцепки, safe multitouch/lifecycle, камера/мир, HUD/итоги/принятые графики, strict worker import/replay/compare, JSON/CSV/share и PNG. Step записывает resume→tick→pause; replay — финальный кадр без продолжения приватной истории. Большие журналы разбираются/проверяются в worker, UI принимает только проверенные данные и конечные состояния.
+
+68/68 pure, полный клиентский TSX typecheck, npm test и четыре build:pages PASS. Собственный static root+nested browser PASS; пять экранов 1280×800/820×1180/1180×820/390×844/844×390, native Chrome два пальца, no overlap/all44/no overflow/errors[]. Большой accepted журнал1000тиков/2.86MB: cancel сохраняет опыт, import+heartbeat PASS. Отчёт docs/reports/tuglab2-ui.md, справка docs/TugLab2-Guide.md. Это Developer scope до независимого review/finalSHA; Task4 матрица/AC23 и физический Android не заявляются. Root владеет workflow/package/final artifact/push; старые исходники/физика не менялись UI.
+
 Core review выявил два воспроизведённых дефекта: неполная валидация FA-профиля и отказ paused AB recapture из-за360.00000000000006>360. Общий валидатор всех A/B/C и мира теперь действует до sampler; включительные границы захвата используют существующий масштабированный epsilon, сохраняя actual l0/скорости. 26/26physics, обе типизации и npm test PASS; scoped re-review и browser recapture выполняет PM.
 
 PR47 draft, core d82e9d3: общий транзакционный шаг A/B/C/двух пружин/world CCD,22physics/435legacy/npmtest PASS. Независимый core-review GPT6-Astra идёт. Single ровно один read-only advanceSpaceWorld, limitCountsExact=false (н/д); train=true. Первый coast main.tsx наследуетLabInput/spaceInputFrame и enginesA, Czero. Browser missingpageRED→GREEN; keyboardfocusRED→GREEN с assert speedA>1. Живой Chrome D600мс далA11.85/B3.05/C1.24м/с. Началоpaused, правильныеports/360м, независимыеlinks/Restart. LAN5176/tuglab2.html HTTP200; общая buildPages fourappsPASS, собранная5177/tuglab2/ browserPASS. Это рабочий coast, ассистент/replay/матрица/Android ещё впереди.
@@ -403,3 +409,5 @@ Task2 frozen a8d668e получил independent CHANGES_REQUESTED:4P2 (несо�
 TugLab-2 gate этапа2:573e490 независимо APPROVED GPT-6-astra,66/66 иадресные пробыPASS; R1–R5 closed. Beads.2closed,.3in_progress: полная оболочкаTrainSession. Протокол466logicalcases+15replaysourcefixtures зафиксирован до опытов; матрица/AC23/Android остаются открытыми.
 
 CSV `bonk-race-tug2.6`: воспроизведены неэкранированные dynamic id в headers и formula-like импортный stopReason. Shared serializeCSVCell теперь кодирует headers+cells, добавляет literal-apostrophe строкам =+-@ после whitespace, сохраняет числовые отрицательные SI и JSON.68/68 tests, fresh typecheck/build:tuglab2/npm test PASS; Python csv.reader проверил comma/quote/CRLF/Unicode/formula id и строки. Отдельный scoped CSV fix, адресное подтверждение PM ещё требуется; Task4 реализации/матрицы не запускались.
+
+CSV gate f5efe2c independently APPROVED (core_review, Codex/GPT-6; exact runtime model-id unavailable):68/68 tests, fresh typecheck,23 ID +23 imported reasons +28 direct cells checked by Python csv.reader(strict=True). SI negatives/JSON unchanged. bonk-race-tug2.6 CLOSED; permanent evidence docs/reports/tuglab2-csv-review.md. Полная UI и квалификация ещё выполняются.
