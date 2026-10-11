@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { createDefaultTrainConfig, fitTrainShip, fitTrainLink } = require('../../.cache/tuglab2-tests/client/src/tuglab2/config.js');
-const { createTrain, cloneTrainState, setTrainConnection, trainConnectionGeometry } = require('../../.cache/tuglab2-tests/client/src/tuglab2/train.js');
+const { createTrain, cloneTrainState, setTrainConnection, trainConnectionGeometry, validTrainState } = require('../../.cache/tuglab2-tests/client/src/tuglab2/train.js');
 const { advanceTrain, trainSpringWrenches } = require('../../.cache/tuglab2-tests/client/src/tuglab2/physics.js');
 const near = (actual, expected, eps = 1e-8) => assert.ok(Math.abs(actual - expected) <= eps, `${actual} != ${expected} (eps ${eps})`);
 function empty() { const config = createDefaultTrainConfig(); config.world.width = config.world.height = 1e8; return createTrain(config); }
@@ -186,4 +186,57 @@ test('failed coarse attempts do not advance sampler simulation time or mutate in
   });
   assert.equal(r.stopReason,undefined); assert.ok(r.diagnostics.solverAttempts>1); assert.deepEqual(original,before);
   near(r.state.world.time,.01); assert.equal(r.state.world.tick,1);
+});
+test('all ship profiles reject invalid FA and physical fields before construction and before any force sampling', () => {
+  const positive = ['mass', 'speedLimit', 'yawLimit', 'crewGLimit', 'comfortableBrakingTime', 'emergencyBrakingTime', 'yawStopTime'];
+  const nonnegative = ['forwardForce', 'reverseForce', 'lateralForce', 'yawTorque', 'coastDeadzone', 'lateralComfort'];
+  const variants = [...positive.flatMap(key => [-1, 0, NaN, Infinity].map(value => [key,value])),
+    ...nonnegative.flatMap(key => [-1, NaN, Infinity].map(value => [key,value])), ['enginesEnabled', 'yes']];
+  const base = empty();
+  for (const id of ['A','B','C']) for (const [key,value] of variants) {
+    const cfg=createDefaultTrainConfig(); cfg.ships[id][key]=value;
+    assert.throws(()=>createTrain(cfg), `${id}.${key}=${value} must fail before creating a world`);
+    const s=cloneTrainState(base); s.config.ships[id][key]=value;
+    assert.equal(validTrainState(s),false,`${id}.${key} must invalidate a live profile`);
+    const r=advanceTrain(s,1/60,()=>{ assert.fail('invalid profiles must never reach force sampling'); });
+    assert.ok(r.stopReason); assert.equal(r.state,s);
+  }
+  for (const id of ['A','B','C']) for (const component of ['length','width']) {
+    const cfg=createDefaultTrainConfig(); cfg.ships[id].geometry[component]=NaN; assert.throws(()=>createTrain(cfg));
+  }
+  const cfg=createDefaultTrainConfig(); cfg.composition='single'; cfg.ships.C.yawLimit=NaN; assert.throws(()=>createTrain(cfg));
+});
+test('disabled tug engines and zero nonnegative FA settings remain valid without hidden thrust', () => {
+  const { trainSpaceProfile }=require('../../.cache/tuglab2-tests/client/src/tuglab2/config.js');
+  const { spaceEngineWrench }=require('../../.cache/tuglab2-tests/client/src/u2taglab/physics/flightAssist.js');
+  const cfg=createDefaultTrainConfig(); cfg.ships.C.enginesEnabled=false;
+  for (const key of ['forwardForce','reverseForce','lateralForce','yawTorque','coastDeadzone','lateralComfort']) cfg.ships.C[key]=0;
+  const s=createTrain(cfg), input={forward:1,lateral:1,yaw:1,brake:false,action:false,toggleFA:false};
+  const w=spaceEngineWrench(s.bodies.C,input,true,trainSpaceProfile(s.config,'C'),1/60);
+  near(w.force.x,0); near(w.force.y,0); near(w.torque,0); assert.equal(validTrainState(s),true);
+});
+test('world settings and field coefficients are validated before accepting a profile configuration', () => {
+  const mutations=[w=>w.seed=-1,w=>w.seed=NaN,w=>w.density=-1,w=>w.density=Infinity,w=>w.spawnPoint.x=NaN,
+    w=>w.finishPoint.y=Infinity,w=>w.startClearance=-1,w=>w.time=NaN,w=>w.fieldShipRadii.A=0];
+  const base=empty();
+  for (const mutate of mutations) {
+    const cfg=createDefaultTrainConfig(); mutate(cfg.world); assert.throws(()=>createTrain(cfg));
+    const s=cloneTrainState(base); mutate(s.world); const r=advanceTrain(s,1/60); assert.ok(r.stopReason); assert.equal(r.state,s);
+  }
+  const field={id:'field',kind:'plasma',center:{x:0,y:0},radius:100,drift:{x:0,y:0},pressure:1,resistiveK:0,topology:'linear',direction:{x:1,y:0}};
+  for (const mutate of [f=>f.pressure=-1,f=>f.resistiveK=-1,f=>f.radius=0,f=>f.drift.x=NaN]) {
+    const cfg=createDefaultTrainConfig(); cfg.world.fields=[structuredClone(field)]; mutate(cfg.world.fields[0]); assert.throws(()=>createTrain(cfg));
+  }
+});
+test('paused default AB and BC recapture inclusively at their real maximum without snapping l0 or velocities', () => {
+  const initial=createTrain(createDefaultTrainConfig());
+  for (const id of ['AB','BC']) {
+    const s=setTrainConnection(initial,id,false).state;
+    const actual=trainConnectionGeometry(s,s.connections.find(c=>c.id===id)).distance;
+    assert.ok(Math.abs(actual-360)<1e-10);
+    const r=setTrainConnection(s,id,true); assert.equal(r.reason,undefined); near(r.state.connections.find(c=>c.id===id).restLength,actual,0);
+    assert.deepEqual(r.state.bodies,s.bodies); assert.equal(r.state.world.time,0); assert.equal(r.state.paused,true);
+    s.bodies[id==='AB'?'A':'C'].position.x += id==='AB'?1e-3:-1e-3;
+    const rejected=setTrainConnection(s,id,true); assert.ok(rejected.reason); assert.equal(rejected.state,s);
+  }
 });

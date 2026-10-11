@@ -1,5 +1,7 @@
 ## TugLab-2 — первый играбельный поезд (11 октября 2026)
 
+Исправлены замечания core-review F1/F2 одним исправлением класса валидации и численной границы захвата. Поведенческий RED3 → полный GREEN26/26; общий typecheck/npm test PASS. Отчёт дополнен `docs/reports/tuglab2-core.md`; приёмка этапа зависит от scoped re-review и независимой браузерной проверки.
+
 PR47 draft, core d82e9d3: общий транзакционный шаг A/B/C/двух пружин/world CCD,22physics/435legacy/npmtest PASS. Независимый core-review GPT6-Astra идёт. Single ровно один read-only advanceSpaceWorld, limitCountsExact=false (н/д); train=true. Первый coast main.tsx наследуетLabInput/spaceInputFrame и enginesA, Czero. Browser missingpageRED→GREEN; keyboardfocusRED→GREEN с assert speedA>1. Живой Chrome D600мс далA11.85/B3.05/C1.24м/с. Началоpaused, правильныеports/360м, независимыеlinks/Restart. LAN5176/tuglab2.html HTTP200; общая buildPages fourappsPASS, собранная5177/tuglab2/ browserPASS. Это рабочий coast, ассистент/replay/матрица/Android ещё впереди.
 
 Отчёты: docs/reports/tuglab2-core.md и tuglab2-baseline-qa.md. Независимый legacy QA8U2 suites/74checks +TugLabsmoke/share/lifecycle +BonkLabmouse/preset PASS,95PNG. Первый concurrent lifecycle timeout сохранён, повтор неизменённогоPASS, причина не доказана. Новых указаний PR46/47 нет. Merge/release/deploy не выполнялись.

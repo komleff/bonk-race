@@ -2,9 +2,45 @@ import { isValidBody } from '../tuglab/physics/body';
 import { validNumerics } from '../tuglab/physics/advance';
 import { attachmentState, couplingGeometry } from '../tuglab/physics/coupling';
 import { hullCircleRadius, hullInertia } from '../u2taglab/profile';
+import { SPACE_FIELD_INFO } from '../u2taglab/fields';
+import type { SpaceWorld } from '../u2taglab/world';
 import { worldHasPenetration } from '../u2taglab/physics/worldContacts';
 import { cloneTrainConfig } from './config';
-import type { TrainBody, TrainBodyId, TrainConfig, TrainConnection, TrainConnectionId, TrainDiagnostics, TrainState } from './types';
+import type { TrainBody, TrainBodyId, TrainConfig, TrainConnection, TrainConnectionId, TrainDiagnostics, TrainShipConfig, TrainState } from './types';
+
+const positive = (values: number[]) => values.every(value => Number.isFinite(value) && value > 0);
+const nonnegative = (values: number[]) => values.every(value => Number.isFinite(value) && value >= 0);
+function validShipProfile(profile: TrainShipConfig, id: TrainBodyId): boolean {
+  if (!profile || !profile.geometry || !profile.speedLimits) return false;
+  return (id === 'B' ? ['XS', 'S', 'M', 'L', 'XL', 'XXL'] : ['S', 'M', 'L', 'XL']).includes(profile.size)
+    && typeof profile.enginesEnabled === 'boolean'
+    && positive([profile.mass, profile.geometry.length, profile.geometry.width, hullCircleRadius(profile.geometry),
+      hullInertia(profile.mass, profile.geometry), profile.speedLimit, profile.yawLimit, profile.crewGLimit,
+      profile.comfortableBrakingTime, profile.emergencyBrakingTime, profile.yawStopTime,
+      profile.speedLimits.forward, profile.speedLimits.reverse, profile.speedLimits.lateral])
+    && nonnegative([profile.forwardForce, profile.reverseForce, profile.lateralForce, profile.yawTorque, profile.coastDeadzone, profile.lateralComfort])
+    && (id !== 'B' || (!profile.enginesEnabled && [profile.forwardForce, profile.reverseForce, profile.lateralForce, profile.yawTorque].every(value => value === 0)));
+}
+function validWorldSettings(world: SpaceWorld): boolean {
+  if (!world || !world.spawnPoint || !world.finishPoint || !world.fieldShipRadii
+    || !Array.isArray(world.fields) || !Array.isArray(world.statics) || !Array.isArray(world.asteroids)) return false;
+  if (!Number.isInteger(world.seed) || world.seed < 0 || world.seed > 0xffffffff
+    || !positive([world.width, world.height, world.density, world.fieldShipRadii.A, world.fieldShipRadii.B])
+    || !nonnegative([world.startClearance, world.time]) || !Number.isSafeInteger(world.tick) || world.tick < 0
+    || ![world.spawnPoint.x, world.spawnPoint.y, world.finishPoint.x, world.finishPoint.y].every(Number.isFinite)) return false;
+  const fieldIds = new Set<string>();
+  return world.fields.every(field => {
+    if (!field || !field.center || !field.drift || !field.direction || typeof field.id !== 'string' || !field.id || fieldIds.has(field.id)
+      || !Object.hasOwn(SPACE_FIELD_INFO, field.kind) || !['linear', 'vortex'].includes(field.topology)
+      || !positive([field.radius]) || !nonnegative([field.pressure, field.resistiveK])
+      || ![field.center.x, field.center.y, field.drift.x, field.drift.y, field.direction.x, field.direction.y].every(Number.isFinite)) return false;
+    fieldIds.add(field.id); return true;
+  });
+}
+function validProfileConfiguration(config: TrainConfig): boolean {
+  return Boolean(config?.ships) && ['A', 'B', 'C'].every(id => validShipProfile(config.ships[id as TrainBodyId], id as TrainBodyId))
+    && validWorldSettings(config.world);
+}
 
 export function emptyTrainDiagnostics(): TrainDiagnostics {
   return { solverSubsteps: 0, solverAttempts: 0, outsideSpeedRange: false, limitCountsExact: true, limitActivations: { AB: 0, BC: 0 }, couplingImpulse: { AB: 0, BC: 0 } };
@@ -26,6 +62,7 @@ export function trainBounds(state: TrainState) {
 }
 export function validTrainState(state: TrainState): boolean {
   const { world, config } = state;
+  if (!validProfileConfiguration(config) || !validWorldSettings(world)) return false;
   const bodies = trainNamedBodies(state), ids = [...bodies.map(b => b.id), ...world.statics.map(b => b.id)];
   const numeric = config.numerics;
   if (!['train', 'single'].includes(config.composition) || !state.bodies.A || !state.bodies.B
@@ -56,13 +93,10 @@ export function validTrainState(state: TrainState): boolean {
 }
 export function createTrain(original: TrainConfig): TrainState {
   const config = cloneTrainConfig(original), bodies = {} as TrainState['bodies'];
+  if (!validProfileConfiguration(config)) throw new Error('Недопустимые физические профили, настройки FA или мира');
   const ids: TrainBodyId[] = config.composition === 'single' ? ['A', 'B'] : ['A', 'B', 'C'];
   for (const id of ids) {
     const p = config.ships[id], radius = hullCircleRadius(p.geometry);
-    if (![p.geometry.length, p.geometry.width, p.mass].every(v => Number.isFinite(v) && v > 0)
-      || ![p.forwardForce, p.reverseForce, p.lateralForce, p.yawTorque].every(v => Number.isFinite(v) && v >= 0)
-      || ![p.speedLimits.forward, p.speedLimits.reverse, p.speedLimits.lateral].every(v => Number.isFinite(v) && v > 0)) throw new Error('Недопустимый профиль корабля');
-    if (id === 'B' && (p.enginesEnabled || [p.forwardForce, p.reverseForce, p.lateralForce, p.yawTorque].some(v => v !== 0))) throw new Error('Двигатели груза должны быть выключены');
     const body: TrainBody = { id, mass: p.mass, radius, inertia: hullInertia(p.mass, p.geometry), position: { ...config.world.spawnPoint },
       velocity: { x: 0, y: 0 }, angle: 0, angularVelocity: 0 };
     if (id !== 'A') {
@@ -105,7 +139,12 @@ export function setTrainConnection(state: TrainState, id: TrainConnectionId, con
   const limits = state.config.ships[id === 'AB' ? 'A' : 'C'].speedLimits;
   const maxSpeed = Math.min(limits.forward, limits.reverse, limits.lateral);
   if (![limits.forward, limits.reverse, limits.lateral].every(v => Number.isFinite(v) && v > 0)) return reject('Некорректные линейные лимиты тягача');
-  if (!Number.isFinite(c.captureMaxLength) || distance < 2 || distance > c.captureMaxLength) return reject('Крепления вне диапазона захвата от 2 м до LAB-предела модуля');
+  // Включительные границы используют тот же масштабированный epsilon, что и ограничения длины; l0 не округляется.
+  const epsilon = state.config.numerics.normalEpsilon;
+  if (!Number.isFinite(c.captureMaxLength) || !Number.isFinite(epsilon) || epsilon <= 0
+    || distance < 2 - epsilon * 2 || distance > c.captureMaxLength + epsilon * Math.max(1, c.captureMaxLength)) {
+    return reject('Крепления вне диапазона захвата от 2 м до LAB-предела модуля');
+  }
   if (speed > maxSpeed) return reject('Скорость креплений превышает минимум линейных лимитов тягача');
   if (worldHasPenetration(trainNamedBodies(state), state.world.statics, trainBounds(state), state.config.numerics.normalEpsilon)) return reject('Захват при пересечении тел или препятствий запрещён');
   const result = cloneTrainState(state), link = result.connections.find(c => c.id === id)!;

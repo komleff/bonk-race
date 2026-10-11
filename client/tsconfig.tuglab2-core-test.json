@@ -4,5 +4,5 @@
     "target": "ES2022", "module": "CommonJS", "lib": ["ES2022", "DOM"],
     "noEmit": false, "rootDir": "..", "outDir": "../.cache/tuglab2-tests"
   },
-  "include": ["src/tuglab2/types.ts", "src/tuglab2/config.ts", "src/tuglab2/train.ts", "src/tuglab2/physics.ts"]
+  "include": ["src/tuglab2/types.ts", "src/tuglab2/config.ts", "src/tuglab2/train.ts", "src/tuglab2/physics.ts", "src/u2taglab/physics/flightAssist.ts"]
 }
