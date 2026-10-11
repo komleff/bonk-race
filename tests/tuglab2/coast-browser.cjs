@@ -16,7 +16,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.getByRole('button', { name: 'Пауза', exact: true }).click();
     const hud = await page.locator('[data-testid="train-hud"]').textContent();
     assert.match(hud, /A/); assert.match(hud, /B/); assert.match(hud, /C/);
-    assert.ok(Number(/A: ([0-9.]+) м/.exec(hud)?.[1]) > 1, 'клавиатура должна разгонять A');
+    assert.ok(Number(await page.getByTestId('body-A').getAttribute('data-speed')) > 1, 'клавиатура должна разгонять A');
     assert.match(hud, /AB/); assert.match(hud, /BC/);
     assert.ok(Number(await page.locator('[data-testid="train-hud"]').getAttribute('data-time')) > .2);
     await page.getByRole('button', { name: 'AB: расцепить', exact: true }).click();
