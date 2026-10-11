@@ -393,3 +393,5 @@ bd list --status=open
 TugLab-2 gate этапа1: `4172997` independently APPROVED (GPT-6-astra), core26/26; scoped dev/built recapture QA4/4 PASS. Первый coast playable доставлен, `bonk-race-tug2.1` закрыт; `bonk-race-tug2.2` in_progress — causal assistant/session/recording. Постоянные отчёты `docs/reports/tuglab2-core-review.md`, `tuglab2-coast-qa.md` сохраняют первоначальные замечания и повторные результаты. Полная UI/матрица/Android ещё не квалифицированы.
 
 TugLab-2: журнал accepted forceSamples добавлен697bfdb и независимо APPROVED;29/29 core и retrycollector с астероидами PASS. Session/assistant/recording in_progress, полная UI/матрица ещё впереди.
+
+TugLab-2 core05f91f5: engineWrench metadata отделены от totalexternal для полей;31/31 core и independent scopedAPPROVED. Session этап2 завершает строгий import/CSV/long-record границы; UI preparation готова, implementation ждёт gate. Временные plottingtools изолированы в /tmp, зависимости продукта не изменены.
