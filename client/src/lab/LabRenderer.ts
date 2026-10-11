@@ -240,7 +240,8 @@ export class LabRenderer {
         if (state.spaceWorld) this.drawSpaceWorld(ctx, state);
         else this.drawObstacles(ctx, state);
         this.drawOrbs(ctx, state);
-        if (state.towing) this.drawTowing(ctx, state);
+        if (state.train) this.drawTrain(ctx, state);
+        else if (state.towing) this.drawTowing(ctx, state);
 
         // Trail: записываем точку и рисуем
         const now = performance.now();
@@ -949,7 +950,7 @@ export class LabRenderer {
         // 2. Стрелка силы FA (зелёная, сплошная)
         const maxThrust = this.normMaxThrust;
         const forceMag = Math.hypot(state.assistFx, state.assistFy);
-        if (forceMag > 1) {
+        if (forceMag > 1 && !state.train) {
             const normForce = Math.min(forceMag / maxThrust, 1);
             const len = baseLen * normForce;
             const dirX = state.assistFx / forceMag;
@@ -1068,6 +1069,51 @@ export class LabRenderer {
         ctx.restore();
     }
 
+    private drawTrain(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const train = state.train!;
+        const bodies = { A: { position: { x: state.x, y: state.y }, angle: state.angle, radius: state.radius }, B: train.B, C: train.C };
+        const anchor = (id: 'A' | 'B' | 'C', end: string) => {
+            const b = bodies[id], offset = end === 'nose' ? b.radius : -b.radius;
+            return { x: b.position.x + Math.cos(b.angle) * offset, y: b.position.y + Math.sin(b.angle) * offset };
+        };
+        ctx.save();
+        for (const link of train.connections) {
+            if (!link.connected) continue;
+            const a = anchor(link.bodyA, link.attachmentA), b = anchor(link.bodyB, link.attachmentB);
+            const dx = b.x - a.x, dy = b.y - a.y, length = Math.hypot(dx, dy) || 1;
+            ctx.strokeStyle = link.id === 'AB' ? '#ffcc66' : '#b9e87e'; ctx.lineWidth = 2 / this.scale;
+            ctx.beginPath(); ctx.moveTo(a.x, a.y);
+            for (let i = 1; i < 16; i++) {
+                const offset = (i % 2 ? 1 : -1) * 4 / this.scale;
+                ctx.lineTo(a.x + dx * i / 16 - dy / length * offset, a.y + dy * i / 16 + dx / length * offset);
+            }
+            ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+        for (const id of ['B', 'C'] as const) {
+            const b = bodies[id]; ctx.fillStyle = id === 'B' ? '#ddaa55' : '#75bc66'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 / this.scale;
+            ctx.beginPath(); ctx.arc(b.position.x, b.position.y, b.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(b.position.x, b.position.y); ctx.lineTo(b.position.x + Math.cos(b.angle) * b.radius, b.position.y + Math.sin(b.angle) * b.radius); ctx.stroke();
+            ctx.font = `${12 / this.scale}px sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText(id, b.position.x, b.position.y + 4 / this.scale);
+        }
+        // Стрелки отражают последний принятый средний двигателя, отдельно от внешних полей.
+        for (const id of ['A', 'C'] as const) {
+            const b = bodies[id], wrench = train.engineWrenches[id]; if (!wrench) continue;
+            const force = Math.hypot(wrench.force.x, wrench.force.y);
+            if (force > 1) {
+                const length = b.radius * 3 * this.arrowScale * Math.min(force / this.normMaxThrust, 1);
+                this.drawArrow(ctx, b.position.x, b.position.y, b.position.x + wrench.force.x / force * length, b.position.y + wrench.force.y / force * length, '#66ff8c', train.paused);
+            }
+            if (Math.abs(wrench.torque) > 1) {
+                const sign = Math.sign(wrench.torque), radius = b.radius * 1.3;
+                ctx.strokeStyle = '#66ff8c'; ctx.lineWidth = 2 / this.scale;
+                ctx.beginPath(); ctx.arc(b.position.x, b.position.y, radius, b.angle, b.angle + sign * Math.PI / 2, sign < 0); ctx.stroke();
+                const end = b.angle + sign * Math.PI / 2, x = b.position.x + Math.cos(end) * radius, y = b.position.y + Math.sin(end) * radius;
+                this.drawArrow(ctx, x + Math.sin(end) * sign * 6 / this.scale, y - Math.cos(end) * sign * 6 / this.scale, x, y, '#66ff8c');
+            }
+        }
+        ctx.restore();
+    }
+
     private drawSpaceRadar(ctx: CanvasRenderingContext2D, state: SandboxState): void {
         const world = state.spaceWorld;
         if (!world) return;
@@ -1098,7 +1144,8 @@ export class LabRenderer {
         };
         for (const object of world.statics) dot(object.position, object.radius, object.kind === "station" ? "#63c9e5" : "#b48b62");
         for (const object of world.asteroids) dot(object.position, object.radius, "#91969e");
-        if (state.towing) dot(state.towing.B.position, state.towing.B.radius, "#ddaa55", 3);
+        if (state.train) { dot(state.train.B.position, state.train.B.radius, "#ddaa55", 3); dot(state.train.C.position, state.train.C.radius, "#75bc66", 3); }
+        else if (state.towing) dot(state.towing.B.position, state.towing.B.radius, "#ddaa55", 3);
         const speed = Math.hypot(state.vx, state.vy);
         if (speed > 0.5) {
             const velocity = project(state.vx / speed * SPACE_RADAR_RANGE_M * 0.65, state.vy / speed * SPACE_RADAR_RANGE_M * 0.65);
