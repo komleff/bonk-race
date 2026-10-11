@@ -6,7 +6,7 @@ import baseConfig from './vite.config.tuglab';
 // Новая оболочка сохраняет относительные ресурсы для корня и общей подпапки Pages.
 export default defineConfig({
   ...baseConfig,
-  define: { ...baseConfig.define, __TUGLAB2_VERSION__: JSON.stringify('0.1.0'),
+  define: { ...baseConfig.define, __TUGLAB2_APP_VERSION__: JSON.stringify('0.1.0'),
     __TUGLAB2_SOURCE_SHA__: JSON.stringify(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: __dirname }).toString().trim()) },
   plugins: [{ name: 'tuglab2-index', enforce: 'post', generateBundle(_, bundle) {
     const html = bundle['tuglab2.html'];
