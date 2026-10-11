@@ -84,9 +84,12 @@ export function validateRecording(r:TrainRecording,identity:BuildIdentity=buildI
       ||!Number.isFinite(t.time)||Math.abs(t.time-(i+1)*r.dt)>1e-7||!object(t.wrenches)||!Array.isArray(t.contacts)
       ||t.contacts.length>r.config.numerics.maxContactEvents*t.telemetry.solverSubsteps)fail();
     if(t.observation!==undefined) {
-      keys(t.observation,['time','brakeRequest','connected','distance','restLength','radialVelocity','lateralError','lateralVelocity','lateralProjection','angleError','angularVelocity']);
+      keys(t.observation,['time','brakeRequest','connected','distance','restLength','radialVelocity','lateralError','lateralVelocity','lateralProjection','angleError','angularVelocity','track'],['time','brakeRequest','connected','distance','restLength','radialVelocity','lateralError','lateralVelocity','lateralProjection','angleError','angularVelocity']);
+      if(t.observation.track!==undefined){keys(t.observation.track,['tangentX','tangentY','longitudinalVelocityB','crossTrackB','longitudinalDistance','longitudinalClosingVelocity']);
+        if(!Object.values(t.observation.track).every(v=>typeof v==='number'&&Number.isFinite(v))
+          ||Math.abs(Math.hypot(t.observation.track.tangentX,t.observation.track.tangentY)-1)>1e-8)fail();}
       if(typeof t.observation.brakeRequest!=='boolean'||typeof t.observation.connected!=='boolean'
-        ||!Object.entries(t.observation).filter(([k])=>!['brakeRequest','connected'].includes(k)).every(([,v])=>typeof v==='number'&&Number.isFinite(v))
+        ||!Object.entries(t.observation).filter(([k])=>!['brakeRequest','connected','track'].includes(k)).every(([,v])=>typeof v==='number'&&Number.isFinite(v))
         ||t.observation.time>t.time-r.dt+1e-8||t.observation.time<0)fail();
       const observedTick=Math.round(t.observation.time/r.dt),delayTicks=Math.ceil(settings.delay/r.dt-1e-10);
       if(Math.abs(t.observation.time-observedTick*r.dt)>1e-7||observedTick<historyStart||observedTick>i-delayTicks

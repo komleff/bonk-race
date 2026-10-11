@@ -26,7 +26,7 @@ test('coast and g0 preserve C mass with exactly zero every channel and yaw wrenc
   }
 });
 test('controller limits guard and requested brake and protects current overstretch', () => {
-  const s=session({delay:0}); const o=observeAssistant(s.state,true); o.distance=0; o.radialVelocity=-100;
+  const s=session({delay:0}); const o=observeAssistant(s.state,true); o.distance=0; o.radialVelocity=-100; o.track.longitudinalDistance=0; o.track.longitudinalClosingVelocity=100;
   o.lateralError=1000; o.lateralVelocity=100; o.angleError=2; o.angularVelocity=-10;
   const guard=computeAssistant(o,s.state,{...defaultAssistantSettings(),mode:'guard'});
   near(guard.command.retro,.25); near(Math.abs(guard.command.lateral),.5); near(Math.abs(guard.command.yaw),.5);

@@ -4,6 +4,7 @@ import { worldHasPenetration, type WorldContactEvent } from '../u2taglab/physics
 import { spaceEngineWrench, spaceInputFrame } from '../u2taglab/physics/flightAssist';
 import { sampleSpaceFieldResponse } from '../u2taglab/fields';
 import { trainSpaceProfile } from '../tuglab2/config';
+import { AssistantPathTracker } from '../tuglab2/assistantPath';
 import { advanceTrain } from '../tuglab2/physics';
 import { createTrain, setTrainConnection, trainBounds, trainNamedBodies, validTrainState } from '../tuglab2/train';
 import { commandCWrench, computeAssistant, defaultAssistantSettings, observeAssistant, validateAssistantSettings, zeroCommandC,
@@ -60,11 +61,12 @@ export class LabTrain {
   reason?:string;
   needsRestart=false;
   private history:AssistantObservation[]=[];
+  private pathTracker:AssistantPathTracker;
   private disabled:boolean;
   private rearPointer=false;
   private rearKeyboard=false;
   constructor(config:TrainConfig,settings:AssistantSettings=defaultAssistantSettings(),disabled=false){
-    validateAssistantSettings(settings);this.settings={...settings};this.state=createVerticalTrain(config);this.disabled=disabled;
+    validateAssistantSettings(settings);this.settings={...settings};this.state=createVerticalTrain(config);this.disabled=disabled;this.pathTracker=new AssistantPathTracker(this.state);
     this.assistant=computeAssistant(undefined,this.state,this.settings,this.disabled);
   }
   get rearBrake(){return this.rearPointer||this.rearKeyboard;}
@@ -104,7 +106,7 @@ export class LabTrain {
     if(!input||![input.x,input.y,input.magnitude,dt].every(Number.isFinite)||Math.abs(input.x)>1||Math.abs(input.y)>1
       ||input.magnitude<0||input.magnitude>1||dt<=0||dt>.25||typeof input.brake!=='boolean'||typeof fa!=='boolean'){
       this.fail('Недопустимый конечный ввод или шаг ABC');return {accepted:false,contacts:[],reason:this.reason};}
-    const now=observeAssistant(this.state,input.brake||this.rearBrake),history=[...this.history,now];
+    const now=observeAssistant(this.state,input.brake||this.rearBrake,this.pathTracker.reference(this.state)),history=[...this.history,now];
     const delay=Math.ceil(this.settings.delay/dt-1e-10)*dt;
     let observation:AssistantObservation|undefined;
     for(let i=history.length-1;i>=0;i--)if(history[i].time<=now.time-delay+1e-10){observation=history[i];break;}
@@ -113,7 +115,7 @@ export class LabTrain {
     const r=advanceTrain(this.state,dt,sample=>{
       let engine:TrainWrench={force:{x:0,y:0},torque:0};
       if(sample.id==='A')engine=spaceEngineWrench(sample.body,spaceInputFrame(sample.body,input.x,input.y,input.magnitude,p,input.brake),fa,p,sample.subDt);
-      if(sample.id==='C')engine=commandCWrench(sample.body,command,this.state.config.ships.C,sample.subDt);
+      if(sample.id==='C')engine=commandCWrench(sample.body,command,this.state.config.ships.C,sample.subDt,observation?.track);
       return {...sampleSpaceFieldResponse(world,{...sample.body,id:sample.id},sample.time,sample.subDt,engine),engineWrench:engine};
     });
     if(r.stopReason){this.fail(r.stopReason);return {accepted:false,contacts:[],reason:r.stopReason};}
@@ -121,7 +123,7 @@ export class LabTrain {
     for(const sample of r.forceSamples){const e=sample.engineWrench!;const w=means[sample.id]??={force:{x:0,y:0},torque:0};
       durations[sample.id]=(durations[sample.id]??0)+sample.subDt;w.force.x+=e.force.x*sample.subDt;w.force.y+=e.force.y*sample.subDt;w.torque+=e.torque*sample.subDt;}
     for(const [id,w] of Object.entries(means)){w.force.x/=durations[id];w.force.y/=durations[id];w.torque/=durations[id];}
-    this.state=r.state;this.commandC={...command};this.assistant=structuredClone(assistant);this.engineWrenches=means;
+    this.state=r.state;this.pathTracker.accept(this.state);this.commandC={...command};this.assistant=structuredClone(assistant);this.engineWrenches=means;
     this.history=history.filter(o=>o.time>=now.time-2-dt);
     return {accepted:true,contacts:r.contacts};
   }

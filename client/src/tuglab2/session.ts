@@ -4,6 +4,7 @@ import { spaceEngineWrench, spaceInputFrame } from '../u2taglab/physics/flightAs
 import { sampleSpaceFieldResponse } from '../u2taglab/fields';
 import { hullCircleRadius, hullInertia } from '../u2taglab/profile';
 import { trainSpaceProfile } from './config';
+import { AssistantPathTracker } from './assistantPath';
 import { advanceTrain } from './physics';
 import { cloneTrainState, createTrain, setTrainConnection, trainBounds, trainNamedBodies, validTrainState } from './train';
 import { commandCWrench, computeAssistant, defaultAssistantSettings, observeAssistant, SESSION_LIMITS,
@@ -42,6 +43,7 @@ export class TrainSession {
   private initialSettings:AssistantSettings;
   private initialFA:boolean;
   private history:AssistantObservation[]=[];
+  private pathTracker:AssistantPathTracker;
   private disabled=false;
   private assistant:AssistantResult;
   private recordingBytes=0;
@@ -71,6 +73,7 @@ export class TrainSession {
         ||!same(this.state.config.world.fieldShipRadii[body.id],body.radius)))throw new Error('Радиус среды не соответствует начальному корпусу');
     }
     this.state.config.numerics.tickRate=1/this.dt;
+    this.pathTracker=new AssistantPathTracker(this.state);
     this.state.paused=true;this.initialState=cloneTrainState(this.state);this.initialSettings={...this.settings};this.initialFA=this.fa;
     this.assistant=computeAssistant(undefined,this.state,this.settings);this.telemetry=sampleTelemetry(this.state,this.assistant,[]);
     this.recording={schema:1,app:'tuglab2',...buildIdentity(),...pickIdentity(options),dt:this.dt,config:structuredClone(this.state.config),
@@ -89,7 +92,7 @@ export class TrainSession {
   private clearCommands(){this.history=[];this.commandC=zeroCommandC();this.assistant={...this.assistant,command:this.commandC};}
   pause(){this.state.paused=true;this.clearCommands();try{this.event('pause',true);}catch(error){if(!this.recordingLimited)throw error;}}
   restart(){
-    this.state=cloneTrainState(this.initialState);this.settings={...this.initialSettings};this.fa=this.initialFA;this.history=[];this.disabled=false;
+    this.state=cloneTrainState(this.initialState);this.pathTracker=new AssistantPathTracker(this.state);this.settings={...this.initialSettings};this.fa=this.initialFA;this.history=[];this.disabled=false;
     this.commandC=zeroCommandC();this.stoppedReason=undefined;this.comparison=undefined;this.assistant=computeAssistant(undefined,this.state,this.settings);
     this.telemetry=sampleTelemetry(this.state,this.assistant,[]);this.recording.events=[];this.recording.ticks=[];delete this.recording.stopReason;
     this.recordingLimited=false;this.recordingBytes=serializedBytes(this.recording);this.recordingNodeCount=recordingNodes(this.recording);
@@ -123,7 +126,7 @@ export class TrainSession {
     if(!validInputA(inputA)||typeof rearBrake!=='boolean')throw new Error('Недопустимый ввод A');
     if(this.state.paused)return {accepted:false,state:this.state,commandC:this.commandC,contacts:[],stopReason:this.stoppedReason};
     if(this.recording.ticks.length>=SESSION_LIMITS.maxRecordingTicks){this.stopRecording();return {accepted:false,state:this.state,commandC:this.commandC,contacts:[],stopReason:this.stoppedReason};}
-    const now=observeAssistant(this.state,inputA.brake||rearBrake), history=[...this.history,now];
+    const now=observeAssistant(this.state,inputA.brake||rearBrake,this.pathTracker.reference(this.state)), history=[...this.history,now];
     const effectiveDelay=Math.ceil(this.settings.delay/this.dt-1e-10)*this.dt;
     let observation:AssistantObservation|undefined;
     for(let i=history.length-1;i>=0;i--)if(history[i].time<=now.time-effectiveDelay+1e-10){observation=history[i];break;}
@@ -132,7 +135,7 @@ export class TrainSession {
     const result=advanceTrain(this.state,this.dt,sample=>{
       let engine:TrainWrench={force:{x:0,y:0},torque:0};
       if(sample.id==='A')engine=spaceEngineWrench(sample.body,spaceInputFrame(sample.body,inputA.x,inputA.y,inputA.magnitude,p,inputA.brake),fa,p,sample.subDt);
-      if(sample.id==='C')engine=commandCWrench(sample.body,command,this.state.config.ships.C,sample.subDt);
+      if(sample.id==='C')engine=commandCWrench(sample.body,command,this.state.config.ships.C,sample.subDt,(replay?replay.observation:observation)?.track);
       return {...sampleSpaceFieldResponse(world,{...sample.body,id:sample.id},sample.time,sample.subDt,engine),engineWrench:engine};
     });
     if(result.stopReason){this.state.paused=true;this.clearCommands();this.stoppedReason=result.stopReason;this.recording.stopReason=result.stopReason;
@@ -150,7 +153,7 @@ export class TrainSession {
     let size:number,nodes:number;
     try{nodes=recordingNodes(tick);size=serializedBytes(tick)+(this.recording.ticks.length?1:0);}catch{this.stopRecording();return {accepted:false,state:this.state,commandC:this.commandC,contacts:[],stopReason:this.stoppedReason};}
     if(!fitsRecording(this.recordingBytes+size)||this.recordingNodeCount+nodes>MAX_RECORDING_NODES-16){this.stopRecording();return {accepted:false,state:this.state,commandC:this.commandC,contacts:[],stopReason:this.stoppedReason};}
-    this.state=result.state;this.commandC={...command};this.assistant=assistant;this.telemetry=telemetry;
+    this.state=result.state;this.pathTracker.accept(this.state);this.commandC={...command};this.assistant=assistant;this.telemetry=telemetry;
     if(!replay)this.history=history.filter(o=>o.time>=now.time-2-this.dt);
     this.recording.ticks.push(tick);this.recordingBytes+=size;this.recordingNodeCount+=nodes;
     if(this.telemetry.outcome!=='running'){this.state.paused=true;this.clearCommands();}

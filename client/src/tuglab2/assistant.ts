@@ -3,6 +3,7 @@ import { attachmentState } from '../tuglab/physics/coupling';
 import type { BodyState } from '../tuglab/types';
 import type { TrainShipConfig, TrainState, TrainWrench } from './types';
 import { trainConnectionGeometry } from './train';
+import { AssistantPathTracker, type AssistantPathReference } from './assistantPath';
 
 export type AssistantMode = 'coast' | 'guard' | 'brake';
 export interface AssistantSettings {
@@ -10,9 +11,10 @@ export interface AssistantSettings {
 }
 export interface CommandC { forward: 0; retro: number; lateral: number; yaw: number }
 export type AssistantStatus = 'coast' | 'waiting' | 'guarding' | 'braking' | 'saturated' | 'disconnected';
+export interface AssistantTrackObservation { tangentX:number; tangentY:number; longitudinalVelocityB:number; crossTrackB:number; longitudinalDistance:number; longitudinalClosingVelocity:number }
 export interface AssistantObservation {
   time: number; brakeRequest: boolean; connected: boolean; distance: number; restLength: number; radialVelocity: number;
-  lateralError: number; lateralVelocity: number; lateralProjection: number; angleError: number; angularVelocity: number;
+  lateralError: number; lateralVelocity: number; lateralProjection: number; angleError: number; angularVelocity: number; track?:AssistantTrackObservation;
 }
 export interface AssistantResult {
   command: CommandC; status: AssistantStatus; saturation: { retro: boolean; lateral: boolean; yaw: boolean };
@@ -34,21 +36,25 @@ export function validCommandC(c: CommandC): boolean {
   return Boolean(c) && c.forward === 0 && Number.isFinite(c.retro) && c.retro >= 0 && c.retro <= 1
     && Number.isFinite(c.lateral) && Math.abs(c.lateral) <= 1 && Number.isFinite(c.yaw) && Math.abs(c.yaw) <= 1;
 }
-export function observeAssistant(state: TrainState, brakeRequest: boolean): AssistantObservation {
+export function observeAssistant(state: TrainState, brakeRequest: boolean, reference?:AssistantPathReference): AssistantObservation {
+  if(arguments.length<3)reference=new AssistantPathTracker(state).reference(state);
   const c = state.bodies.C, b = state.bodies.B, link = state.connections.find(l => l.id === 'BC');
   const empty: AssistantObservation = { time: state.world.time, brakeRequest, connected: false, distance: 0,
     restLength: 0, radialVelocity: 0, lateralError: 0, lateralVelocity: 0, lateralProjection: 0, angleError: 0, angularVelocity: 0 };
-  if (!c || !link) return empty;
+  if (!c || !link || !reference) return empty;
   const pc = attachmentState(c,'nose'), pb = attachmentState(b,'tail');
   const dx = pb.position.x-pc.position.x, dy = pb.position.y-pc.position.y, d = Math.hypot(dx,dy);
-  const tx = -Math.sin(b.angle), ty = Math.cos(b.angle);
+  const tangent=reference.tangent,tx=-tangent.y,ty=tangent.x;
   const vcx = pc.velocity.x-pb.velocity.x, vcy = pc.velocity.y-pb.velocity.y;
-  const error = Math.atan2(dy,dx)-c.angle;
+  const crossTrackB=(b.position.x-reference.point.x)*tx+(b.position.y-reference.point.y)*ty;
+  const error=Math.atan2(tangent.y,tangent.x)-c.angle;
   return { time: state.world.time, brakeRequest, connected: state.connections.every(l => l.connected), distance: d,
     restLength: link.restLength, radialVelocity: d > 0 ? (-vcx*dx-vcy*dy)/d : 0,
-    lateralError: -dx*tx-dy*ty, lateralVelocity: vcx*tx+vcy*ty,
+    // Задний тягач тянет груз к уже пройденной траектории, не наследует его занос/разворот.
+    lateralError: -dx*tx-dy*ty+2*crossTrackB, lateralVelocity: vcx*tx+vcy*ty+2*(b.velocity.x*tx+b.velocity.y*ty),
     lateralProjection: tx*Math.sin(c.angle)-ty*Math.cos(c.angle),
-    angleError: Math.atan2(Math.sin(error),Math.cos(error)), angularVelocity: c.angularVelocity };
+    angleError: Math.atan2(Math.sin(error),Math.cos(error)), angularVelocity: c.angularVelocity,
+    track:{tangentX:tangent.x,tangentY:tangent.y,longitudinalDistance:dx*tangent.x+dy*tangent.y,longitudinalClosingVelocity:vcx*tangent.x+vcy*tangent.y,longitudinalVelocityB:b.velocity.x*tangent.x+b.velocity.y*tangent.y,crossTrackB} };
 }
 export function computeAssistant(o: AssistantObservation | undefined, state: TrainState, s: AssistantSettings, disabled = false): AssistantResult {
   validateAssistantSettings(s);
@@ -60,10 +66,10 @@ export function computeAssistant(o: AssistantObservation | undefined, state: Tra
   const c = state.bodies.C, p=state.config.ships.C;
   if (!p.enginesEnabled) { result.status='disconnected'; return result; }
   const r=result.requested;
-  r.retro=c.mass*Math.max(0,(o.restLength*(1+s.epsilon)-o.distance)/(s.Td*s.Td)-o.radialVelocity/s.Tv);
+  const brake=s.mode==='brake' && o.brakeRequest;
+  r.retro=c.mass*Math.max(0,(o.restLength*(1+s.epsilon)-(o.track?.longitudinalDistance??o.distance))/(s.Td*s.Td)+(o.track?o.track.longitudinalClosingVelocity:-o.radialVelocity)/s.Tv+(brake&&o.track?Math.max(0,o.track.longitudinalVelocityB)/s.Tv:0));
   r.lateral=c.mass*(-o.lateralError/(s.Tlat*s.Tlat)-o.lateralVelocity/s.Tlat)*o.lateralProjection;
   r.yaw=c.inertia*(o.angleError/(s.Tyaw*s.Tyaw)-s.yawDamping*o.angularVelocity/s.Tyaw);
-  const brake=s.mode==='brake' && o.brakeRequest;
   const retroMax=p.reverseForce*(brake?defaults.brakeRetroLimit:defaults.guardRetroLimit)*s.g;
   const lateralMax=p.lateralForce*defaults.lateralLimit*s.g, yawMax=p.yawTorque*defaults.yawLimit*s.g;
   const clamp=(v:number,m:number)=>Math.max(-m,Math.min(m,v));
@@ -77,10 +83,12 @@ export function computeAssistant(o: AssistantObservation | undefined, state: Tra
   return result;
 }
 // Команда уже ограничена режимом; преобразователь не умножает g повторно и не включает второй FA.
-export function commandCWrench(body: Readonly<BodyState>, command: CommandC, p: TrainShipConfig, dt: number): TrainWrench {
+export function commandCWrench(body: Readonly<BodyState>, command: CommandC, p: TrainShipConfig, dt: number, track?:AssistantTrackObservation): TrainWrench {
   if (!validCommandC(command) || !Number.isFinite(dt) || dt <= 0) throw new Error('Недопустимая команда C');
   if (!p.enginesEnabled) return {force:{x:0,y:0},torque:0};
-  const forward=-command.retro*p.reverseForce, lateral=command.lateral*p.lateralForce;
+  // Задержанная команда не должна разгонять поезд вперёд при текущем перевороте C.
+  const safeRetro=!track||Math.cos(body.angle)*track.tangentX+Math.sin(body.angle)*track.tangentY>0;
+  const forward=safeRetro?-command.retro*p.reverseForce:0, lateral=command.lateral*p.lateralForce;
   let torque=command.yaw*p.yawTorque;
   // Обычный ограничитель момента не меняет omega и при yaw=0 не создаёт торможения.
   if(torque*body.angularVelocity>0)torque=Math.sign(torque)*Math.min(Math.abs(torque),body.inertia*Math.max(0,p.yawLimit-Math.abs(body.angularVelocity))/dt);
