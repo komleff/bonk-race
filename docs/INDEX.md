@@ -62,6 +62,10 @@
 | [Независимое ревью сессии](reports/tuglab2-session-review.md) | Первоначальные четыре P2 и проверенные исправления R1–R5 |
 | [Независимое ревью CSV](reports/tuglab2-csv-review.md) | Экранирование заголовков и строк, сохранение числовых SI; scoped APPROVED |
 | [QA первого coast-стенда](reports/tuglab2-coast-qa.md) | Desktop/tablet-эмуляция и повторная проверка сцепок |
+| [Руководство TugLab-2](TugLab2-Guide.md) | Запуск, управление, ассистент, запись и границы проверки |
+| [Полная оболочка](reports/tuglab2-ui.md) | Авторский UI-отчёт и результаты браузерных проверок |
+| [Независимое UI-ревью](reports/tuglab2-ui-review.md) | Два P2 HUD на первом frozen UI; исправления ещё проверяются |
+| [QA общей сборки](reports/tuglab2-full-ui-qa.md) | Четыре приложения, root/arbitrarynested, desktop/touch и старая регрессия |
 | [Сценарий Android](TugLab2-Android-check.md) | Инструкция для физического устройства; фактическая приёмка остаётся открытой |
 
 ### Дизайн игры (`docs/gdd/`)
