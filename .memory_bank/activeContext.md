@@ -389,3 +389,5 @@ npm run test            # determinism + orb-bite + arena-generation + anisotropi
 bd ready
 bd list --status=open
 ```
+
+TugLab-2 gate этапа1: `4172997` independently APPROVED (GPT-6-astra), core26/26; scoped dev/built recapture QA4/4 PASS. Первый coast playable доставлен, `bonk-race-tug2.1` закрыт; `bonk-race-tug2.2` in_progress — causal assistant/session/recording. Постоянные отчёты `docs/reports/tuglab2-core-review.md`, `tuglab2-coast-qa.md` сохраняют первоначальные замечания и повторные результаты. Полная UI/матрица/Android ещё не квалифицированы.
