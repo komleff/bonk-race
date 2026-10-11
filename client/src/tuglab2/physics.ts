@@ -3,7 +3,7 @@ import { attachmentState, solveCoupling } from '../tuglab/physics/coupling';
 import { firstWorldContact, resolveWorldContact, worldHasPenetration } from '../u2taglab/physics/worldContacts';
 import { advanceSpaceWorld } from '../u2taglab/physics/advanceWorld';
 import { cloneTrainState, emptyTrainDiagnostics, trainBounds, trainConnectionGeometry, trainNamedBodies, validTrainState } from './train';
-import type { TrainAdvanceResult, TrainBodyId, TrainConnection, TrainForceSampler, TrainState, TrainWrench } from './types';
+import type { TrainAdvanceResult, TrainBodyId, TrainConnection, TrainForceApplied, TrainForceSampler, TrainState, TrainWrench } from './types';
 
 const orderedConnections = (state: TrainState) => state.connections.filter(c => c.connected).slice().sort((a, b) => a.id < b.id ? -1 : 1);
 const zeroWrench = (): TrainWrench => ({ force: { x: 0, y: 0 }, torque: 0 });
@@ -140,7 +140,7 @@ function constrainedDrift(state: TrainState, dt: number, contacts: TrainAdvanceR
 function attempt(original: TrainState, dt: number, substeps: number, sampler?: TrainForceSampler): TrainAdvanceResult | undefined {
   let state = cloneTrainState(original);
   state.diagnostics = emptyTrainDiagnostics(); state.diagnostics.solverSubsteps = substeps;
-  const contacts: TrainAdvanceResult['contacts'] = [], subDt = dt / substeps;
+  const contacts: TrainAdvanceResult['contacts'] = [], forceSamples: TrainForceApplied[] = [], subDt = dt / substeps;
   for (let step = 0; step < substeps; step++) {
     const bodies = trainNamedBodies(state);
     for (const c of state.connections) c.accumulatedImpulse = 0;
@@ -154,6 +154,8 @@ function attempt(original: TrainState, dt: number, substeps: number, sampler?: T
       const samples = bodies.map(({ id, body }) => sampler({ id, body: structuredClone(body), time: original.world.time + step * subDt, subDt }));
       samples.forEach((w, i) => {
         if (!w || !w.force || ![w.force.x, w.force.y, w.torque].every(Number.isFinite)) throw new Error('Недопустимая внешняя сила');
+        forceSamples.push({ id: bodies[i].id, time: original.world.time + step * subDt, subDt,
+          wrench: { force: { ...w.force }, torque: w.torque } });
         applyImpulse(bodies[i].body, { x: w.force.x * subDt, y: w.force.y * subDt });
         bodies[i].body.angularVelocity += w.torque * subDt / bodies[i].body.inertia;
       });
@@ -170,16 +172,23 @@ function attempt(original: TrainState, dt: number, substeps: number, sampler?: T
     const g = trainConnectionGeometry(state, c); c.length = g.distance; c.lastNormal = { ...g.normal };
   }
   state.diagnostics.outsideSpeedRange = trainNamedBodies(state).some(({ body }) => Math.hypot(body.velocity.x, body.velocity.y) > state.config.numerics.maxValidatedSpeed);
-  return { state, contacts, diagnostics: state.diagnostics };
+  return { state, contacts, forceSamples, diagnostics: state.diagnostics };
 }
 export function advanceTrain(state: TrainState, dt: number, forces?: TrainForceSampler): TrainAdvanceResult {
-  const fail = (stopReason: string): TrainAdvanceResult => ({ state, contacts: [], diagnostics: emptyTrainDiagnostics(), stopReason });
+  const fail = (stopReason: string): TrainAdvanceResult => ({ state, contacts: [], forceSamples: [], diagnostics: emptyTrainDiagnostics(), stopReason });
   if (!Number.isFinite(dt) || dt <= 0 || !validTrainState(state) || !Number.isFinite(state.world.time + dt)
     || !Number.isSafeInteger(state.world.tick + 1)) return fail('Недопустимое состояние или численные настройки поезда');
   if (orderedConnections(state).some(c => trainConnectionGeometry(state, c).distance <= state.config.numerics.normalEpsilon)) return fail('Вырожденная геометрия: крепления почти совпадают');
   // Один тягач сохраняет точную численную опору U2TagLab; у поезда всегда общий трёхтелесный решатель.
   if (state.config.composition === 'single') {
-    const legacy = advanceSpaceWorld(state.bodies.A, state.bodies.B, state.connections[0], state.world, dt, state.config.numerics, forces);
+    const collected: TrainForceApplied[] = [];
+    const sampler: TrainForceSampler | undefined = forces ? sample => {
+      const wrench = forces(sample);
+      if (!wrench || !wrench.force || ![wrench.force.x, wrench.force.y, wrench.torque].every(Number.isFinite)) throw new Error('Недопустимая внешняя сила');
+      collected.push({ id: sample.id, time: sample.time, subDt: sample.subDt, wrench: { force: { ...wrench.force }, torque: wrench.torque } });
+      return wrench;
+    } : undefined;
+    const legacy = advanceSpaceWorld(state.bodies.A, state.bodies.B, state.connections[0], state.world, dt, state.config.numerics, sampler);
     if (legacy.stopReason) return fail(legacy.stopReason);
     const next = cloneTrainState(state), c = next.connections[0];
     next.bodies.A = { ...legacy.A, id: 'A' }; next.bodies.B = { ...legacy.B, id: 'B' };
@@ -187,7 +196,9 @@ export function advanceTrain(state: TrainState, dt: number, forces?: TrainForceS
     next.diagnostics.solverSubsteps = legacy.diagnostics.solverSubsteps ?? 0; next.diagnostics.solverAttempts = 1;
     next.diagnostics.limitCountsExact = false;
     next.diagnostics.couplingImpulse.AB = legacy.diagnostics.couplingImpulse; next.diagnostics.outsideSpeedRange = legacy.diagnostics.outsideSpeedRange;
-    return { state: next, contacts: legacy.contacts, diagnostics: next.diagnostics };
+    // У принятой последней попытки ровно N тел × solverSubsteps вызовов; префикс повторов отбрасываем.
+    const count = (legacy.diagnostics.solverSubsteps ?? 0) * (2 + state.world.asteroids.length);
+    return { state: next, contacts: legacy.contacts, forceSamples: count > 0 ? collected.slice(-count) : [], diagnostics: next.diagnostics };
   }
   let tries = 0;
   for (let steps = state.config.numerics.substeps; steps <= state.config.numerics.maxAdaptiveSubsteps; steps *= 2) {

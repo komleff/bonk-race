@@ -240,3 +240,50 @@ test('paused default AB and BC recapture inclusively at their real maximum witho
     const rejected=setTrainConnection(s,id,true); assert.ok(rejected.reason); assert.equal(rejected.state,s);
   }
 });
+test('accepted wrench evidence exactly represents applied forces for every body and substep', () => {
+  const s=empty(); s.connections.forEach(c=>c.connected=false); const dt=.1;
+  const force=({id,time})=>({force:{x:id==='B'?2000+time*100:0,y:id==='A'?3000:0},torque:id==='C'?4000:0});
+  const before=structuredClone(s), r=advanceTrain(s,dt,force); assert.equal(r.stopReason,undefined);
+  assert.ok(Array.isArray(r.forceSamples)); assert.equal(r.forceSamples.length, r.diagnostics.solverSubsteps*3);
+  const impulses={A:{x:0,y:0,torque:0},B:{x:0,y:0,torque:0},C:{x:0,y:0,torque:0}};
+  for (let i=0;i<r.forceSamples.length;i++) {
+    const applied=r.forceSamples[i], expectedTime=s.world.time+Math.floor(i/3)*dt/r.diagnostics.solverSubsteps;
+    assert.equal(applied.id,['A','B','C'][i%3]); near(applied.time,expectedTime,0); near(applied.subDt,dt/r.diagnostics.solverSubsteps,0);
+    assert.deepEqual(applied.wrench,force({id:applied.id,time:applied.time}));
+    impulses[applied.id].x+=applied.wrench.force.x*applied.subDt; impulses[applied.id].y+=applied.wrench.force.y*applied.subDt;
+    impulses[applied.id].torque+=applied.wrench.torque*applied.subDt;
+  }
+  for (const id of ['A','B','C']) {
+    near(r.state.bodies[id].velocity.x,impulses[id].x/s.bodies[id].mass); near(r.state.bodies[id].velocity.y,impulses[id].y/s.bodies[id].mass);
+    near(r.state.bodies[id].angularVelocity,impulses[id].torque/s.bodies[id].inertia);
+  }
+  assert.deepEqual(s,before);
+});
+test('accepted force evidence excludes sampled rejected attempts in train and single and all evidence on failure', () => {
+  for (const composition of ['train','single']) {
+    const cfg=createDefaultTrainConfig(); cfg.composition=composition; cfg.world.width=3000; cfg.numerics.restitution=1;
+    cfg.numerics.substeps=1; cfg.numerics.maxContactEvents=1; cfg.numerics.maxAdaptiveSubsteps=32;
+    const s=createTrain(cfg); s.connections.forEach(c=>c.connected=false); s.bodies.A.velocity.x=100000;
+    const calls=[];
+    const pureForce=({id,time,subDt})=>{
+      calls.push({id,time,subDt}); return {force:{x:id==='A'?1000:0,y:0},torque:0};
+    };
+    const r=advanceTrain(s,.1,pureForce); assert.equal(r.stopReason,undefined); assert.ok(r.diagnostics.solverSubsteps>1);
+    const count=Object.keys(s.bodies).length;
+    assert.ok(calls.length>count*r.diagnostics.solverSubsteps,'fixture must sample a failed attempt before accepted retry');
+    assert.ok(Array.isArray(r.forceSamples)); assert.equal(r.forceSamples.length,count*r.diagnostics.solverSubsteps);
+    for (let i=0;i<r.forceSamples.length;i++) {
+      const applied=r.forceSamples[i]; near(applied.subDt,.1/r.diagnostics.solverSubsteps,0);
+      near(applied.time,s.world.time+Math.floor(i/count)*applied.subDt,0);
+    }
+    const reference=cloneTrainState(s); reference.config.numerics.substeps=r.diagnostics.solverSubsteps;
+    const clean=advanceTrain(reference,.1,({id})=>({force:{x:id==='A'?1000:0,y:0},torque:0}));
+    assert.deepEqual(r.forceSamples,clean.forceSamples); assert.deepEqual(r.state.bodies,clean.state.bodies); assert.deepEqual(r.contacts,clean.contacts);
+    s.config.numerics.maxAdaptiveSubsteps=1;
+    const fail=advanceTrain(s,.1,pureForce); assert.ok(fail.stopReason); assert.deepEqual(fail.forceSamples,[]); assert.equal(fail.state,s);
+  }
+});
+test('invalid sampler forces and force-free accepted steps expose no wrench evidence', () => {
+  const s=empty(); let r=advanceTrain(s,.01); assert.equal(r.stopReason,undefined); assert.deepEqual(r.forceSamples,[]);
+  r=advanceTrain(s,.01,()=>({force:{x:NaN,y:0},torque:0})); assert.ok(r.stopReason); assert.deepEqual(r.forceSamples,[]);
+});

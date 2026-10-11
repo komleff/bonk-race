@@ -35,8 +35,9 @@ export interface TrainState {
 }
 export interface TrainForceSample { id: string; body: Readonly<BodyState>; time: number; subDt: number }
 export interface TrainWrench { force: Vec2; torque: number }
+export interface TrainForceApplied { id: string; time: number; subDt: number; wrench: TrainWrench }
 // Самплер чистый: время/история команд изменяются только после принятия общего тика.
 export type TrainForceSampler = (sample: TrainForceSample) => TrainWrench;
 export interface TrainAdvanceResult {
-  state: TrainState; contacts: WorldContactEvent[]; diagnostics: TrainDiagnostics; stopReason?: string;
+  state: TrainState; contacts: WorldContactEvent[]; forceSamples: TrainForceApplied[]; diagnostics: TrainDiagnostics; stopReason?: string;
 }
