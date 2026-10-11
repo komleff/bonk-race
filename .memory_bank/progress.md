@@ -1,5 +1,7 @@
 ## TugLab-2 — реализация (11 октября 2026)
 
+Результат Developer .1: совместная физика A–B–C, профили и захват исполняются; core typecheck и 22/22physics PASS, общий npm test PASS. Угол/положение single повторяют контрольный legacy-прогон ровно; для train симметричные пружинные импульсы и совместная матрица демпферов. Этап не заменяет будущую квалификационную матрицу/ревью и Android. Счётчики ограничителей train точные; single помечает `limitCountsExact=false`, поскольку прежнее ядро не возвращает этих данных.
+
 Принятое ТЗ f5cfdbea перенесено cherry-pick -x в изолированную feat/u2-tuglab2 от свежего c048de7. План/Verification Contract: docs/superpowers/plans/2026-10-11-tuglab2.md. bonk-race-tug2 IN_PROGRESS, этапы .1 физика/.2 ассистент+запись/.3 оболочка/.4 квалификация/.5 Android. Developer GPT-6.1-Sol пишет общий шаг; независимые проверки последуют. Opus/Gemini недоступны, внешние платные API не запускаются.
 
 Legacy bd0.49.6 проверен по официальному SHA256; backup основной SQLite перед additive import59created/0updated/31unchanged. tug2 реально импортирован и прочитан из БД; миграций нет. Branch JSONL сохраняет прежние записи и только относящиеся к tug2 изменения. Worktree hooks используют прежний no-db механизм, БД синхронизируется явными legacy командами. Основной checkout/stash сохранены.
