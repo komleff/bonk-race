@@ -161,7 +161,6 @@ export class BonkLab {
     private train?: LabTrain;
     private trainBase?: SpaceShareSnapshot;
     private prevC?: BodyState;
-    private trainFinished = new Set<string>();
     private space?: SpaceProfile;
     private spaceWorld?: SpaceWorld;
     private spaceWorldRecipe?: SpaceWorldRecipe;
@@ -629,7 +628,6 @@ export class BonkLab {
         this.respawnCountdown = 0;
         this.startCountdown = 0;
         this.finished = false;
-        this.trainFinished.clear();
         this.finishTime = 0;
         this.isNewRecord = false;
         this.deathDistanceM = 0;
@@ -1184,11 +1182,7 @@ export class BonkLab {
         if (this.space) {
             if (!this.tickSpace(dt)) return;
             this.elapsedTime += dt;
-            const finish = this.arena.finishPoint;
-            if (this.train) for (const body of Object.values(this.train.state.bodies)) {
-                if (body.position.y <= finish.y && Math.abs(body.position.x-finish.x) <= this.arena.width*.3+body.radius) this.trainFinished.add(body.id);
-            }
-            if (this.train ? this.trainFinished.size === 3 : Math.abs(this.x - finish.x) <= this.arena.width * 0.3 + radius && Math.abs(this.y - finish.y) <= 12 + radius) {
+            if (this.cargoCrossedFinish()) {
                 this.finished = true; this.finishTime = this.elapsedTime;
                 if(this.train)this.pause();
                 this.isNewRecord = this.bestTime === 0 || this.elapsedTime < this.bestTime;
@@ -1472,7 +1466,7 @@ export class BonkLab {
         const distX = this.x - closestX;
         const distY = this.y - closestY;
         const touchesStrip = (distX * distX + distY * distY) <= radius * radius;
-        if (!this.finished && touchesStrip) {
+        if (!this.finished && (this.towing ? this.cargoCrossedFinish() : touchesStrip)) {
             this.finished = true;
             this.finishTime = this.elapsedTime;
             this.isNewRecord = this.bestTime === 0 || this.elapsedTime < this.bestTime;
@@ -1482,6 +1476,21 @@ export class BonkLab {
             return; // заморозить симуляцию
         }
     }
+
+    /** Центр груза пересекает финиш вперёд; проверяем ширину в точке пересечения за тик. */
+    private cargoCrossedFinish(): boolean {
+        const before = this.prevB?.position;
+        const after = (this.train ? this.train.state.bodies.B : this.towing?.B)?.position;
+        const finish = this.arena.finishPoint;
+        if (!before || !after || ![before.x, before.y, after.x, after.y, finish.x, finish.y, this.arena.width].every(Number.isFinite)) return false;
+        if (before.y <= finish.y || after.y > finish.y) return false;
+        // Масштабирование сохраняет конечную арифметику даже при большом перескоке линии.
+        const scale = Math.max(Math.abs(before.y), Math.abs(after.y), Math.abs(finish.y), 1);
+        const fraction = (before.y / scale - finish.y / scale) / (before.y / scale - after.y / scale);
+        const crossingX = before.x * (1 - fraction) + after.x * fraction;
+        return Math.abs(crossingX - finish.x) <= this.arena.width * 0.3;
+    }
+
     private tickSpace(dt: number): boolean {
         if (this.train) {
             const result=this.train.advance({x:this.inputX,y:this.inputY,magnitude:this.inputMagnitude,brake:this.spaceBrake},dt,this.spaceFA);

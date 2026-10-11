@@ -45,10 +45,10 @@ test('flight has no experiment stop-hold or 60-second braking timeout',()=>{
  const lab=abc();const train=lab.train;train.resume();for(let i=0;i<620;i++){const r=train.advance({x:0,y:0,magnitude:0,brake:true},.1,true);assert.equal(r.accepted,true);}
  assert.ok(train.state.world.time>60);assert.equal(train.snapshot(false).needsRestart,false);
 });
-test('ABC finish requires every hull to cross the existing route finish line',()=>{
+test('ABC finish requires cargo B crossing while A ahead and C behind do not gate it',()=>{
  const lab=abc();live(lab);const s=lab.train.state; s.connections.forEach(c=>c.connected=false);s.world.fields=[];s.world.statics=[];s.world.asteroids=[];
- const y=s.world.finishPoint.y;for(const body of Object.values(s.bodies)){body.velocity={x:0,y:0};body.position.x=0;}s.bodies.A.position.y=y-60;s.bodies.B.position.y=y-5;s.bodies.C.position.y=y+200;run(lab,1);assert.equal(lab.getState().finished,false);assert.equal(lab.getState().train.needsRestart,false);
- lab.train.state.bodies.C.position={x:100,y:y-30};run(lab,1);assert.equal(lab.getState().finished,true);assert.equal(lab.getState().train.needsRestart,false);
+ const y=s.world.finishPoint.y;for(const body of Object.values(s.bodies)){body.velocity={x:0,y:0};body.position.x=0;}s.bodies.A.position={x:200,y:y-60};s.bodies.B.position.y=y+5;s.bodies.C.position={x:100,y:y+200};run(lab,1);assert.equal(lab.getState().finished,false);assert.equal(lab.getState().train.needsRestart,false);
+ lab.train.state.bodies.B.velocity.y=-600;run(lab,1);assert.equal(lab.getState().finished,true);assert.equal(lab.getState().train.needsRestart,false);assert.ok(lab.getState().train.C.position.y>y);
 });
 test('ABC share is distinct, exact, atomic and old AB share restores AB',()=>{
  const {encodeTrainShareFragment,decodeTrainShareFragment}=require('../../.cache/tuglab-tests/client/src/u2taglab/trainShare.js');const lab=abc();lab.selectTrainSize('C','L');lab.setTrainSettings({mode:'guard',delay:.5});lab.setSpaceFA(false);
@@ -95,7 +95,7 @@ test('ABC uses joint world contacts for rear tug, cargo and asteroids with engin
 });
 test('ABC cannot be exported under the old AB schema and finish exposes a paused cleared flight',()=>{
  const lab=abc();assert.throws(()=>lab.exportSpaceShareSnapshot(),/ABC/);live(lab);const s=lab.train.state;s.connections.forEach(l=>l.connected=false);s.world.fields=[];s.world.statics=[];s.world.asteroids=[];
- const y=s.world.finishPoint.y;for(const [id,b] of Object.entries(s.bodies)){b.position={x:id==='C'?100:0,y:id==='A'?y-60:id==='B'?y-5:y-30};b.velocity={x:0,y:0};}run(lab,1);
+ const y=s.world.finishPoint.y;for(const [id,b] of Object.entries(s.bodies)){b.position={x:id==='A'?200:id==='C'?100:0,y:id==='A'?y-60:id==='B'?y+5:y+200};b.velocity={x:0,y:id==='B'?-600:0};}run(lab,1);
  assert.equal(lab.getState().finished,true);assert.equal(lab.getState().train.paused,true);assert.equal(lab.isRunning,false);assert.deepEqual(lab.getState().train.engineWrenches,{});
 });
 test('accepted ABC world fields remain immutable to shell snapshot consumers',()=>{
