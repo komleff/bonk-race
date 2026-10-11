@@ -10,7 +10,7 @@
 
 `InputA = {x, y, magnitude, brake}` — мировое направление и нормированный уровень. `CommandC = {forward:0, retro, lateral, yaw}`. Настройки ассистента: `mode`, `g`, `delay`, `Td`, `Tv`, `Tlat`, `Tyaw`, `epsilon`, `yawDamping`. Режимы: coast/guard/brake. Значения и рабочие границы находятся в `config/assistant_defaults.json`.
 
-Чистые функции записи: `exportRecording`, `importRecording`, `replayRecording`, `recomputeRecording`, `compareRecording`, `exportCSV`, `encodeShare`, `decodeShare`. Идентичность сборки по умолчанию берётся из compile-time defines; тесты передают её явно. Replay вводит готовые команды C без контроллера. Recompute повторно запускает причинный контроллер исходного опыта. Compare сохраняет выбранный режим через исходные mode-события и повторяет тот же ввод A; single физически убирает C/BC. `comparison` сообщает изменение состава, число принятых/исходных тиков, полноту ввода и окна измерений. Короткий источник не порождает выдуманный timeout.
+Чистые функции записи: `exportRecording`, `importRecording`, `replayRecording`, `recomputeRecording`, `compareRecording`, `exportCSV`, `encodeShare`, `decodeShare`. Идентичность сборки по умолчанию берётся из текущих compile-time defines. Replay/recompute принимают `options?:{identity?:BuildIdentity}`, compare — `options?:{composition?:TrainComposition,identity?:BuildIdentity}`; Node-потребитель может явно передать доверенную identity, она никогда не выводится из входной записи. Replay вводит готовые команды C без контроллера. Recompute повторно запускает причинный контроллер исходного опыта. Compare сохраняет выбранный режим через исходные mode-события и повторяет тот же ввод A до первого собственного завершения; single физически убирает C/BC. `comparison` сообщает изменение состава, число принятых/исходных тиков, полноту ввода и окна измерений. Короткий источник не порождает выдуманный timeout.
 
 ## Причинность и силы
 
@@ -44,8 +44,20 @@ Share переносит параметры нового paused-опыта, не
 
 ## Проверка
 
-`npm run test:tuglab2`: 59/59 (31 core + 28 session). `npm run typecheck:tuglab2`, `npm run build:tuglab2`, `npm run build`, `npm test`: PASS. Старые общие тесты сохраняют штатные предупреждения JoinToken default secret и генерации зон.
+`npm run test:tuglab2`: 66/66 (31 core + 35 session), свежие `npm run typecheck:tuglab2` и `npm run build:tuglab2`: PASS. До scoped class fixes также прошли `npm run build` и `npm test`; прежние source ими не изменены. Старые общие тесты сохраняют штатные предупреждения JoinToken default secret и генерации зон.
 
 RED→GREEN проверен для задержки/release/паузы, accepted retry против чистой final-resolution траектории, replay контактов и causal recompute, физически отсутствующего C, engine/external сил в полях, per-link/per-channel метрик, тормозного baseline и deadline, initial profile mismatch, противоречивых импортов, атомарного бюджета, нескольких оборотов, абсолютного primary B angle, prototype-like id и собственного passage Share. Длинная запись 7200 accepted ticks действительно экспортируется и импортируется.
+
+## Исправления после независимого ревью
+
+Исходный frozen `a8d668e` получил CHANGES_REQUESTED с четырьмя P2; первоначальные 59 тестов их не обнаруживали. Все классы воспроизведены отдельными RED тестами и закрыты одним scoped изменением:
+
+- R1: команды tick.commandC, telemetry.commandC и telemetry.assistant.command проверяются на равенство по всем каналам. Import→replay→export→import проходит, противоречивые команды отклоняются.
+- R2: replay/recompute/compare по умолчанию проверяют текущую доверенную build identity. Прямой вызов с чужим SHA отклоняется; тестовые источники указывают identity явно.
+- R3: createTrain вычисляет A/B fieldShipRadii из новых корпусов в клоне config, затем world/snapshot наследуют их. C берёт собственный body.radius через существующий read-only sampler. InitialState/import с несогласованными радиусами отклоняются без переписывания траектории. Plasma при A=XL, B=XXL, C=XL использует реальные площади; single XL/XXL с plasma/resistive совпадает с legacy по полным телам на 60 тиках.
+- R4: compare заканчивается при первом собственном stopped/timeout/численном или записном отказе. Источник guard600 ticks/10с даёт coast120 ticks/2с, ровно префикс A и одно реальное resume-событие. `completeInput=false` при раннем terminal; `measurementComplete=true` только для stopped/timeout. Replay/recompute воспроизводят явные resume источника и не создают их автоматически.
+- Дополнительно автор воспроизвёл event-path: compare ошибочно добавлял mode в обычный g/delay patch и снимал detach latch после повторной сцепки. Override подставляется только при явном mode в исходном событии; ordinary patch сохраняет latch, явный mode включает C.
+
+Алгоритм физики, прежний field sampler и численные допуски AC не изменены. Повторное независимое ревью исправлений ещё требуется.
 
 UI, полная сравнительная матрица, квалификация AC23 и Android/публикация относятся к следующим задачам. Данный отчёт не утверждает эффективность guard/brake до этих опытов. Старые source, зависимости продукта, workflow, DB/Beads и внешние API этим изменением не затронуты.

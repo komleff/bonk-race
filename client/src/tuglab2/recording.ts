@@ -15,8 +15,10 @@ export interface TrainRecording {
   settings:AssistantSettings;scene:SceneSpec;fa:boolean;events:RecordingEvent[];ticks:RecordedTick[];stopReason?:string;
 }
 export interface BuildIdentity {appVersion:string;sourceSHA:string}
+export interface ReplayOptions {identity?:BuildIdentity}
 export interface ShareParameters {config:TrainConfig;settings:AssistantSettings;scene:SceneSpec;fa:boolean}
 function fail():never{throw new Error('Недопустимый или несовместимый формат TugLab-2');}
+function sameCommand(a:CommandC,b:CommandC):boolean{return a.forward===b.forward&&a.retro===b.retro&&a.lateral===b.lateral&&a.yaw===b.yaw;}
 function object(v:unknown):v is Record<string,unknown>{return Boolean(v)&&typeof v==='object'&&!Array.isArray(v);}
 function keys(v:unknown,allowed:string[],required=allowed):void{if(!object(v)||Object.keys(v).some(k=>!allowed.includes(k))||required.some(k=>!Object.hasOwn(v,k)))fail();}
 function validateInitial(r:Pick<TrainRecording,'config'|'initialState'|'settings'|'scene'|'fa'|'dt'>):void {
@@ -40,7 +42,7 @@ function validateEvent(e:RecordingEvent,r:TrainRecording):void {
 }
 function validateTelemetry(t:TrainTelemetry,time:number,command:CommandC):void {
   if(!object(t)||t.time!==time||!object(t.bodies)||!object(t.links)||!object(t.assistant)
-    ||!Array.isArray(t.contacts)||!validCommandC(t.commandC)||JSON.stringify(t.commandC)!==JSON.stringify(command)
+    ||!Array.isArray(t.contacts)||!validCommandC(t.commandC)||!sameCommand(t.commandC,command)
     ||!['running','stopped','timeout','numerical-stop'].includes(t.outcome))fail();
   for(const [id,b] of Object.entries(t.bodies)){if(!['A','B','C'].includes(id)||!object(b)||!object(b.position)||!object(b.velocity)
     ||![b.position.x,b.position.y,b.velocity.x,b.velocity.y,b.angle,b.unwrappedAngle,b.angularVelocity,b.speed,b.mass].every(Number.isFinite)||b.mass<=0)fail();}
@@ -48,7 +50,7 @@ function validateTelemetry(t:TrainTelemetry,time:number,command:CommandC):void {
   for(const l of Object.values(t.links))if(!l||![l.distance,l.restLength,l.extension,l.radialVelocity,l.force].every(Number.isFinite)||l.restLength<=0
     ||typeof l.connected!=='boolean'||(l.limitCount!==null&&(!Number.isSafeInteger(l.limitCount)||l.limitCount<0)))fail();
   if(![t.pathB,t.maxLateralB,t.maxAngleB,t.maxSpringForce,t.maxExtension,t.maxContactImpulse,t.contactCount,t.saturationTime,t.stoppedFor,t.brakingDistance].every(v=>Number.isFinite(v)&&v>=0))fail();
-  const a=t.assistant;if(!object(a.saturation)||!object(a.requested)||!validCommandC(a.command)
+  const a=t.assistant;if(!object(a.saturation)||!object(a.requested)||!validCommandC(a.command)||!sameCommand(a.command,command)
     ||typeof a.retroBlocked!=='boolean'||!['coast','waiting','guarding','braking','saturated','disconnected'].includes(a.status)
     ||!Object.values(a.saturation).every(v=>typeof v==='boolean')||!Object.values(a.requested).every(Number.isFinite))fail();
   if(!object(t.saturationByChannel)||!['retro','lateral','yaw'].every(k=>typeof t.saturationByChannel[k as 'retro']==='number'&&t.saturationByChannel[k as 'retro']>=0)
@@ -111,7 +113,7 @@ export function importRecording(text:string,identity:BuildIdentity=buildIdentity
 }
 function applyEvent(s:TrainSession,e:RecordingEvent,modeOverride?:AssistantMode):void {
   if(e.type==='mode')s.setMode(modeOverride??e.value);
-  if(e.type==='settings')s.setAssistantSettings(modeOverride?{...e.value,mode:modeOverride}:e.value);
+  if(e.type==='settings')s.setAssistantSettings(modeOverride&&e.value.mode!==undefined?{...e.value,mode:modeOverride}:e.value);
   if(e.type==='fa')s.setFA(e.value);
   if(e.type==='pause')s.pause();if(e.type==='resume')s.resume();
   if(e.type==='connection'){
@@ -119,32 +121,33 @@ function applyEvent(s:TrainSession,e:RecordingEvent,modeOverride?:AssistantMode)
     const r=s.setConnection(e.value.id,e.value.connected);if(!r.ok)throw new Error(`Событие сцепки не воспроизвелось: ${r.reason}`);
   }
 }
-function runRecording(r:TrainRecording,mode?:AssistantMode,composition?:TrainComposition,recompute=false):TrainSession {
-  validateRecording(r,{appVersion:r.appVersion,sourceSHA:r.sourceSHA});
+function runRecording(r:TrainRecording,mode?:AssistantMode,composition?:TrainComposition,recompute=false,identity:BuildIdentity=buildIdentity()):TrainSession {
+  validateRecording(r,identity);
   const initial=structuredClone(r.initialState), config=structuredClone(r.config);
   if(composition&&composition!==config.composition){
     if(composition!=='single')throw new Error('Добавление C требует нового безопасного начального состава');
     config.composition='single';initial.config=structuredClone(config);delete initial.bodies.C;initial.connections=initial.connections.filter(l=>l.id==='AB');
   }
-  const s=new TrainSession(config,{appVersion:r.appVersion,sourceSHA:r.sourceSHA,settings:{...r.settings,...(mode?{mode}: {})},
+  const s=new TrainSession(config,{...identity,settings:{...r.settings,...(mode?{mode}: {})},
     scene:r.scene,fa:r.fa,dt:r.dt,initialState:initial});
   let event=0;
   for(let i=0;i<=r.ticks.length;i++) {
     while(event<r.events.length&&r.events[event].tick===i)applyEvent(s,r.events[event++],mode);
     if(i===r.ticks.length)break;
-    const t=r.ticks[i];if(s.state.paused)s.resume();
+    const t=r.ticks[i];
     const result=mode||recompute?s.step(t.inputA,t.rearBrake):s.stepRecorded(t.inputA,t.rearBrake,t.commandC,t.telemetry.assistant,t.observation);
     if(!result.accepted){if(mode)break;throw new Error(`Воспроизведение остановилось: ${result.stopReason}`);}
+    if(mode&&(s.telemetry.outcome!=='running'||s.stoppedReason))break;
   }
   if(r.stopReason&&!mode){s.stoppedReason=r.stopReason;s.recording.stopReason=r.stopReason;s.state.paused=true;}
   if(mode)s.comparison={compositionChanged:config.composition!==r.config.composition,completeInput:s.recording.ticks.length===r.ticks.length,
-    measurementComplete:s.telemetry.outcome!=='running',sourceTicks:r.ticks.length,acceptedTicks:s.recording.ticks.length,windowSeconds:s.recording.ticks.length*r.dt};
+    measurementComplete:s.telemetry.outcome==='stopped'||s.telemetry.outcome==='timeout',sourceTicks:r.ticks.length,acceptedTicks:s.recording.ticks.length,windowSeconds:s.recording.ticks.length*r.dt};
   return s;
 }
-export function replayRecording(r:TrainRecording):TrainSession{return runRecording(r);}
-export function recomputeRecording(r:TrainRecording):TrainSession{return runRecording(r,undefined,undefined,true);}
-export function compareRecording(r:TrainRecording,mode:AssistantMode,options:{composition?:TrainComposition}={}):TrainSession {
-  if(!['coast','guard','brake'].includes(mode))fail();return runRecording(r,mode,options.composition);
+export function replayRecording(r:TrainRecording,options:ReplayOptions={}):TrainSession{return runRecording(r,undefined,undefined,false,options.identity);}
+export function recomputeRecording(r:TrainRecording,options:ReplayOptions={}):TrainSession{return runRecording(r,undefined,undefined,true,options.identity);}
+export function compareRecording(r:TrainRecording,mode:AssistantMode,options:ReplayOptions&{composition?:TrainComposition}={}):TrainSession {
+  if(!['coast','guard','brake'].includes(mode))fail();return runRecording(r,mode,options.composition,false,options.identity);
 }
 export function encodeShare(parameters:ShareParameters):string {
   const value={schema:1,app:'tuglab2-share',...parameters};const text=JSON.stringify(value);

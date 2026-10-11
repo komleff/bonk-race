@@ -355,3 +355,4 @@ Round1 review: три Important исправлены; 205/205 TugLab PASS, brows
 - Метрики обеих связей/каналов, initial-heading primary B deviation, brake path baseline, stop hold всех кораблей и timeout после первого brake покрыты тестами.
 - Ограниченный журнал проверяется до принятия тика: переполнение сохраняет импортируемый accepted prefix. 7200 ticks за 60с@120Hz проходят импорт.
 - 59/59 TugLab-2 тестов; typecheck/build и общая regression PASS. Отчёт `docs/reports/tuglab2-session.md`; UI/матрица/Android впереди, эффективность ассистента пока не квалифицирована.
+- Independent review a8d668e:4P2 CHANGES_REQUESTED. Все4 классовых дефекта и найденный compare ordinary-settings/detach-latch исправлены с RED→GREEN;66/66 (31core+35session), fresh typecheck/build:tuglab2 PASS. Результат ждёт scoped re-review, задача не закрыта. Существующие physics algorithms/fields не менялись; createTrain лишь выводит радиусы полей из текущих корпусов.

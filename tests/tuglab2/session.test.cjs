@@ -55,17 +55,17 @@ test('rejected solver tick preserves history/time/record ticks and immediately p
 test('same-build JSON replays trajectory and exact contacts without bot; causal recompute matches recorded C', () => {
   const s=session({mode:'brake',delay:.05}); s.resume();
   for(let i=0;i<40;i++) { if(i===20)s.setAssistantSettings({g:.5}); s.step({...idle,brake:true},i<25); }
-  const r=importRecording(exportRecording(s.recording),build); const replay=replayRecording(r);
+  const r=importRecording(exportRecording(s.recording),build); const replay=replayRecording(r,{identity:build});
   assert.deepEqual(replay.state.bodies,s.state.bodies); assert.deepEqual(replay.recording.ticks.map(t=>t.contacts),r.ticks.map(t=>t.contacts));
-  const causal=compareRecording(r,'brake'); assert.deepEqual(causal.recording.ticks.map(t=>t.commandC),r.ticks.map(t=>t.commandC));
-  const coast=compareRecording(r,'coast'); assert.deepEqual(coast.recording.ticks.map(t=>t.inputA),r.ticks.map(t=>t.inputA));
+  const causal=compareRecording(r,'brake',{identity:build}); assert.deepEqual(causal.recording.ticks.map(t=>t.commandC),r.ticks.map(t=>t.commandC));
+  const coast=compareRecording(r,'coast',{identity:build}); assert.deepEqual(coast.recording.ticks.map(t=>t.inputA),r.ticks.map(t=>t.inputA));
 });
 test('contact replay preserves pair and impulse', () => {
   const config=createDefaultTrainConfig(); config.world.statics=[{id:'rock',kind:'station',position:{x:680,y:0},radius:20}];
   const s=new TrainSession(config,{...build,scene:{id:'empty',seed:1,mirror:1,speed:40}});s.resume();
   for(let i=0;i<100&&!s.stoppedReason;i++)s.step(idle);
   assert.ok(s.recording.ticks.some(t=>t.contacts.length));
-  assert.deepEqual(replayRecording(s.recording).recording.ticks.map(t=>t.contacts),s.recording.ticks.map(t=>t.contacts));
+  assert.deepEqual(replayRecording(s.recording,{identity:build}).recording.ticks.map(t=>t.contacts),s.recording.ticks.map(t=>t.contacts));
 });
 test('strict imports reject other app/build, oversized/invalid shapes and commands without mutating live run', () => {
   const s=session();s.resume();s.step(idle);const base=JSON.parse(exportRecording(s.recording));
@@ -94,7 +94,7 @@ test('default experience is paused and resting; comparison keeps its selected mo
   const s=new TrainSession(createDefaultTrainConfig(),build);
   assert.equal(s.state.paused,true);for(const b of Object.values(s.state.bodies))assert.deepEqual(b.velocity,{x:0,y:0});
   s.resume();s.setMode('guard');for(let i=0;i<5;i++)s.step(idle);s.setMode('brake');s.step({...idle,brake:true});
-  const coast=compareRecording(s.recording,'coast');assert.ok(coast.recording.ticks.every(t=>t.commandC.retro===0&&t.commandC.yaw===0&&t.commandC.lateral===0));
+  const coast=compareRecording(s.recording,'coast',{identity:build});assert.ok(coast.recording.ticks.every(t=>t.commandC.retro===0&&t.commandC.yaw===0&&t.commandC.lateral===0));
   assert.deepEqual(coast.recording.ticks.map(t=>t.inputA),s.recording.ticks.map(t=>t.inputA));
 });
 test('braking metrics begin at first request after prior travel, with per-link/channel data and actual accepted force average', () => {
@@ -139,7 +139,7 @@ test('accepted retry records one tick and the same delayed observations as a cle
 test('causal recomputation reproduces runtime mode changes, pause history resets and detach events', () => {
   const { recomputeRecording }=require(path+'recording.js');const s=session({delay:0});s.resume();s.setMode('guard');s.step(idle);
   s.pause();s.resume();s.setMode('brake');s.step({...idle,brake:true});s.setConnection('AB',false);s.step(idle);
-  const causal=recomputeRecording(s.recording);assert.deepEqual(causal.recording.ticks.map(t=>t.commandC),s.recording.ticks.map(t=>t.commandC));
+  const causal=recomputeRecording(s.recording,{identity:build});assert.deepEqual(causal.recording.ticks.map(t=>t.commandC),s.recording.ticks.map(t=>t.commandC));
   assert.deepEqual(causal.recording.ticks.map(t=>t.observation),s.recording.ticks.map(t=>t.observation));
 });
 test('imports enforce bounded solver work and validate all detailed metrics and safe initial geometry', () => {
@@ -155,7 +155,7 @@ test('accepted engine evidence is distinct from field forces and CSV preserves d
     drift:{x:0,y:0},pressure:2,resistiveK:0,topology:'linear',direction:{x:1,y:0}}];
   const s=new TrainSession(c,build);s.resume();s.step(idle);const t=s.recording.ticks[0];
   assert.ok(t.wrenches.C.force.x>0);assert.deepEqual(t.engineWrenches.C,{force:{x:0,y:0},torque:0});
-  const r=importRecording(exportRecording(s.recording),build);assert.deepEqual(replayRecording(r).state.bodies,s.state.bodies);
+  const r=importRecording(exportRecording(s.recording),build);assert.deepEqual(replayRecording(r,{identity:build}).state.bodies,s.state.bodies);
   const csv=exportCSV(r);for(const name of ['C_engine_Fx_N','C_external_Fx_N','B_nose_x_m','relative_angle_BA_rad','retro_saturation_s','min_clearance_m','contact_pairs'])assert.ok(csv.includes(name),name);
 });
 test('import rejects mode, g, detach and delayed-request command contradictions before replay', () => {
@@ -170,7 +170,7 @@ test('import rejects mode, g, detach and delayed-request command contradictions 
 });
 test('short comparison reports its finite input window and single composition ignores absent BC actions', () => {
   const s=session({mode:'coast'});s.resume();s.step({...idle,brake:true});s.setConnection('BC',false);s.step({...idle,brake:true});
-  const variant=compareRecording(s.recording,'guard',{composition:'single'});
+  const variant=compareRecording(s.recording,'guard',{composition:'single',identity:build});
   assert.equal(variant.comparison.completeInput,true);assert.equal(variant.comparison.compositionChanged,true);
   assert.equal(variant.telemetry.outcome,'running');assert.equal(variant.state.bodies.C,undefined);
   assert.deepEqual(variant.recording.ticks.map(t=>t.inputA),s.recording.ticks.map(t=>t.inputA));
@@ -225,4 +225,77 @@ test('sharing an initialized passage is idempotent and share budgets count UTF-8
   assert.deepEqual(createScene(shared.config,shared.scene).world.statics,state.world.statics);
   const c=createDefaultTrainConfig();for(let i=0;i<20;i++)c.world.statics.push({id:'字'.repeat(3000)+i,kind:'station',radius:10,position:{x:3000+40*i,y:0}});
   assert.throws(()=>encodeShare({config:c,scene:{id:'empty',seed:1,mirror:1,speed:0},settings:defaultAssistantSettings(),fa:true}));
+});
+test('import rejects assistant telemetry commands that contradict accepted C; replay exports round-trip', () => {
+  const s=session({mode:'coast'});s.resume();s.step(idle);const r=JSON.parse(exportRecording(s.recording));
+  for(const key of ['retro','lateral','yaw']){const changed=structuredClone(r);changed.ticks[0].telemetry.assistant.command[key]=.25;
+    assert.throws(()=>importRecording(JSON.stringify(changed),build),key);}
+  const replay=replayRecording(r,{identity:build});
+  assert.deepEqual(importRecording(exportRecording(replay.recording),build).ticks.map(t=>t.commandC),r.ticks.map(t=>t.commandC));
+});
+test('all direct replay APIs require current build or an explicit trusted identity', () => {
+  const { recomputeRecording }=require(path+'recording.js');const { buildIdentity }=require(path+'session.js');
+  const s=new TrainSession(createDefaultTrainConfig());s.resume();s.step(idle);const r=structuredClone(s.recording);
+  r.sourceSHA='foreign-build';assert.notEqual(r.sourceSHA,buildIdentity().sourceSHA);
+  for(const replay of [replayRecording,recomputeRecording,r=>compareRecording(r,'coast')])assert.throws(()=>replay(r));
+  assert.equal(replayRecording(s.recording).recording.ticks.length,1);
+  const known=session({mode:'coast'});known.resume();known.step(idle);
+  for(const replay of [r=>replayRecording(r,{identity:build}),r=>recomputeRecording(r,{identity:build}),r=>compareRecording(r,'coast',{identity:build})])
+    assert.equal(replay(known.recording).recording.ticks.length,1);
+});
+test('field radii follow A/B profiles and C body geometry; logged inconsistent radii are rejected', () => {
+  const { fitTrainShip }=require(path+'config.js');const { createTrain }=require(path+'train.js');
+  const c=createDefaultTrainConfig();c.ships.A=fitTrainShip('XL');c.ships.B=fitTrainShip('XXL',true);c.ships.C=fitTrainShip('XL');
+  c.world.fields=[{id:'wind',kind:'plasma',center:{x:0,y:0},radius:1e12,drift:{x:0,y:0},pressure:2,resistiveK:0,topology:'linear',direction:{x:1,y:0}}];
+  const original=structuredClone(c),core=createTrain(c),scene=createScene(c,{id:'empty',seed:1,mirror:1,speed:0});
+  assert.deepEqual(c,original);
+  for(const state of [core,scene])for(const id of ['A','B']){near(state.world.fieldShipRadii[id],state.bodies[id].radius);near(state.config.world.fieldShipRadii[id],state.bodies[id].radius);}
+  const s=new TrainSession(c,{...build,fa:false});s.setConnection('AB',false);s.setConnection('BC',false);s.resume();assert.equal(s.step(idle).accepted,true);
+  for(const id of ['A','B','C'])near(s.recording.ticks[0].wrenches[id].force.x,2*Math.PI*s.state.bodies[id].radius**2,1e-6);
+  assert.deepEqual(replayRecording(importRecording(exportRecording(s.recording),build),{identity:build}).state.bodies,s.state.bodies);
+  for(const id of ['A','B'])for(const target of ['world','config']){const r=structuredClone(s.recording);
+    if(target==='world')r.initialState.world.fieldShipRadii[id]/=2;
+    else{r.config.world.fieldShipRadii[id]/=2;r.initialState.config.world.fieldShipRadii[id]/=2;}
+    assert.throws(()=>importRecording(exportRecording(r),build));assert.throws(()=>new TrainSession(r.config,{...build,initialState:r.initialState}));}
+});
+test('comparison ends at its own first stop with exactly the source input prefix', () => {
+  const s=new TrainSession(createDefaultTrainConfig(),{...build,settings:{mode:'guard',delay:0,epsilon:.1,Td:.25}});s.resume();
+  for(let i=0;i<600;i++)assert.equal(s.step({...idle,brake:true}).accepted,true);
+  assert.equal(s.telemetry.outcome,'running');near(s.telemetry.time,10);
+  const variant=compareRecording(s.recording,'coast',{identity:build});
+  assert.equal(variant.telemetry.outcome,'stopped');near(variant.telemetry.time,2);assert.equal(variant.recording.ticks.length,120);
+  assert.deepEqual(variant.recording.ticks.map(t=>t.inputA),s.recording.ticks.slice(0,120).map(t=>t.inputA));
+  assert.equal(variant.recording.events.filter(e=>e.type==='resume').length,1);
+  assert.equal(variant.comparison.completeInput,false);assert.equal(variant.comparison.measurementComplete,true);
+  assert.equal(importRecording(exportRecording(variant.recording),build).ticks.length,120);
+});
+test('replay and recompute resume after terminal only through explicit recorded actions', () => {
+  const { recomputeRecording }=require(path+'recording.js');const s=new TrainSession(createDefaultTrainConfig(),{...build,settings:{mode:'coast'}});s.resume();
+  for(let i=0;i<120;i++)s.step({...idle,brake:true});assert.equal(s.state.paused,true);
+  for(let i=0;i<2;i++){s.resume();s.step({...idle,brake:true});}
+  for(const replay of [replayRecording,recomputeRecording])assert.deepEqual(replay(s.recording,{identity:build}).state.bodies,s.state.bodies);
+  const missingResume=structuredClone(s.recording);missingResume.events=missingResume.events.filter(e=>e.tick===0);
+  for(const replay of [replayRecording,recomputeRecording])assert.throws(()=>replay(missingResume,{identity:build}));
+});
+test('single profile changes keep canonical field response identical to read-only legacy physics', () => {
+  const { fitTrainShip }=require(path+'config.js');const { advanceSpaceWorld }=require(path+'../u2taglab/physics/advanceWorld.js');
+  const { sampleSpaceFieldResponse }=require(path+'../u2taglab/fields.js');
+  const config=createDefaultTrainConfig();config.composition='single';config.ships.A=fitTrainShip('XL');config.ships.B=fitTrainShip('XXL',true);
+  config.world.fields=[{id:'wind',kind:'plasma',center:{x:0,y:0},radius:10000,drift:{x:0,y:0},pressure:2,resistiveK:0,topology:'linear',direction:{x:1,y:0}},
+    {id:'drag',kind:'resistive',center:{x:0,y:0},radius:10000,drift:{x:0,y:0},pressure:0,resistiveK:.001,topology:'linear',direction:{x:1,y:0}}];
+  const s=new TrainSession(config,{...build,fa:false});let a=structuredClone(s.state.bodies.A),b=structuredClone(s.state.bodies.B),c=structuredClone(s.state.connections[0]),world=structuredClone(s.state.world);
+  s.resume();for(let i=0;i<60;i++){
+    const legacy=advanceSpaceWorld(a,b,c,world,s.dt,s.state.config.numerics,({id,body,time,subDt})=>sampleSpaceFieldResponse(world,{...body,id},time,subDt));
+    assert.equal(legacy.stopReason,undefined);assert.equal(s.step(idle).accepted,true);
+    assert.deepEqual(s.state.bodies.A,legacy.A);assert.deepEqual(s.state.bodies.B,legacy.B);a=legacy.A;b=legacy.B;c=legacy.coupling;world=legacy.world;
+  }
+});
+test('comparison preserves detach latch across ordinary settings patches until explicit mode', () => {
+  const s=session({mode:'guard',delay:0},{id:'empty',seed:1,mirror:1,speed:40});
+  assert.equal(s.setConnection('BC',false).ok,true);assert.equal(s.setConnection('BC',true).ok,true);
+  s.setAssistantSettings({g:.5,delay:0});s.resume();s.step(idle);
+  assert.deepEqual(s.recording.ticks[0].commandC,{forward:0,retro:0,lateral:0,yaw:0});
+  s.setAssistantSettings({mode:'guard'});s.step(idle);assert.ok(s.recording.ticks[1].commandC.retro>0);
+  const variant=compareRecording(s.recording,'guard',{identity:build});
+  assert.deepEqual(variant.recording.ticks.map(t=>t.commandC),s.recording.ticks.map(t=>t.commandC));
 });

@@ -94,6 +94,8 @@ export function validTrainState(state: TrainState): boolean {
 export function createTrain(original: TrainConfig): TrainState {
   const config = cloneTrainConfig(original), bodies = {} as TrainState['bodies'];
   if (!validProfileConfiguration(config)) throw new Error('Недопустимые физические профили, настройки FA или мира');
+  // Радиусы среды производны от выбранных корпусов, а не от прежнего состава.
+  config.world.fieldShipRadii = { A: hullCircleRadius(config.ships.A.geometry), B: hullCircleRadius(config.ships.B.geometry) };
   const ids: TrainBodyId[] = config.composition === 'single' ? ['A', 'B'] : ['A', 'B', 'C'];
   for (const id of ids) {
     const p = config.ships[id], radius = hullCircleRadius(p.geometry);

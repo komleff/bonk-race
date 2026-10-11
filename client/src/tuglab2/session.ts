@@ -67,6 +67,8 @@ export class TrainSession {
       const profile=this.state.config.ships[body.id];
       if(!same(body.mass,profile.mass)||!same(body.radius,hullCircleRadius(profile.geometry))||!same(body.inertia,hullInertia(profile.mass,profile.geometry)))
         throw new Error('Начальная масса, радиус или инерция не соответствуют профилю корпуса');
+      if((body.id==='A'||body.id==='B')&&(!same(this.state.world.fieldShipRadii[body.id],body.radius)
+        ||!same(this.state.config.world.fieldShipRadii[body.id],body.radius)))throw new Error('Радиус среды не соответствует начальному корпусу');
     }
     this.state.config.numerics.tickRate=1/this.dt;
     this.state.paused=true;this.initialState=cloneTrainState(this.state);this.initialSettings={...this.settings};this.initialFA=this.fa;
