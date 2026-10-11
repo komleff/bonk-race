@@ -347,3 +347,11 @@ Round1 review: три Important исправлены; 205/205 TugLab PASS, brows
 ---
 
 *История slime-arena: `.memory_bank/archive/`*
+
+### TugLab-2 Task2 — 2026-10-11
+
+- Реализованы чистые assistant/session/recording/telemetry/scenes и JSON коэффициенты; Beads `bonk-race-tug2.2` остаётся in_progress до independent review PM.
+- Accepted-history и actual force mean используют журнал core05f91f5; engine/external разделены. Strict same-build JSON, replay без bot, causal recompute, сравнение фиксированного режима, параметры Share и SI CSV готовы.
+- Метрики обеих связей/каналов, initial-heading primary B deviation, brake path baseline, stop hold всех кораблей и timeout после первого brake покрыты тестами.
+- Ограниченный журнал проверяется до принятия тика: переполнение сохраняет импортируемый accepted prefix. 7200 ticks за 60с@120Hz проходят импорт.
+- 59/59 TugLab-2 тестов; typecheck/build и общая regression PASS. Отчёт `docs/reports/tuglab2-session.md`; UI/матрица/Android впереди, эффективность ассистента пока не квалифицирована.
