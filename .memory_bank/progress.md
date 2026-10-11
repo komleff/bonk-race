@@ -371,3 +371,9 @@ CSV gate f5efe2c independently APPROVED (core_review, Codex/GPT-6; exact runtime
 Task3 frozen1564: independent commonPages QA PASS4apps×2mounts/14legacy suites/5viewports+CDP2touch,128PNG; package --base=./ verified andcommitteda83be8a. Independentcode review CHANGES_REQUESTED2P2: pausedlinkHUD staleON/force/l0; replaypreview hidesrealnumericalstop reason andsaysrunning. ScopedUIfix underway, .3remainsin_progress/Task4notstarted. Initialreports preserved docs/reports/tuglab2-ui-review.md +tuglab2-full-ui-qa.md.
 
 Task3 gate433078a independent APPROVED (core_review),68/68 +freshfullTSX/stampedbuild/ownR1R2browserprobes. OFFT0/livecapturel0 andnumerical129tickreason restored; acceptedticks/graphunchanged. RootcoldbuildPages andownHUDrootnestedPASS. .3CLOSED/.4in_progressDeveloper: исполнениеfrozen466+15sourcefixtures/plots; AC23/Androidещёнеизмерены. InitialnegativeUIreview preserved withscopedclosure.
+## Актуальная поставка — интеграция поезда в U2TagLab (12 октября 2026)
+
+- По прямому уточнению оператора отдельный стенд заменён расширением существующего U2TagLab. `bonk-race-tug2.7` IN_PROGRESS; план `docs/superpowers/plans/2026-10-12-u2taglab-train-integration.md`.
+- Проверенные train physics/assistant сохраняются для переиспользования. Играбельный ABC в текущей оболочке/маршруте, независимое review и новая приёмка ещё выполняются.
+- Предварительная матрица отдельной оболочки сохранена, но не доказывает новую интеграцию. Фактический Android остаётся OPEN; безопасное торможение всех режимов/масс не заявляется.
+
