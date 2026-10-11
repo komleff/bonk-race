@@ -58,3 +58,26 @@ Browser QA использует реальные кнопки/file chooser/downl
 Здесь нет утверждения о достижении AC-23, полной физической матрице, Android, выпуске или публикации. Существующие страницы собраны; их независимую регрессию и финальный общий root/nested артефакт проверяет PM/QA. Параметры ассистента не калибровались скрыто, физика/старые исходники не менялись этим этапом.
 
 Пользовательская справка: [TugLab2-Guide.md](../TugLab2-Guide.md). Следующий этап: независимый UI review и квалификация Task 4.
+
+## Scoped UI fix после независимого ревью — R1/R2, 2026-10-12
+
+Исходные `tuglab2-ui-review.md` и `tuglab2-full-ui-qa.md` сохранены. Два P2 исправлены одним классом изменений текущего HUD; accepted-prefix телеметрия, физика, Session и replay-журнал не изменены.
+
+- **R1:** connected, d, l₀, d/l₀, удлинение, q и мгновенная сила AB/BC вычисляются из текущего `TrainState`. OFF немедленно показывает T=0 на паузе; повторный захват показывает фактическую новую l₀. Накопленные ограничители явно подписаны «принятые тики». Графики/пики/средние двигателей остаются историей принятой записи.
+- **R2:** HUD получает собственную terminal reason replay result явно. Численный бюджет и ресурсный предел не называются незавершённым обычным окном; произвольная сохранённая причина имеет общий заголовок завершения и выводится текстом. После импорта на time0 причина исходного сохранённого заезда объясняется отдельно от начального кадра на паузе. JSON export сохраняет terminal metadata и accepted ticks.
+
+Новый `tests/tuglab2/qa-hud-browser.cjs` дал RED на старом assembled artifact: расцепка на паузе остаётся ON и импортированный numerical source outcome отсутствует. GREEN проверяет обе связи без Step/time0; сжатие KeyA→pause→OFF→capture для AB и BC с фактической l₀ из независимого replay экспортированной записи; неизменность accepted ticks. Штатная допустимая конфигурация с forwardForce=1e10 и maxAdaptiveSubsteps=4 создаёт настоящий численный отказ после 129 принятых тиков. Дополнительно проверяются валидный короткий префикс с точной ресурсной причиной «Достигнут предел записи», произвольная причина источника и обычное короткое окно без причины. Каждый импорт/replay/export проходит через реальный worker и UI; accepted ticks сравниваются в JSON-представлении, сохраняя все поля.
+
+Свежие проверки исправленного дерева поверх `f5cf95c` (до собственного fix commit):
+
+| Команда | Результат |
+|---|---|
+| `npm run test:tuglab2` | 68/68 PASS |
+| `npx tsc -p client/tsconfig.json --noEmit` | PASS, полный UI TSX/worker |
+| `npm test` | PASS |
+| `npm run build:pages` | PASS, все четыре приложения |
+| `node tests/tuglab2/qa-hud-browser.cjs` | PASS standalone root + assembled nested; numerical/resource/source/short outcomes и paused capture |
+| `node tests/tuglab2/qa-browser.cjs` | PASS root/nested + все пять viewport, native two-touch, large import/cancel; errors: [] |
+| `git diff --check` | PASS |
+
+Node/Playwright/Chrome те же, что в первоначальном отчёте. Логи: `.superpowers/sdd/2026-10-11-tuglab2/ui-hud-*.log`. Scoped артефакты: `.cache/tuglab2-qa/ui-hud/{root,nested}-{numerical,resource,source,short}.json`, root/nested PNG; полный повтор QA — `.cache/tuglab2-qa/ui/report.json`. Stamp cold build содержит `f5cf95c` до собственного fix commit; PM выполнит independent scoped re-review окончательного SHA. Task 3 ещё не закрыт; Task 4/Android/AC-23 не утверждаются.
