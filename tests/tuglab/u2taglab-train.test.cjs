@@ -134,3 +134,32 @@ test('whole train configuration keeps effective collision setting and shared rec
 test('ABC share rejects a hidden collision setting inconsistent with the displayed world recipe',()=>{
  const lab=abc(),before=structuredClone(lab.getState()),share=lab.exportTrainShareSnapshot();share.configuration.numerics.restitution=.2;assert.throws(()=>lab.applyTrainShareSnapshot(share));assert.deepEqual(lab.getState(),before);
 });
+
+test('live solver rejects the security4096 workload atomically through config, constructor and raw share',()=>{
+ const {LabTrain,createVerticalTrain}=require('../../.cache/tuglab-tests/client/src/lab/LabTrain.js');
+ const {validateTrainShareSnapshot,decodeTrainShareFragment}=require('../../.cache/tuglab-tests/client/src/u2taglab/trainShare.js');
+ const lab=abc(),before=structuredClone(lab.getState()),original=lab.getTrainConfig(),cfg=structuredClone(original);
+ cfg.numerics.substeps=cfg.numerics.maxAdaptiveSubsteps=cfg.numerics.solverIterations=4096;
+ assert.throws(()=>new LabTrain(cfg),/бюджет/);assert.throws(()=>createVerticalTrain(cfg),/бюджет/);
+ const unchanged=structuredClone(cfg),result=lab.setTrainConfig(cfg);assert.equal(result.ok,false);assert.match(result.reason,/бюджет/);
+ assert.deepEqual(cfg,unchanged);assert.deepEqual(lab.getState(),before);assert.deepEqual(lab.getTrainConfig(),original);
+ const share=lab.exportTrainShareSnapshot();share.base.density=25;share.base.params['arena.objectDensity']=25;share.configuration.numerics=cfg.numerics;
+ const fragment='#u2train='+Buffer.from(JSON.stringify(share)).toString('base64url');
+ assert.throws(()=>validateTrainShareSnapshot(share));assert.throws(()=>decodeTrainShareFragment(fragment));
+ assert.throws(()=>lab.applyTrainShareSnapshot(share));assert.deepEqual(lab.getState(),before);assert.deepEqual(lab.getTrainConfig(),original);
+});
+test('live solver bounds each workload dimension and accepts the inclusive numerical ceilings',()=>{
+ const {LabTrain}=require('../../.cache/tuglab-tests/client/src/lab/LabTrain.js');const cfg=abc().getTrainConfig();
+ for(const [key,max] of Object.entries({substeps:128,solverIterations:128,maxAdaptiveSubsteps:4096,maxContactEvents:4096})){
+  for(const value of [max+1,0,-1,1.5,NaN,Infinity]){const candidate=structuredClone(cfg);candidate.numerics[key]=value;assert.throws(()=>new LabTrain(candidate),/бюджет/,`${key}=${value}`);}
+ }
+ const upper=structuredClone(cfg);Object.assign(upper.numerics,{substeps:128,solverIterations:128,maxAdaptiveSubsteps:4096,maxContactEvents:4096});
+ const train=new LabTrain(upper);assert.deepEqual(train.config().numerics,upper.numerics);
+ const inconsistent=structuredClone(cfg);inconsistent.numerics.substeps=128;inconsistent.numerics.maxAdaptiveSubsteps=64;assert.throws(()=>new LabTrain(inconsistent),/бюджет/);
+});
+test('live budget preserves the normal4/512/16 solver and accepted dense-world flight',()=>{
+ const {LabTrain}=require('../../.cache/tuglab-tests/client/src/lab/LabTrain.js');const lab=abc();lab.regenerateArena(42,25);const cfg=lab.getTrainConfig(),n=cfg.numerics;
+ assert.equal(n.substeps,4);assert.equal(n.maxAdaptiveSubsteps,512);assert.equal(n.solverIterations,16);
+ const train=new LabTrain(cfg);assert.deepEqual(train.config().numerics,n);train.resume();
+ assert.equal(train.advance({x:0,y:-1,magnitude:1,brake:false},1/60,true).accepted,true);assert.ok(train.state.world.time>0);
+});

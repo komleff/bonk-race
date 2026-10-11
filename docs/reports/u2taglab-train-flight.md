@@ -40,3 +40,13 @@ Reset Params возвращает согласованные дефолты фи
 ## Ограничения проверки
 
 Полный управляемый полёт по всем 18 км, UI/Android и сборки страниц этим разработчиком не проверялись; они принадлежат PM/UI/QA. Generated dist-pages не изменялся. Нового игрового журнала нет; существующие offline session/recording/core-модули сохранены отдельно. Конкретный невозможный старт отклоняется, а не исправляется удалением препятствий или расширением мира. Контакты остаются существующими кругами/границами SpaceWorld; новые формы препятствий не добавлены. Core/assistant исходники, solver budgets и физические tolerances не изменены.
+
+## Security S1 / Beads.9: бюджет живого solver
+
+Адресный Security repro принимал `substeps=solverIterations=maxAdaptiveSubsteps=4096` через `#u2train`; первый шаг на density25 не завершался за 6 с. Общая ранняя проверка в `createVerticalTrain` теперь требует положительные целые: substeps≤128, solverIterations≤128, maxAdaptiveSubsteps≤4096, maxContactEvents≤4096, substeps≤maxAdaptiveSubsteps. Проверка предшествует клонированию/поиску старта; constructor, paused setTrainConfig и validate/decode/apply Share проходят через неё. Отказ не clamp-ит вход и не изменяет принятую карту, параметры или тела.
+
+Потолки численных размерностей совпадают с существующим offline boundedConfig, но его recording/object-политики не импортируются. Начальная работа ограничена 128×128 вместо 4096×4096; адаптивные подшаги и contact events сохраняют конечные прежние потолки4096. Штатные substeps4 / maxAdaptiveSubsteps512 / solverIterations16, все tolerances и сам core solver остаются неизменными. Это ограничение численных входов, не обещание срока выполнения кадра: новых таймеров, workers или политики автоматической остановки полёта нет.
+
+RED: два новых теста дали Missing expected exception для worst4096 и substeps129; контрольный dense-world tick был GREEN. После минимального classfix — 27/27 PASS (исходные24 и новые3). Проверены каждый потолок+1, ноль/отрицательные/дробные/NaN/Infinity, совместные включительные границы, несогласованные substeps/adaptive, неизменность входного config и facade после отказа. Исходный Security child запущен без изменения frozen evidence: отдельная копия меняет только require-путь на свежий test build. Normal: accepted, advance=true (38.3 мс); worst: decoder отклоняет, child exit1 за50.3 мс, timeout не наступает. Эти измерения относятся к данной машине и данному запуску.
+
+Свежие gates: test tsc и frontend tsc --noEmit PASS; npm test PASS (exit0); адаптер27 + прежние lifecycle/Share/rigid runtime — 73/73 PASS, failures0; git diff --check собственных трёх paths PASS. Браузер, Android и полный18км маршрут в рамках этого исправления не проверялись; generated dist и остальные владельческие файлы не менялись.

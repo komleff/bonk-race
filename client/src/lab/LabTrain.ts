@@ -13,8 +13,20 @@ import type { LabTrainSnapshot } from './labTypes';
 export interface LabTrainInput { x:number; y:number; magnitude:number; brake:boolean }
 export interface LabTrainStep { accepted:boolean; contacts:WorldContactEvent[]; reason?:string }
 
+// Те же численные потолки, что у boundedConfig, без зависимости от журнала эксперимента.
+// Они ограничивают первоначальный проход 128×128, сохраняя штатные 4/512/16.
+function validateLiveSolverBudget(config:TrainConfig):void {
+  const n=config?.numerics;
+  if(!n||!Number.isInteger(n.substeps)||n.substeps<1||n.substeps>128
+    ||!Number.isInteger(n.solverIterations)||n.solverIterations<1||n.solverIterations>128
+    ||!Number.isInteger(n.maxAdaptiveSubsteps)||n.maxAdaptiveSubsteps<1||n.maxAdaptiveSubsteps>4096
+    ||!Number.isInteger(n.maxContactEvents)||n.maxContactEvents<1||n.maxContactEvents>4096
+    ||n.substeps>n.maxAdaptiveSubsteps)throw new Error('Превышен или некорректен численный бюджет игрового ABC (подшаги ≤128, итерации ≤128, адаптивные подшаги и контакты ≤4096)');
+}
+
 // Ищем весь вертикальный состав в исходной карте, не удаляя препятствия и поля.
 export function createVerticalTrain(config:TrainConfig):TrainState {
+  validateLiveSolverBudget(config);
   if(config.composition!=='train')throw new Error('ABC поддерживает только трёхкорпусный состав с пружинами');
   const original=structuredClone(config), world=cloneSpaceWorld(original.world);
   world.time=0;world.tick=0;
