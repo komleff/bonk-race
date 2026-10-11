@@ -1,3 +1,9 @@
+## TugLab-2 — первый играбельный поезд (11 октября 2026)
+
+PR47 draft, core d82e9d3: общий транзакционный шаг A/B/C/двух пружин/world CCD,22physics/435legacy/npmtest PASS. Независимый core-review GPT6-Astra идёт. Single ровно один read-only advanceSpaceWorld, limitCountsExact=false (н/д); train=true. Первый coast main.tsx наследуетLabInput/spaceInputFrame и enginesA, Czero. Browser missingpageRED→GREEN; keyboardfocusRED→GREEN с assert speedA>1. Живой Chrome D600мс далA11.85/B3.05/C1.24м/с. Началоpaused, правильныеports/360м, независимыеlinks/Restart. LAN5176/tuglab2.html HTTP200; общая buildPages fourappsPASS, собранная5177/tuglab2/ browserPASS. Это рабочий coast, ассистент/replay/матрица/Android ещё впереди.
+
+Отчёты: docs/reports/tuglab2-core.md и tuglab2-baseline-qa.md. Независимый legacy QA8U2 suites/74checks +TugLabsmoke/share/lifecycle +BonkLabmouse/preset PASS,95PNG. Первый concurrent lifecycle timeout сохранён, повтор неизменённогоPASS, причина не доказана. Новых указаний PR46/47 нет. Merge/release/deploy не выполнялись.
+
 ## TugLab-2 — реализация (11 октября 2026)
 
 Результат Developer .1: совместная физика A–B–C, профили и захват исполняются; core typecheck и 22/22physics PASS, общий npm test PASS. Угол/положение single повторяют контрольный legacy-прогон ровно; для train симметричные пружинные импульсы и совместная матрица демпферов. Этап не заменяет будущую квалификационную матрицу/ревью и Android. Счётчики ограничителей train точные; single помечает `limitCountsExact=false`, поскольку прежнее ядро не возвращает этих данных.

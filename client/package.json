@@ -11,7 +11,9 @@
     "dev:tuglab": "vite --config vite.config.tuglab.ts --host 0.0.0.0 --port 5174 --strictPort --open /tuglab.html",
     "build:tuglab": "vite build --config vite.config.tuglab.ts",
     "dev:u2taglab": "vite --config vite.config.u2taglab.ts --host 0.0.0.0 --port 5175 --strictPort",
-    "build:u2taglab": "vite build --config vite.config.u2taglab.ts"
+    "build:u2taglab": "vite build --config vite.config.u2taglab.ts",
+    "dev:tuglab2": "vite --config vite.config.tuglab2.ts --host 0.0.0.0 --port 5176 --strictPort",
+    "build:tuglab2": "vite build --config vite.config.tuglab2.ts"
   },
   "dependencies": {
     "@preact/signals": "^2.5.1",

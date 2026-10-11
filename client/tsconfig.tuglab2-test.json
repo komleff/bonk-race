@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "noEmit": false,
+    "rootDir": "..",
+    "outDir": "../.cache/tuglab2-tests"
+  },
+  "include": [
+    "src/tuglab2/**/*.ts"
+  ]
+}
