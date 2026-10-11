@@ -38,7 +38,7 @@
     "typecheck:tuglab2": "tsc -p client/tsconfig.tuglab2-test.json --noEmit",
     "qa:tuglab2:matrix": "tsc -p client/tsconfig.tuglab2-test.json && node tests/tuglab2/qa-matrix.cjs",
     "qa:tuglab2:browser": "node tests/tuglab2/qa-browser.cjs",
-    "build:pages": "npm run build --workspace=shared && npm run build:lab --workspace=client && npm run build:tuglab && npm run build:u2taglab && npm run build:tuglab2 && node scripts/assemble-lab-pages.cjs"
+    "build:pages": "npm run build --workspace=shared && npm run build:lab --workspace=client -- --base=./ && npm run build:tuglab && npm run build:u2taglab && npm run build:tuglab2 && node scripts/assemble-lab-pages.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

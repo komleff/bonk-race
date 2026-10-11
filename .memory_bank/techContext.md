@@ -86,3 +86,10 @@ Browser QA использует внешний Playwright/Chrome: `PLAYWRIGHT_MO
 CI `TugLab checks and artifact` только проверяет и выдаёт tar/SHA/source manifest/QA evidence, без публикации и secrets. Run 37047921348 для HEAD `16158ea` прошёл на Node 20/Linux. Действующий workflow BonkLab не изменён. Generated dist/cache игнорируются Git, серверный API не нужен.
 
 Схема Caddy: `docs/deploy/tuglab-vps.md`, production не изменён. DNS 83.217.202.233 готов, HTTPS ещё не опубликован. Реальный Android отдельно, touch emulation не считается устройством.
+
+
+## TugLab-2 — checkpoint сессии, 11 октября 2026
+
+Этап2 `573e490` независимо принят: 66/66 core/session tests, typecheck и адресные пробы. Pure modules находятся в `client/src/tuglab2/`; CommonJS test build — `.cache/tuglab2-tests/`. Отдельная версия приложения 0.1.0, глобальная версия BonkRace 0.6.4; source SHA подставляется Vite из фактического git HEAD. Формат записи schema1/same-build, 32MiB/14400 accepted ticks+events, 256 объектов мира, 5 млн узлов; Share — параметры нового paused-старта, максимум128KiB.
+
+`build:pages` собирает BonkLab, TugLab, U2TagLab и TugLab-2 в `client/dist-pages`. Dev entry — `/tuglab2.html`, собранный — `/tuglab2/`. Публичного deploy в рамках implementation PR нет. Полная оболочка реализована1564ba1; независимое ревью обнаружило stale link HUD и потерянную причину terminal в replay preview, Task3 gate ещё открыт. Матрица и физический Android пока не проверены. Browser/plotting QA tools изолированы от зависимостей продукта. Замороженный протокол квалификации:466 логических случаев и15 replay-source fixtures, `docs/superpowers/plans/2026-10-11-tuglab2-qualification.md`.
