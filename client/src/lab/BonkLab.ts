@@ -54,6 +54,11 @@ import { tickOrbs } from "./orbSimulator";
 import { resolveSpikeCollision } from "./spikeResolver";
 import { generateArena } from "@bonk-race/shared";
 import { LabParamManager } from "./LabParamManager";
+import { LabTrain } from './LabTrain';
+import { createDefaultTrainConfig, fitTrainShip, trainSpaceProfile } from '../tuglab2/config';
+import type { TrainConfig, TrainConnectionId } from '../tuglab2/types';
+import { defaultAssistantSettings, type AssistantSettings } from '../tuglab2/assistant';
+import { trainConfigFromShare, validateTrainShareSnapshot, type TrainShareSnapshot } from '../u2taglab/trainShare';
 
 import { SHARE_SCHEMA, SHARE_GENERATOR, validateShareSnapshot, type ShareSnapshot } from "../tuglab/share";
 
@@ -143,7 +148,7 @@ export class BonkLab {
     /** Все настраиваемые параметры, делегированные paramManager */
     get params(): Record<string, number | boolean | string> {
         return this.towing ? { ...this.paramManager.params, ...this.towing.params,
-            ...(this.space ? { ...spaceParams(this.space), "space.fa": this.spaceFA,
+            ...(this.space ? { ...spaceParams(this.train ? trainSpaceProfile(this.train.state.config,'A') : this.space), "space.fa": this.spaceFA,
                 "space.asteroidMaxSpeed": this.spaceWorldSettings.asteroidMaxSpeed,
                 "space.collisionRestitution": this.spaceWorldSettings.collisionRestitution,
                 ...Object.fromEntries(Object.entries(this.spaceFieldSettings).map(([key, value]) => [`space.${key}`, value])) } : {}) } : this.paramManager.params;
@@ -153,6 +158,10 @@ export class BonkLab {
     readonly canvas: HTMLCanvasElement;
     private running = false;
     private towing?: LabTowing;
+    private train?: LabTrain;
+    private trainBase?: SpaceShareSnapshot;
+    private prevC?: BodyState;
+    private trainFinished = new Set<string>();
     private space?: SpaceProfile;
     private spaceWorld?: SpaceWorld;
     private spaceWorldRecipe?: SpaceWorldRecipe;
@@ -310,6 +319,125 @@ export class BonkLab {
 
     // ── Публичный API ────────────────────────────────────────────────────────
 
+    get towingComposition(): 'AB' | 'ABC' { return this.train ? 'ABC' : 'AB'; }
+    getTrainConfig(): TrainConfig | undefined { return this.train?.config(); }
+    getTrainSettings(): AssistantSettings | undefined { return this.train ? { ...this.train.settings } : undefined; }
+    private trainEditReason(): string | undefined {
+        if (!this.space || !this.towing) return 'ABC доступен только в U2TagLab';
+        if (this.running) return 'Изменение состава и профилей доступно только на паузе';
+        return undefined;
+    }
+    private initialTrainWorld(): SpaceWorld {
+        if (!this.trainBase) throw new Error('Нет исходной карты ABC');
+        return trainConfigFromShare({schema:1,model:'u2taglab-abc-springs-v1',base:this.trainBase,
+                configuration:createDefaultTrainConfig(),settings:defaultAssistantSettings(),fa:this.spaceFA}).world;
+    }
+    private installTrain(candidate: LabTrain): void {
+        this.stop(); this.train = candidate;
+        this.spaceWorld = candidate.state.world; this.arena = spaceWorldArena(this.spaceWorld);
+        this.arena.spawnPoint = { ...candidate.state.bodies.A.position };
+        this.mass = candidate.state.bodies.A.mass;
+        this.slimeConfig.geometry.baseRadiusM = candidate.state.bodies.A.radius;
+        this.resetRun(candidate.state.bodies.A);
+    }
+    private replaceTrainWorld(value: SpaceShareSnapshot): {ok:boolean;reason?:string} {
+        if (!this.train) return {ok:false,reason:'ABC не включён'};
+        try {
+            const base=validateSpaceShareSnapshot(value),config=this.train.config();
+            config.world=trainConfigFromShare({schema:1,model:'u2taglab-abc-springs-v1',base,configuration:config,settings:this.train.settings,fa:this.spaceFA}).world;
+            config.numerics.restitution=Number(base.params['space.collisionRestitution']);
+            const candidate=new LabTrain(config,this.train.settings);
+            this.trainBase=base;this.lastSeed=base.seed;this.lastDensity=base.density;
+            this.paramManager.params['arena.objectDensity']=base.density;
+            this.spaceWorldRecipe=structuredClone(base.world);this.spaceFieldSettings={...base.world.fields};
+            this.spaceWorldSettings={asteroidMaxSpeed:base.world.asteroidMaxSpeed,collisionRestitution:config.numerics.restitution};
+            this.installTrain(candidate);return {ok:true};
+        } catch(error) {return {ok:false,reason:error instanceof Error ? error.message : 'Карта ABC не принята'};}
+    }
+    private updateTrainParam(key:string,value:number|boolean|string): void {
+        if (key==='space.fa') {if(typeof value==='boolean')this.setSpaceFA(value);return;}
+        if (key.startsWith('trail.')) {this.paramManager.update(key,value);return;}
+        if (key==='arena.objectDensity') {
+            if(typeof value==='number'&&Number.isFinite(value)&&value>=.1&&value<=25)this.regenerateArena(this.lastSeed,value);
+            return;
+        }
+        if(this.running)return;
+        const base=structuredClone(this.trainBase!),field=key.slice(6);
+        if(key.startsWith('space.')&&Object.hasOwn(this.spaceFieldSettings,field)){
+            const fields={...base.world.fields,[field]:value};if(!validSpaceFieldSettings(fields))return;
+            base.world.fields=fields;base.params[key]=value;this.replaceTrainWorld(base);return;
+        }
+        if(key==='space.asteroidMaxSpeed'||key==='space.collisionRestitution'){
+            const max=key==='space.asteroidMaxSpeed'?SPACE_WORLD_DEFAULTS.validatedAsteroidMaxSpeed:1;
+            if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>max)return;
+            base.params[key]=value;if(key==='space.asteroidMaxSpeed')base.world.asteroidMaxSpeed=value;
+            this.replaceTrainWorld(base);return;
+        }
+        const config=this.train!.config();
+        if(key==='space.enginesEnabled') {if(typeof value!=='boolean')return;config.ships.A.enginesEnabled=value;}
+        else if(key==='mass'||key.startsWith('space.')){
+            const range=SPACE_RANGES[key];if(!range||typeof value!=='number'||!Number.isFinite(value)||value<range[0]||value>range[1])return;
+            if(key==='mass')config.ships.A.mass=value;
+            else (config.ships.A as unknown as Record<string,unknown>)[field]=value;
+            if(key==='space.speedLimit')config.ships.A.speedLimits={forward:value,reverse:value,lateral:value};
+        } else return;
+        this.setTrainConfig(config);
+    }
+    setTowingComposition(mode: 'AB' | 'ABC'): {ok:boolean;reason?:string} {
+        const reason = this.trainEditReason(); if (reason) return {ok:false,reason};
+        if (!['AB','ABC'].includes(mode)) return {ok:false,reason:'Недопустимый состав'};
+        if (mode === this.towingComposition) return {ok:true};
+        try {
+            if (mode === 'AB') {
+                const base = this.trainBase!; this.applySpaceShareSnapshot(base); return {ok:true};
+            }
+            const base = this.exportSpaceShareSnapshot(), config = createDefaultTrainConfig(), p = this.space!;
+            const {geometryA:_ga,geometryB:_gb,massA:_ma,massB:_mb,radiusA:_ra,radiusB:_rb,...fa} = p;
+            config.ships.A = {...fitTrainShip((geometrySize(p.geometryA) ?? 'M') as HullSize),...fa,geometry:{...p.geometryA},mass:this.mass,
+                speedLimits:{forward:p.speedLimit,reverse:p.speedLimit,lateral:p.speedLimit}};
+            config.ships.B = {...fitTrainShip(geometrySize(p.geometryB) ?? 'L',true),geometry:{...p.geometryB},mass:this.towing!.B.mass};
+            config.links.AB = {...config.links.AB,module:this.towing!.params['tow.module'] as TrainConfig['links']['AB']['module'],
+                restLength:Number(this.towing!.params['tow.length']),captureMaxLength:Number(this.towing!.params['tow.length']),k:this.towing!.coupling.k,c:this.towing!.coupling.c};
+            config.numerics.restitution = this.spaceWorldSettings.collisionRestitution;
+            config.world = trainConfigFromShare({schema:1,model:'u2taglab-abc-springs-v1',base,configuration:config,
+                settings:defaultAssistantSettings(),fa:this.spaceFA}).world;
+            const candidate = new LabTrain(config); this.trainBase = base; this.installTrain(candidate); return {ok:true};
+        } catch (error) { return {ok:false,reason:error instanceof Error ? error.message : 'Состав не принят'}; }
+    }
+    setTrainConfig(config: TrainConfig): {ok:boolean;reason?:string} {
+        const reason = this.trainEditReason(); if (reason) return {ok:false,reason};
+        if (!this.train) return {ok:false,reason:'ABC не включён'};
+        try { const candidate = new LabTrain({...structuredClone(config),world:this.initialTrainWorld()},this.train.settings);
+            this.spaceWorldSettings.collisionRestitution=candidate.state.config.numerics.restitution;
+            this.trainBase!.params['space.collisionRestitution']=candidate.state.config.numerics.restitution;
+            this.installTrain(candidate); return {ok:true};
+        } catch (error) { return {ok:false,reason:error instanceof Error ? error.message : 'Профиль не принят'}; }
+    }
+    setTrainSettings(patch: Partial<AssistantSettings>): {ok:boolean;reason?:string} {
+        if (!this.train) return {ok:false,reason:'ABC не включён'};
+        return this.train.setSettings(patch);
+    }
+    selectTrainSize(id:'A'|'B'|'C',size:string): {ok:boolean;reason?:string} {
+        if (!this.train || !['A','B','C'].includes(id) || !(id === 'B' ? TRAILER_SIZES : TUG_SIZES).includes(size as never)) return {ok:false,reason:'Недопустимый размер ABC'};
+        const config = this.train.config(); config.ships[id] = fitTrainShip(size as HullSize,id === 'B');
+        return this.setTrainConfig(config);
+    }
+    setTrainConnection(id:TrainConnectionId,connected:boolean): {ok:boolean;reason?:string} {
+        if (!this.train) return {ok:false,reason:'ABC не включён'};
+        const result = this.train.setConnection(id,connected); if (result.ok) this.syncPrevState(); return result;
+    }
+    setTrainRearBrake(enabled:boolean,source:'pointer'|'keyboard'='pointer'): void { this.train?.setRearBrake(enabled,source); }
+    exportTrainShareSnapshot(): TrainShareSnapshot {
+        if (!this.train || !this.trainBase) throw new Error('ABC не включён');
+        const {composition:_composition,world:_world,...configuration} = this.train.config();
+        return validateTrainShareSnapshot({schema:1,model:'u2taglab-abc-springs-v1',base:this.trainBase,configuration,settings:this.train.settings,fa:this.spaceFA});
+    }
+    applyTrainShareSnapshot(value:unknown): void {
+        if (!this.space) throw new Error('ABC доступен только в U2TagLab');
+        const snapshot = validateTrainShareSnapshot(value), candidate = new LabTrain(trainConfigFromShare(snapshot),snapshot.settings);
+        this.applySpaceShareSnapshot(snapshot.base);
+        this.trainBase = snapshot.base; this.spaceFA = snapshot.fa; this.installTrain(candidate); this.pause();
+    }
     get isSpace(): boolean { return !!this.space; }
     getScenarioInfo(): { seed: number; density: number } { return { seed: this.lastSeed, density: this.lastDensity }; }
     setSpaceFA(enabled: boolean): boolean {
@@ -329,6 +457,16 @@ export class BonkLab {
     }
     resetSpaceParams(): void {
         if (!this.space || !this.towing) return;
+        if (this.train) {
+            if (this.running) return;
+            const profile=createSpaceProfile(),config=createDefaultTrainConfig();config.numerics.restitution=SPACE_WORLD_DEFAULTS.restitution;
+            const {composition:_composition,world:_world,...configuration}=config;
+            const fields={fieldsEnabled:SPACE_FIELD_DEFAULTS.fieldsEnabled,fieldPressure:SPACE_FIELD_DEFAULTS.fieldPressure,resistiveK:SPACE_FIELD_DEFAULTS.resistiveK};
+            const base:SpaceShareSnapshot={schema:SPACE_SHARE_SCHEMA,model:SPACE_SHARE_MODEL,generator:SPACE_SHARE_GENERATOR,
+                seed:this.lastSeed,density:5,params:{...SPACE_SHARE_DEFAULTS},geometry:{A:profile.geometryA,B:profile.geometryB},
+                world:{radiusB:profile.radiusB,couplingLength:360,asteroidMaxSpeed:SPACE_WORLD_DEFAULTS.asteroidMaxSpeed,fields}};
+            this.applyTrainShareSnapshot({schema:1,model:'u2taglab-abc-springs-v1',base,configuration,settings:defaultAssistantSettings(),fa:true});return;
+        }
         this.space = createSpaceProfile(); this.spaceFA = true;
         this.spaceWorldSettings = { asteroidMaxSpeed: SPACE_WORLD_DEFAULTS.asteroidMaxSpeed, collisionRestitution: SPACE_WORLD_DEFAULTS.restitution };
         this.spaceFieldSettings = { fieldsEnabled: SPACE_FIELD_DEFAULTS.fieldsEnabled,
@@ -348,7 +486,8 @@ export class BonkLab {
     start(): void {
         if (this.running) return;
         if (this.towing && this.started) { this.resume(); return; }
-        if (this.towing?.needsRestart) return;
+        if (this.train ? this.train.needsRestart : this.towing?.needsRestart) return;
+        this.train?.resume();
         this.started = true;
         this.startCountdown = COUNTDOWN_TOTAL_S;
         this.running = true;
@@ -360,6 +499,7 @@ export class BonkLab {
 
     stop(): void {
         this.clearSpaceBrakeCommand();
+        this.train?.pause();
         this.listenForFocus(false);
         if (!this.running) return;
         this.running = false;
@@ -374,14 +514,16 @@ export class BonkLab {
         this.listenForFocus(true);
         this.accumulator = 0;
         this.inputX = this.inputY = this.inputMagnitude = 0; this.clearSpaceBrakeCommand();
+        this.train?.pause(reason);
         if (reason && !this.towing.needsRestart) this.towing.reason = reason;
         this.syncPrevState();
     }
 
     resume(): void {
-        if (!this.towing || this.towing.needsRestart || this.running) return;
+        if (!this.towing || (this.train ? this.train.needsRestart : this.towing.needsRestart) || this.running) return;
         if (!this.started) { this.start(); return; }
         this.towing.reason = undefined;
+        this.train?.resume();
         this.running = true;
         this.accumulator = 0;
         this.syncPrevState();
@@ -389,14 +531,17 @@ export class BonkLab {
     }
 
     stepOnce(): boolean {
-        if (!this.towing || !this.started || this.running || this.towing.needsRestart) return false;
+        if (!this.towing || !this.started || this.running || (this.train ? this.train.needsRestart : this.towing.needsRestart)) return false;
+        this.train?.resume();
         this.tick(FIXED_DT);
+        this.train?.pause();
         this.accumulator = 0;
         this.syncPrevState();
-        return !this.towing.needsRestart;
+        return !(this.train ? this.train.needsRestart : this.towing.needsRestart);
     }
 
     setTowingConnection(connected: boolean): CaptureResult {
+        if (this.train) return { ...this.setTrainConnection('AB',connected), distance:0, relativeSpeed:0 };
         if (!this.towing) return { ok: false, reason: "Буксировка не включена", distance: 0, relativeSpeed: 0 };
         const limits = [this.params["limits.speedLimitForwardMps"], this.params["limits.speedLimitReverseMps"],
             this.params["limits.speedLimitLateralMps"]];
@@ -453,6 +598,12 @@ export class BonkLab {
     reset(): void { this.resetRun(); }
 
     private resetRun(preparedA?: BodyState): void {
+        if (this.train && !preparedA) {
+            const candidate = new LabTrain({...this.train.config(),world:this.initialTrainWorld()},this.train.settings);
+            this.train = candidate; this.spaceWorld = candidate.state.world; this.arena = spaceWorldArena(this.spaceWorld);
+            this.arena.spawnPoint = {...candidate.state.bodies.A.position}; preparedA = candidate.state.bodies.A;
+            this.mass = preparedA.mass; this.slimeConfig.geometry.baseRadiusM = preparedA.radius;
+        }
         if (this.towing) { this.stop(); this.started = false; }
         if (this.space && !preparedA) this.arena = this.buildArena(this.lastSeed, this.lastDensity);
         this.x = this.arena.spawnPoint.x;
@@ -478,6 +629,7 @@ export class BonkLab {
         this.respawnCountdown = 0;
         this.startCountdown = 0;
         this.finished = false;
+        this.trainFinished.clear();
         this.finishTime = 0;
         this.isNewRecord = false;
         this.deathDistanceM = 0;
@@ -541,6 +693,7 @@ export class BonkLab {
     }
 
     updateParams(key: string, value: number | boolean | string): void {
+        if(this.train){this.updateTrainParam(key,value);return;}
         if (this.space) {
             const fieldKey = key.slice(6);
             if (key.startsWith("space.") && Object.hasOwn(this.spaceFieldSettings, fieldKey)) {
@@ -630,8 +783,8 @@ export class BonkLab {
 
     getState(): SandboxState {
         return {
-            ...(this.towing ? { towing: this.towing.snapshot(this.towingBodyA(), !this.running) } : {}),
-            ...(this.spaceWorld ? { spaceWorld: cloneSpaceWorld(this.spaceWorld), spaceBrake: this.spaceBrake, spaceTugSize: this.space ? geometrySize(this.space.geometryA) : undefined } : {}),
+            ...(this.train ? {train:this.train.snapshot(!this.running)} : this.towing ? { towing: this.towing.snapshot(this.towingBodyA(), !this.running) } : {}),
+            ...(this.spaceWorld ? { spaceWorld: this.train ? structuredClone(this.spaceWorld) : cloneSpaceWorld(this.spaceWorld), spaceBrake: this.spaceBrake, spaceTugSize: this.train ? this.train.state.config.ships.A.size : this.space ? geometrySize(this.space.geometryA) : undefined } : {}),
             x: this.x,
             y: this.y,
             vx: this.vx,
@@ -752,6 +905,7 @@ export class BonkLab {
 
     /** Исходный генератор хранится отдельно от параметров, изменённых во время полёта. */
     exportSpaceShareSnapshot(): SpaceShareSnapshot {
+        if(this.train)throw new Error('Ссылка ABC использует отдельную схему: exportTrainShareSnapshot');
         if (!this.space || !this.spaceWorldRecipe) throw new Error("Ссылка U2TagLab: режим недоступен");
         const current = this.params;
         const rigid = this.rigidSpaceShare || current["tow.type"] === "rigid";
@@ -778,6 +932,7 @@ export class BonkLab {
         if (!start || towing.needsRestart || !towing.validGeometry(start, startArena)) throw new Error("Ссылка U2TagLab: невозможный безопасный старт выбранного состава на исходной карте");
         arena.spawnPoint = { ...start.position };
         this.stop();
+        this.train = undefined; this.trainBase = undefined;
         this.legacySpaceShare = snapshot.schema === 1; this.catalogSpaceShare = snapshot.schema >= 3; this.rigidSpaceShare = snapshot.schema === 4;
         this.space = profile; this.towing = towing; this.spaceFA = Boolean(snapshot.params["space.fa"]);
         this.spaceWorldRecipe = snapshot.world; this.spaceGeometryDirty = false;
@@ -805,6 +960,11 @@ export class BonkLab {
     }
 
     regenerateArena(seed: number, density: number): void {
+        if(this.train){
+            if(this.running)return;
+            const base=structuredClone(this.trainBase!);base.seed=seed;base.density=density;base.params['arena.objectDensity']=density;
+            this.replaceTrainWorld(base);return;
+        }
         this.lastSeed = seed;
         this.lastDensity = density;
         if (this.towing) this.paramManager.params["arena.objectDensity"] = density;
@@ -868,9 +1028,10 @@ export class BonkLab {
         this.prevAngle = this.angle;
         this.prevAngVel = this.angVel;
         if (this.towing) {
-            const b = this.towing.B;
+            const b = this.train ? this.train.state.bodies.B : this.towing.B;
             this.prevB = { ...b, position: { ...b.position }, velocity: { ...b.velocity } };
         }
+        if (this.train) {const c=this.train.state.bodies.C!;this.prevC={...c,position:{...c.position},velocity:{...c.velocity}};}
         if (this.spaceWorld) this.prevAsteroids = cloneSpaceWorld(this.spaceWorld).asteroids;
     }
 
@@ -893,6 +1054,14 @@ export class BonkLab {
         state.vy = this.prevVy + (this.vy - this.prevVy) * a;
         state.angle = lerpAngle(this.prevAngle, this.angle, a);
         state.angularVelocity = this.prevAngVel + (this.angVel - this.prevAngVel) * a;
+        if (state.train) for (const [body,prev] of [[state.train.B,this.prevB],[state.train.C,this.prevC]] as const) {
+            if (!prev) continue;
+            body.position.x=prev.position.x+(body.position.x-prev.position.x)*a;
+            body.position.y=prev.position.y+(body.position.y-prev.position.y)*a;
+            body.velocity.x=prev.velocity.x+(body.velocity.x-prev.velocity.x)*a;
+            body.velocity.y=prev.velocity.y+(body.velocity.y-prev.velocity.y)*a;
+            body.angle=lerpAngle(prev.angle,body.angle,a);body.angularVelocity=prev.angularVelocity+(body.angularVelocity-prev.angularVelocity)*a;
+        }
         if (state.towing && this.prevB) {
             const b = state.towing.B, prev = this.prevB;
             b.position.x = prev.position.x + (b.position.x - prev.position.x) * a;
@@ -1016,8 +1185,12 @@ export class BonkLab {
             if (!this.tickSpace(dt)) return;
             this.elapsedTime += dt;
             const finish = this.arena.finishPoint;
-            if (Math.abs(this.x - finish.x) <= this.arena.width * 0.3 + radius && Math.abs(this.y - finish.y) <= 12 + radius) {
+            if (this.train) for (const body of Object.values(this.train.state.bodies)) {
+                if (body.position.y <= finish.y && Math.abs(body.position.x-finish.x) <= this.arena.width*.3+body.radius) this.trainFinished.add(body.id);
+            }
+            if (this.train ? this.trainFinished.size === 3 : Math.abs(this.x - finish.x) <= this.arena.width * 0.3 + radius && Math.abs(this.y - finish.y) <= 12 + radius) {
                 this.finished = true; this.finishTime = this.elapsedTime;
+                if(this.train)this.pause();
                 this.isNewRecord = this.bestTime === 0 || this.elapsedTime < this.bestTime;
                 if (this.isNewRecord) this.bestTime = this.elapsedTime;
             }
@@ -1310,6 +1483,15 @@ export class BonkLab {
         }
     }
     private tickSpace(dt: number): boolean {
+        if (this.train) {
+            const result=this.train.advance({x:this.inputX,y:this.inputY,magnitude:this.inputMagnitude,brake:this.spaceBrake},dt,this.spaceFA);
+            if (!result.accepted) {this.pause(result.reason);return false;}
+            this.spaceWorld=this.train.state.world;this.applyTowingA(this.train.state.bodies.A);
+            const wrench=this.train.engineWrenches.A ?? {force:{x:0,y:0},torque:0};
+            this.lastFaOutput={assistFx:wrench.force.x,assistFy:wrench.force.y,assistTorque:wrench.torque};
+            this.lastFaState=classifyFaState(this.inputMagnitude>.05,this.lastFaOutput,this.vx,this.vy,0,0);
+            this.currentZone=null;this.correctionFx=this.correctionFy=0;return true;
+        }
         const profile = this.space!, a = this.towingBodyA();
         const input = spaceInputFrame(a, this.inputX, this.inputY, this.inputMagnitude, profile, this.spaceBrake);
         const wrench = spaceEngineWrench(a, input, this.spaceFA, profile, dt);
