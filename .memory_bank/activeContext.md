@@ -1,3 +1,11 @@
+## Исправление масштаба текущего U2TagLab (12 октября 2026)
+
+По прямому замечанию оператора commit370baf9 восстановил прежнюю камеру по A–B. C больше не отдаляет вид; основной пилотаж не менялся. Исправленная локальная игра уже открыта пользователю; есть реальное renderer RED→GREEN, полёт и пять размеров экрана. Это заменяет первоначальное требование вмещать весь поезд.
+
+Свежая квалификация ядра выполнена на чистом dc51e1b:466/466,42stopped/424timeout,0hard failures,15replay/recompute,63CCD,72tests и plots PASS; processwall412.806с. Core/QA после camera commit byte-identical; provenance исходных артефактов не переписан. Все standard40/80 — timeout; turn90 passage0/6. Техническая квалификация не является приёмкой всех23 критериев. Android.5 и калибровка.8 остаются OPEN. Независимый Architecture-аудит fresh данных PASS, три scoped camera reviews APPROVED; PM cold3-app build и root/common5native-touch browser PASS. .4/.11 CLOSED, .5/.8 OPEN; finalHEAD/CI фиксируются в PR47.
+
+Ниже сохранена история; сведения о незавершённом свежем matrix run заменены этим результатом.
+
 ## Текущая цель — поезд в существующем U2TagLab (12 октября 2026)
 
 Интеграция реализована в текущей игровой оболочке, отдельная UI/entry удалена. Product7f1d175 включает исправления excessive numeric budget6383435 и отмены canvas input7f1d175. Свежие PM462/462,72/72, полный TSX/npmtest и общая3-app сборка PASS; предыдущие legacy browser suites PASS. Три независимых scoped reviews APPROVED; финальный root/common5viewports native-touch browser PASS. .7/.9/.10 CLOSED. Общий CI9e816a9 SUCCESS; docs-only finalSHA/CI фиксируются в PR47. Расширенная квалификация.4, Android.5 и калибровка.8 OPEN.
