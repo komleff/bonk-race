@@ -12,6 +12,8 @@
     "outDir": "../.cache/tuglab2-tests"
   },
   "include": [
-    "src/tuglab2/**/*.ts"
+    "src/tuglab2/**/*.ts",
+    "src/u2taglab/**/*.ts",
+    "src/lab/BonkLab.ts"
   ]
 }

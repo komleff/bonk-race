@@ -88,8 +88,12 @@ CI `TugLab checks and artifact` только проверяет и выдаёт 
 Схема Caddy: `docs/deploy/tuglab-vps.md`, production не изменён. DNS 83.217.202.233 готов, HTTPS ещё не опубликован. Реальный Android отдельно, touch emulation не считается устройством.
 
 
-## TugLab-2 — checkpoint сессии, 11 октября 2026
+## Поезд в существующем U2TagLab — интеграция 12 октября 2026
 
-Этап2 `573e490` независимо принят: 66/66 core/session tests, typecheck и адресные пробы. Pure modules находятся в `client/src/tuglab2/`; CommonJS test build — `.cache/tuglab2-tests/`. Отдельная версия приложения 0.1.0, глобальная версия BonkRace 0.6.4; source SHA подставляется Vite из фактического git HEAD. Формат записи schema1/same-build, 32MiB/14400 accepted ticks+events, 256 объектов мира, 5 млн узлов; Share — параметры нового paused-старта, максимум128KiB.
+По последнему указанию оператора продуктовая точка входа — существующая `client/u2taglab.html` / собранная `/u2taglab/`; команды `dev:u2taglab` и `build:u2taglab`. Отдельные HTML/Vite/JSX dashboard TugLab-2 удаляются из feature-ветки. Переиспользуемые численные библиотеки остаются в `client/src/tuglab2/`; `test:tuglab2`/`typecheck:tuglab2` и offline matrix остаются инструментами проверки, а не отдельным приложением.
 
-`build:pages` собирает BonkLab, TugLab, U2TagLab и TugLab-2 в `client/dist-pages`. Dev entry — `/tuglab2.html`, собранный — `/tuglab2/`. Публичного deploy в рамках implementation PR нет. Полная оболочка реализована1564ba1; независимое ревью обнаружило stale link HUD и потерянную причину terminal в replay preview, Task3 gate ещё открыт. Матрица и физический Android пока не проверены. Browser/plotting QA tools изолированы от зависимостей продукта. Замороженный протокол квалификации:466 логических случаев и15 replay-source fixtures, `docs/superpowers/plans/2026-10-11-tuglab2-qualification.md`.
+`build:pages` собирает BonkLab, TugLab и U2TagLab в `client/dist-pages`, с относительными ресурсами всех трёх страниц. Общий readonly CI сохраняет QA evidence даже при отказе; публичного deploy в рамках PR нет. Системный сервер5175 принадлежит прежнему checkout `bonk-race-tuglab` и не останавливается. Собранная текущая ветка отдаётся отдельным HTTP5177; при необходимости dev этой ветки использует свободный5178.
+
+Игровой адаптер `client/src/lab/LabTrain.ts` интегрируется в текущий BonkLab и не ограничивает маршрут обязательной записью или experiment timeout60. Начальные ссылки ABC имеют отдельный `#u2train=`/model, обычные `#u2tag=` схемы сохраняются. Сессия/recording/replay schema1 остаются проверочными API: trusted identity задаётся тестом/CLI, UTF8≤32MiB/14400 accepted ticks+events,256 объектов мира/5млн узлов. Удалённый worker dashboard не является текущим пользовательским интерфейсом.
+
+Browser/plotting QA инструменты изолированы от продуктовых зависимостей. Историческая preliminary квалификация сохранена в `docs/reports/tuglab2-qualification.md`:466 случаев,15replay/63CCD, но последний дополнительный checker не был загружен тем процессом. Приёмка новой интеграции ещё выполняется; физический Android остаётся OPEN.

@@ -69,3 +69,4 @@ client/dist-tuglab2/
 client/dist-pages/
 .cache/tuglab2-tests/
 .cache/tuglab2-qa/
+.cache/u2taglab-train-qa/
