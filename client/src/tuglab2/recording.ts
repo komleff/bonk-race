@@ -161,6 +161,12 @@ export function decodeShare(text:string):ShareParameters {
     new TrainSession(r.config,{settings:r.settings,scene:r.scene,fa:r.fa});return {config:r.config,settings:r.settings,scene:r.scene,fa:r.fa};
   }catch{fail();}
 }
+export function serializeCSVCell(value:number|string):string {
+  if(typeof value==='number')return String(value);
+  // Строка остаётся буквальным текстом при открытии в табличном редакторе.
+  const literal=/^\s*[=+\-@]/.test(value)?`'${value}`:value;
+  return /[",\r\n]/.test(literal)?`"${literal.replaceAll('"','""')}"`:literal;
+}
 export function exportCSV(r:TrainRecording):string {
   const columns=['time_s'];
   for(const id of ['A','B','C'])columns.push(`${id}_x_m`,`${id}_y_m`,`${id}_vx_m_s`,`${id}_vy_m_s`,`${id}_angle_rad`,`${id}_unwrapped_rad`,`${id}_omega_rad_s`,`${id}_speed_m_s`,`${id}_mass_kg`,
@@ -173,7 +179,7 @@ export function exportCSV(r:TrainRecording):string {
     'contact_count','contact_impulse_N_s','contact_pairs','path_B_m','brake_time_s','braking_distance_m','stopped_for_s',
     'max_lateral_B_m','max_angle_B_initial_heading_rad','max_angle_BC_rad','min_clearance_m','relative_angle_BA_rad','relative_angle_BC_rad','com_speed_m_s',
     'solver_attempts','solver_substeps','limit_counts_exact','outcome','stop_reason');
-  const rows=[columns.join(',')];
+  const rows=[columns.map(serializeCSVCell).join(',')];
   for(const t of r.ticks){
     const row:(number|string)[]=[t.time],m=t.telemetry;
     for(const id of ['A','B','C'] as const){const b=m.bodies[id],a=m.anchors[id];row.push(...(b&&a?[b.position.x,b.position.y,b.velocity.x,b.velocity.y,b.angle,b.unwrappedAngle,b.angularVelocity,b.speed,b.mass,
@@ -187,7 +193,7 @@ export function exportCSV(r:TrainRecording):string {
       t.contacts.length,t.contacts.reduce((sum,c)=>sum+c.impulse,0),JSON.stringify(t.contacts),m.pathB,m.brakeTime??'',m.brakingDistance,m.stoppedFor,
       m.maxLateralB,m.maxAngleB,m.maxAngleBC,m.minClearance,m.relativeAngleBA,m.relativeAngleBC??'',m.comSpeed,
       m.solverAttempts,m.solverSubsteps,Number(m.limitCountsExact),m.outcome,m.stopReason??r.stopReason??'');
-    rows.push(row.map(value=>typeof value==='string'?`"${value.replaceAll('"','""')}"`:String(value)).join(','));
+    rows.push(row.map(serializeCSVCell).join(','));
   }
   return rows.join('\n');
 }

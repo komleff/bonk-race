@@ -44,7 +44,7 @@ Share переносит параметры нового paused-опыта, не
 
 ## Проверка
 
-`npm run test:tuglab2`: 66/66 (31 core + 35 session), свежие `npm run typecheck:tuglab2` и `npm run build:tuglab2`: PASS. До scoped class fixes также прошли `npm run build` и `npm test`; прежние source ими не изменены. Старые общие тесты сохраняют штатные предупреждения JoinToken default secret и генерации зон.
+`npm run test:tuglab2`: 68/68 (31 core + 37 session), свежие `npm run typecheck:tuglab2`, `npm run build:tuglab2` и `npm test`: PASS. Общий `npm run build` проходил до scoped class fixes; прежние source не изменены. Старые общие тесты сохраняют штатные предупреждения JoinToken default secret и генерации зон.
 
 RED→GREEN проверен для задержки/release/паузы, accepted retry против чистой final-resolution траектории, replay контактов и causal recompute, физически отсутствующего C, engine/external сил в полях, per-link/per-channel метрик, тормозного baseline и deadline, initial profile mismatch, противоречивых импортов, атомарного бюджета, нескольких оборотов, абсолютного primary B angle, prototype-like id и собственного passage Share. Длинная запись 7200 accepted ticks действительно экспортируется и импортируется.
 
@@ -58,6 +58,14 @@ RED→GREEN проверен для задержки/release/паузы, accepte
 - R4: compare заканчивается при первом собственном stopped/timeout/численном или записном отказе. Источник guard600 ticks/10с даёт coast120 ticks/2с, ровно префикс A и одно реальное resume-событие. `completeInput=false` при раннем terminal; `measurementComplete=true` только для stopped/timeout. Replay/recompute воспроизводят явные resume источника и не создают их автоматически.
 - Дополнительно автор воспроизвёл event-path: compare ошибочно добавлял mode в обычный g/delay patch и снимал detach latch после повторной сцепки. Override подставляется только при явном mode в исходном событии; ordinary patch сохраняет latch, явный mode включает C.
 
-Алгоритм физики, прежний field sampler и численные допуски AC не изменены. Повторное независимое ревью исправлений ещё требуется.
+Алгоритм физики, прежний field sampler и численные допуски AC не изменены. R1–R5 независимо APPROVED на `573e490`; первоначальный отчёт и повторная проверка сохранены в `docs/reports/tuglab2-session-review.md`.
+
+## Дополнительное CSV-исправление (`bonk-race-tug2.6`)
+
+После gate PM воспроизвёл отдельный класс: допустимый asteroid id `safe,comma` не экранировался в заголовке, поэтому число колонок расходилось с данными. Импортируемый stopReason `=1+1` попадал в CSV как формула табличного редактора. Это отдельное исправление экспорта; исходный JSON и физика не изменены, новый gate не утверждает повторную квалификацию всего Task2.
+
+Общий публичный `serializeCSVCell(value:number|string):string` используется и для заголовков, и для ячеек. Он удваивает кавычки и оборачивает в кавычки значения с delimiter/quote/CR/LF. Строки, у которых первый символ после начальных пробелов/tab/CR/другого whitespace равен `=`, `+`, `-` или `@`, получают ведущий апостроф как маркер буквального текста. Отрицательные числовые SI значения не меняются. Простые имена существующих колонок сохраняются.
+
+Два независимых RED→GREEN regression tests разбирают реальный экспорт через стандартный Python `csv.reader` без новых зависимостей. Проверены принятые id с запятыми, кавычками, LF/CRLF, Unicode, формульными префиксами и начальными whitespace; строки stopReason проходят реальный same-build импорт до экспорта. Во всех случаях header/data имеют одинаковое число колонок, буквальный id/текст сохраняется с маркером при необходимости, числовой отрицательный engine wrench остаётся числом и JSON побайтно не меняется. До исправления получались 20 CSV rows вместо 2 и незащищённое `=1+1`; после него 68/68 tests/typecheck/build/general regression PASS. Адресное независимое подтверждение этого CSV-исправления выполняет PM.
 
 UI, полная сравнительная матрица, квалификация AC23 и Android/публикация относятся к следующим задачам. Данный отчёт не утверждает эффективность guard/brake до этих опытов. Старые source, зависимости продукта, workflow, DB/Beads и внешние API этим изменением не затронуты.

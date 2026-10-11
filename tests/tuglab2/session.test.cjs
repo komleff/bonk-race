@@ -12,6 +12,11 @@ const near = (a,b,e=1e-8) => assert.ok(Math.abs(a-b)<=e, `${a} != ${b}`);
 function session(settings = {}, scene = { id:'braking',seed:1,mirror:1,speed:40 }) {
   return new TrainSession(createDefaultTrainConfig(), { ...build, settings:{...defaultAssistantSettings(),...settings}, scene });
 }
+function parseCSV(text) {
+  const { spawnSync }=require('node:child_process');
+  const result=spawnSync('python3',['-c','import csv,io,json,sys; json.dump(list(csv.reader(io.StringIO(sys.stdin.buffer.read().decode("utf-8"),newline=""))),sys.stdout,ensure_ascii=False)'],{input:text,encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr);return JSON.parse(result.stdout);
+}
 test('coast and g0 preserve C mass with exactly zero every channel and yaw wrench', () => {
   for (const settings of [{mode:'coast'},{mode:'guard',g:0}]) {
     const s=session(settings); s.state.bodies.C.angularVelocity=.3; s.resume();
@@ -298,4 +303,24 @@ test('comparison preserves detach latch across ordinary settings patches until e
   s.setAssistantSettings({mode:'guard'});s.step(idle);assert.ok(s.recording.ticks[1].commandC.retro>0);
   const variant=compareRecording(s.recording,'guard',{identity:build});
   assert.deepEqual(variant.recording.ticks.map(t=>t.commandC),s.recording.ticks.map(t=>t.commandC));
+});
+test('CSV headers preserve accepted asteroid IDs with delimiters, quotes, newlines and formula prefixes', () => {
+  const ids=['safe,comma','safe"quote','safe\nline','safe\r\nline','звезда字','=id','+id','-id','@id',' \t=id','\r@id','\t-id'];
+  const config=createDefaultTrainConfig();config.world.asteroids=ids.map((id,i)=>({id,kind:'asteroid',position:{x:3000+40*i,y:0},velocity:{x:0,y:0},angle:0,angularVelocity:0,mass:1000,radius:10,inertia:50000}));
+  const s=new TrainSession(config,build);s.resume();s.step({...idle,x:-1,magnitude:1});
+  const r=importRecording(exportRecording(s.recording),build),before=exportRecording(r),rows=parseCSV(exportCSV(r));
+  assert.equal(rows.length,2);assert.equal(rows[0].length,rows[1].length);assert.equal(exportRecording(r),before);
+  for(const id of ids){const name=`${id}_engine_Fx_N`,literal=['=id','+id','-id','@id',' \t=id','\r@id','\t-id'].includes(id)?`'${name}`:name;
+    assert.ok(rows[0].includes(literal),JSON.stringify(literal));}
+  const column=rows[0].indexOf('A_engine_Fx_N'),value=r.ticks[0].engineWrenches.A.force.x;
+  assert.ok(value<0);assert.equal(rows[1][column],String(value));
+});
+test('CSV exports imported stop reasons as literal text and preserves original JSON', () => {
+  const s=session({mode:'coast'});s.resume();s.step(idle);
+  for(const reason of ['=1+1','+1','-1','@SUM(1)',' \t=1+1','\r@SUM(1)','\n-1','ordinary,reason','quoted"reason','line\r\nreason','ошибка字']){
+    const changed=structuredClone(s.recording);changed.stopReason=reason;const r=importRecording(exportRecording(changed),build),before=exportRecording(r);
+    const rows=parseCSV(exportCSV(r)),expected=['=1+1','+1','-1','@SUM(1)',' \t=1+1','\r@SUM(1)','\n-1'].includes(reason)?`'${reason}`:reason;
+    assert.equal(rows.length,2);assert.equal(rows[0].length,rows[1].length);assert.equal(rows[1].at(-1),expected,JSON.stringify(reason));
+    assert.equal(exportRecording(r),before);
+  }
 });
