@@ -4,15 +4,19 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const output=path.resolve(process.env.U2TRAIN_QA_DIR||'.cache/u2taglab-train-qa');
 async function serve(){const server=http.createServer((req,res)=>{const pathname=new URL(req.url,'http://local').pathname,nested=pathname.startsWith('/bonk-race/u2taglab/'),root=path.resolve(nested?'client/dist-pages':'client/dist-u2taglab');let relative=decodeURIComponent(pathname.slice(nested?'/bonk-race/'.length:1))||'index.html';if(relative.endsWith('/'))relative+='index.html';let file=path.resolve(root,relative);if(!file.startsWith(root+path.sep)||!fs.existsSync(file)){res.writeHead(404).end();return;}res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css'})[path.extname(file)]||'application/octet-stream');res.end(fs.readFileSync(file));});await new Promise(r=>server.listen(0,'127.0.0.1',r));return {server,url:`http://127.0.0.1:${server.address().port}`};}
 async function snapshot(page){return page.evaluate(()=>window.__bonkLab.getState());}
+async function assertCamera(page){
+ const camera=await page.evaluate(()=>{const s=window.__bonkLab.getState(),b=s.train?.B??s.towing.B,c=document.querySelector('canvas'),r=c.getBoundingClientRect(),dx=b.position.x-s.x,dy=b.position.y-s.y,short=Math.min(r.width,r.height),range=Math.max(400,(dy+b.radius)*short/(.56*r.height),(-dy+b.radius)*short/(1.16*r.height),(Math.abs(dx)+b.radius)*short/(.88*r.width));return {range,actual:window.__labRenderer.viewRange,scale:window.__labRenderer.scale,expectedScale:Math.min(c.width,c.height)/(2*range)};});
+ assert.ok(Math.abs(camera.actual-camera.range)<.5,'камера использует прежнюю формулу A/B');assert.ok(Math.abs(camera.scale-camera.expectedScale)<.001,'масштаб рендера соответствует A/B');
+}
 async function run(page,url,name){
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(url);await page.waitForFunction(()=>window.__bonkLab?.getState().startCountdown===0);
- const initialAB=await snapshot(page);assert.ok(initialAB.towing);assert.equal(initialAB.train,undefined);
+ await assertCamera(page);const initialAB=await snapshot(page);assert.ok(initialAB.towing);assert.equal(initialAB.train,undefined);
  await page.getByRole('button',{name:'Пауза',exact:true}).click();
  const selector=page.getByLabel('Состав',{exact:true});await selector.waitFor({timeout:2500});assert.equal(await selector.inputValue(),'AB');
  await selector.selectOption('ABC');await page.waitForFunction(()=>!!window.__bonkLab.getState().train);
  await page.getByLabel('Помощь заднего тягача',{exact:true}).selectOption('guard');assert.equal((await snapshot(page)).train.settings.mode,'guard');assert.ok(!(await page.getByTestId('train-flight-status').textContent()).includes('guard'));await page.getByLabel('Помощь заднего тягача',{exact:true}).selectOption('coast');
  const initial=await snapshot(page);assert.equal(initial.train.paused,true);assert.equal(initial.elapsedTime,0);assert.ok(initial.spaceWorld.statics.length);assert.ok(initial.spaceWorld.asteroids.length);assert.ok(initial.spaceWorld.fields.length);assert.equal(initial.towing,undefined);
- assert.ok(initial.train.C);assert.equal(initial.train.connections.length,2);
+ await page.waitForTimeout(100);await assertCamera(page);assert.ok(initial.train.C);assert.equal(initial.train.connections.length,2);
  for(const id of ['AB','BC']){await page.getByRole('button',{name:`${id}: расцепить`,exact:true}).click();assert.equal((await snapshot(page)).train.connections.find(l=>l.id===id).connected,false);await page.getByRole('button',{name:`${id}: сцепить`,exact:true}).click();assert.equal((await snapshot(page)).train.connections.find(l=>l.id===id).connected,true);}
  await page.getByRole('button',{name:'Настройки',exact:true}).click();await page.getByText('Ассистент C',{exact:true}).click();await page.getByLabel('Режим C',{exact:true}).selectOption('guard');assert.equal((await snapshot(page)).train.settings.mode,'guard');await page.getByLabel('Режим C',{exact:true}).selectOption('brake');
  await page.getByLabel('Задержка C, с',{exact:true}).fill('0');await page.getByLabel('Задержка C, с',{exact:true}).press('Enter');
@@ -46,7 +50,7 @@ async function run(page,url,name){
   fs.writeFileSync(path.join(output,'manual-route.json'),JSON.stringify({source,station,closestSurfaceClearance:closest,samples,final:route},null,2));console.log(`PASS route ${name} C passed station; clearance ${closest.toFixed(1)}m`);
  }
 assert.equal(flight.spaceWorld.statics.length,initial.spaceWorld.statics.length);
- await page.getByRole('button',{name:'Пауза',exact:true}).click();const paused=await snapshot(page);assert.ok(paused.train.paused);
+ await page.getByRole('button',{name:'Пауза',exact:true}).click();const paused=await snapshot(page);assert.ok(paused.train.paused);await page.waitForTimeout(100);await assertCamera(page);
  await page.getByRole('button',{name:'Настройки',exact:true}).click();await page.getByText('Пружина BC',{exact:true}).click();const old=(await page.evaluate(()=>window.__bonkLab.getTrainConfig())).links.BC.restLength;
  await page.getByLabel('BC: длина, м',{exact:true}).fill('0');await page.getByLabel('BC: длина, м',{exact:true}).press('Enter');assert.equal((await page.evaluate(()=>window.__bonkLab.getTrainConfig())).links.BC.restLength,old);assert.equal((await snapshot(page)).elapsedTime,paused.elapsedTime);await page.getByRole('alert').filter({hasText:/длин|параметр|значен|положит/}).waitFor();
  await page.getByRole('button',{name:'Скрыть',exact:true}).click();

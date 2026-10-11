@@ -268,8 +268,8 @@ function frame(): void {
     // Получить интерполированное состояние и отрисовать
     const state = lab.getInterpolatedState(alpha);
     if (space && (state.train || state.towing)) {
-        // Экранная опора A прежняя; камера вмещает все корпуса, включая свободный C.
-        const bodies = state.train ? [state.train.B, state.train.C] : [state.towing!.B];
+        // Прежний масштаб U2TagLab определяется A/B; удаление C не отдаляет игровую камеру.
+        const bodies = [state.train?.B ?? state.towing!.B];
         const shortest = Math.min(canvasRect.width, canvasRect.height);
         const ranges = bodies.flatMap(b => {
             const dx = b.position.x - state.x, dy = b.position.y - state.y;
