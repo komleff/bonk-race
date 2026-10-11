@@ -266,7 +266,7 @@ test('accepted force evidence excludes sampled rejected attempts in train and si
     const s=createTrain(cfg); s.connections.forEach(c=>c.connected=false); s.bodies.A.velocity.x=100000;
     const calls=[];
     const pureForce=({id,time,subDt})=>{
-      calls.push({id,time,subDt}); return {force:{x:id==='A'?1000:0,y:0},torque:0};
+      calls.push({id,time,subDt}); return {force:{x:id==='A'?1000:0,y:0},torque:0,engineWrench:{force:{x:id==='A'?2000:0,y:time},torque:0}};
     };
     const r=advanceTrain(s,.1,pureForce); assert.equal(r.stopReason,undefined); assert.ok(r.diagnostics.solverSubsteps>1);
     const count=Object.keys(s.bodies).length;
@@ -275,9 +275,10 @@ test('accepted force evidence excludes sampled rejected attempts in train and si
     for (let i=0;i<r.forceSamples.length;i++) {
       const applied=r.forceSamples[i]; near(applied.subDt,.1/r.diagnostics.solverSubsteps,0);
       near(applied.time,s.world.time+Math.floor(i/count)*applied.subDt,0);
+      assert.deepEqual(applied.engineWrench,{force:{x:applied.id==='A'?2000:0,y:applied.time},torque:0});
     }
     const reference=cloneTrainState(s); reference.config.numerics.substeps=r.diagnostics.solverSubsteps;
-    const clean=advanceTrain(reference,.1,({id})=>({force:{x:id==='A'?1000:0,y:0},torque:0}));
+    const clean=advanceTrain(reference,.1,({id,time})=>({force:{x:id==='A'?1000:0,y:0},torque:0,engineWrench:{force:{x:id==='A'?2000:0,y:time},torque:0}}));
     assert.deepEqual(r.forceSamples,clean.forceSamples); assert.deepEqual(r.state.bodies,clean.state.bodies); assert.deepEqual(r.contacts,clean.contacts);
     s.config.numerics.maxAdaptiveSubsteps=1;
     const fail=advanceTrain(s,.1,pureForce); assert.ok(fail.stopReason); assert.deepEqual(fail.forceSamples,[]); assert.equal(fail.state,s);
@@ -286,4 +287,27 @@ test('accepted force evidence excludes sampled rejected attempts in train and si
 test('invalid sampler forces and force-free accepted steps expose no wrench evidence', () => {
   const s=empty(); let r=advanceTrain(s,.01); assert.equal(r.stopReason,undefined); assert.deepEqual(r.forceSamples,[]);
   r=advanceTrain(s,.01,()=>({force:{x:NaN,y:0},torque:0})); assert.ok(r.stopReason); assert.deepEqual(r.forceSamples,[]);
+});
+test('engine wrench evidence is cloned separately while only the total external wrench affects physics', () => {
+  for (const composition of ['train','single']) {
+    const cfg=createDefaultTrainConfig(); cfg.composition=composition;
+    const s=createTrain(cfg); s.connections.forEach(c=>c.connected=false);
+    const engine={force:{x:10000000,y:20000000},torque:30000000};
+    const total={force:{x:1000,y:2000},torque:3000};
+    const r=advanceTrain(s,.1,()=>({...total,engineWrench:engine})); assert.equal(r.stopReason,undefined);
+    for (const sample of r.forceSamples) { assert.deepEqual(sample.engineWrench,engine); assert.deepEqual(sample.wrench,total); }
+    engine.force.x=99; engine.torque=99; total.force.y=99;
+    for (const sample of r.forceSamples) { near(sample.engineWrench.force.x,10000000); near(sample.engineWrench.torque,30000000); near(sample.wrench.force.y,2000); }
+    for (const body of Object.values(r.state.bodies)) {
+      near(body.velocity.x,100/body.mass); near(body.velocity.y,200/body.mass); near(body.angularVelocity,300/body.inertia);
+    }
+  }
+});
+test('invalid optional engine evidence rejects the whole tick atomically in both physical compositions', () => {
+  for (const composition of ['train','single']) for (const engineWrench of [null,{}, {force:null,torque:0},
+    {force:{x:NaN,y:0},torque:0}, {force:{x:0,y:Infinity},torque:0}, {force:{x:0,y:0},torque:NaN}]) {
+    const cfg=createDefaultTrainConfig(); cfg.composition=composition; const s=createTrain(cfg), before=structuredClone(s);
+    const r=advanceTrain(s,.01,()=>({force:{x:1000,y:0},torque:0,engineWrench}));
+    assert.ok(r.stopReason); assert.equal(r.state,s); assert.deepEqual(r.forceSamples,[]); assert.deepEqual(s,before);
+  }
 });

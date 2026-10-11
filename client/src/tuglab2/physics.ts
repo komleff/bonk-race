@@ -7,6 +7,10 @@ import type { TrainAdvanceResult, TrainBodyId, TrainConnection, TrainForceApplie
 
 const orderedConnections = (state: TrainState) => state.connections.filter(c => c.connected).slice().sort((a, b) => a.id < b.id ? -1 : 1);
 const zeroWrench = (): TrainWrench => ({ force: { x: 0, y: 0 }, torque: 0 });
+function cloneValidatedWrench(wrench: TrainWrench): TrainWrench {
+  if (!wrench || !wrench.force || ![wrench.force.x, wrench.force.y, wrench.torque].every(Number.isFinite)) throw new Error('Недопустимая внешняя или двигательная сила');
+  return { force: { ...wrench.force }, torque: wrench.torque };
+}
 export function trainSpringWrenches(state: TrainState): Record<TrainBodyId, TrainWrench> {
   const result = { A: zeroWrench(), B: zeroWrench(), C: zeroWrench() };
   for (const c of orderedConnections(state)) {
@@ -153,9 +157,9 @@ function attempt(original: TrainState, dt: number, substeps: number, sampler?: T
     if (sampler) {
       const samples = bodies.map(({ id, body }) => sampler({ id, body: structuredClone(body), time: original.world.time + step * subDt, subDt }));
       samples.forEach((w, i) => {
-        if (!w || !w.force || ![w.force.x, w.force.y, w.torque].every(Number.isFinite)) throw new Error('Недопустимая внешняя сила');
-        forceSamples.push({ id: bodies[i].id, time: original.world.time + step * subDt, subDt,
-          wrench: { force: { ...w.force }, torque: w.torque } });
+        const applied: TrainForceApplied = { id: bodies[i].id, time: original.world.time + step * subDt, subDt, wrench: cloneValidatedWrench(w) };
+        if (w.engineWrench !== undefined) applied.engineWrench = cloneValidatedWrench(w.engineWrench);
+        forceSamples.push(applied);
         applyImpulse(bodies[i].body, { x: w.force.x * subDt, y: w.force.y * subDt });
         bodies[i].body.angularVelocity += w.torque * subDt / bodies[i].body.inertia;
       });
@@ -184,8 +188,9 @@ export function advanceTrain(state: TrainState, dt: number, forces?: TrainForceS
     const collected: TrainForceApplied[] = [];
     const sampler: TrainForceSampler | undefined = forces ? sample => {
       const wrench = forces(sample);
-      if (!wrench || !wrench.force || ![wrench.force.x, wrench.force.y, wrench.torque].every(Number.isFinite)) throw new Error('Недопустимая внешняя сила');
-      collected.push({ id: sample.id, time: sample.time, subDt: sample.subDt, wrench: { force: { ...wrench.force }, torque: wrench.torque } });
+      const applied: TrainForceApplied = { id: sample.id, time: sample.time, subDt: sample.subDt, wrench: cloneValidatedWrench(wrench) };
+      if (wrench.engineWrench !== undefined) applied.engineWrench = cloneValidatedWrench(wrench.engineWrench);
+      collected.push(applied);
       return wrench;
     } : undefined;
     const legacy = advanceSpaceWorld(state.bodies.A, state.bodies.B, state.connections[0], state.world, dt, state.config.numerics, sampler);
