@@ -1,3 +1,11 @@
+## TugLab-2 — реализация (11 октября 2026)
+
+Принятое ТЗ f5cfdbea перенесено cherry-pick -x в изолированную feat/u2-tuglab2 от свежего c048de7. План/Verification Contract: docs/superpowers/plans/2026-10-11-tuglab2.md. bonk-race-tug2 IN_PROGRESS, этапы .1 физика/.2 ассистент+запись/.3 оболочка/.4 квалификация/.5 Android. Developer GPT-6.1-Sol пишет общий шаг; независимые проверки последуют. Opus/Gemini недоступны, внешние платные API не запускаются.
+
+Legacy bd0.49.6 проверен по официальному SHA256; backup основной SQLite перед additive import59created/0updated/31unchanged. tug2 реально импортирован и прочитан из БД; миграций нет. Branch JSONL сохраняет прежние записи и только относящиеся к tug2 изменения. Worktree hooks используют прежний no-db механизм, БД синхронизируется явными legacy командами. Основной checkout/stash сохранены.
+
+Исходная регрессия: npm test,435/435 TugLab и общая build PASS после сборки shared (первый npm test в свежем worktree до shared/dist дал module-not-found). Node20.20.2 локально /tmp, официальный SHA256; системный Node25 не меняется. Android ещё не запускался; LAN en0 192.168.68.65, стенд планируется5176. Merge/release/deploy не разрешены.
+
 ## TugLab-2 — ТЗ на поезд с задним ассистентом (11 октября 2026)
 
 - По поручению оператора подготовлено и передаётся в отдельную ветку/PR [ТЗ TugLab-2 v0.1](../docs/tz/spec_u2_tuglab2_v0.1.md). Учёт: `bonk-race-tug2-spec`; следующая реализация — `bonk-race-tug2`.
