@@ -94,13 +94,27 @@ onResize(); // начальный размер
 let syncTrigger = 0;        // toolbar → panel: перечитать параметры
 let paramChangeCounter = 0; // panel → toolbar: пометить пресет как «Свой»
 
+const canvasPointers = new Set<number>();
 function clearFlightInput(): void {
+    canvasPointers.clear();
     input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail();
     if (space) {
         lab.setSpaceBrake(false, 'pointer'); lab.setSpaceBrake(false, 'keyboard');
         lab.setTrainRearBrake(false, 'pointer'); lab.setTrainRearBrake(false, 'keyboard');
     }
 }
+// Штатный pointerup снимает учёт до автоматического lostpointercapture браузера.
+function onCanvasPointerDown(event: PointerEvent): void { if (lab.towingComposition === 'ABC') canvasPointers.add(event.pointerId); }
+function onCanvasPointerUp(event: PointerEvent): void { canvasPointers.delete(event.pointerId); }
+function onCanvasPointerLost(event: PointerEvent): void {
+    const wasActive = canvasPointers.delete(event.pointerId);
+    if (lab.towingComposition !== 'ABC' || (event.type === 'lostpointercapture' && !wasActive)) return;
+    clearFlightInput(); lab.pause(); renderToolbar();
+}
+canvas.addEventListener('pointerdown', onCanvasPointerDown);
+canvas.addEventListener('pointercancel', onCanvasPointerLost);
+canvas.addEventListener('lostpointercapture', onCanvasPointerLost);
+window.addEventListener('pointerup', onCanvasPointerUp);
 function onOrientationChanged(): void { if (space) { clearFlightInput(); lab.pause(); renderToolbar(); } }
 function onEditableFocused(event: FocusEvent): void {
     if (lab.towingComposition !== 'ABC') return;
@@ -289,6 +303,10 @@ if (import.meta.hot) {
         window.removeEventListener("orientationchange", onOrientationChanged); document.removeEventListener("focusin", onEditableFocused);
         lab.stop();
         window.removeEventListener("keydown", onBrakeKey); window.removeEventListener("keyup", onBrakeKey);
+        canvas.removeEventListener('pointerdown', onCanvasPointerDown);
+        canvas.removeEventListener('pointercancel', onCanvasPointerLost);
+        canvas.removeEventListener('lostpointercapture', onCanvasPointerLost);
+        window.removeEventListener('pointerup', onCanvasPointerUp);
         input.destroy();
         cancelAnimationFrame(rafId!);
         window.removeEventListener("resize", onResize);

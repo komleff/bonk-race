@@ -65,10 +65,20 @@ async function viewport(browser,url,width,height){
  await page.getByRole('button',{name:'Старт',exact:true}).click();await page.waitForFunction(()=>window.__bonkLab.getState().startCountdown===0);
  const canvas=await page.locator('canvas').boundingBox(),rear=await page.getByRole('button',{name:'Тормоз заднего',exact:true}).boundingBox(),client=await context.newCDPSession(page);
  const finger={id:1,x:Math.round(canvas.x+canvas.width*.48),y:Math.round(canvas.y+canvas.height*.55)},moved={...finger,y:finger.y-60},brake={id:2,x:Math.round(rear.x+rear.width/2),y:Math.round(rear.y+rear.height/2)};
+ await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[finger]});await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[moved]});await page.waitForFunction(()=>window.__labInput.getState().magnitude>.2);
+ await client.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});const cancelled=await snapshot(page);assert.equal(cancelled.train.paused,true);assert.deepEqual(cancelled.train.commandC,{forward:0,retro:0,lateral:0,yaw:0});assert.equal(await page.evaluate(()=>window.__labInput.getState().magnitude),0);
+ await page.waitForTimeout(100);assert.equal((await snapshot(page)).elapsedTime,cancelled.elapsedTime);await page.getByRole('button',{name:'Продолжить',exact:true}).click();
  await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[finger]});await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[moved]});await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[moved,brake]});
  await page.waitForFunction(()=>window.__labInput.getState().magnitude>.2&&window.__bonkLab.getState().train.rearBrake);await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[brake]});
  await page.waitForFunction(()=>!window.__bonkLab.getState().train.rearBrake);assert.ok(await page.evaluate(()=>window.__labInput.getState().magnitude)>.2);assert.equal((await snapshot(page)).train.paused,false);
- await client.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});assert.equal(await page.evaluate(()=>window.__labInput.getState().magnitude),0);
+ await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[moved]});assert.equal(await page.evaluate(()=>window.__labInput.getState().magnitude),0);assert.equal((await snapshot(page)).train.paused,false,'штатное отпускание единственного pilot не ставит паузу');
+ if(width===820){
+  await page.evaluate(()=>document.querySelector('canvas').addEventListener('pointerdown',e=>{window.cancelPointerId=e.pointerId;},{once:true}));
+  await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[finger]});await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[moved]});
+  await page.evaluate(()=>document.querySelector('canvas').releasePointerCapture(window.cancelPointerId));await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...moved,y:moved.y-5}]});
+  await page.waitForFunction(()=>window.__bonkLab.getState().train.paused);assert.deepEqual((await snapshot(page)).train.commandC,{forward:0,retro:0,lateral:0,yaw:0});assert.equal(await page.evaluate(()=>window.__labInput.getState().magnitude),0);
+  await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[moved]});await page.getByRole('button',{name:'Продолжить',exact:true}).click();
+ }
  await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[brake]});await client.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await page.waitForFunction(()=>window.__bonkLab.getState().train.paused);
  assert.equal((await snapshot(page)).train.rearBrake,false);assert.equal(await page.evaluate(()=>window.__labInput.getState().magnitude),0);
  await page.getByRole('button',{name:'Продолжить',exact:true}).click();await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[brake]});
