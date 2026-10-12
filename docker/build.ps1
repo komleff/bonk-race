@@ -126,8 +126,8 @@ function Build-Monolith {
 function Build-AppDb {
     Write-Host "Building App + DB containers..." -ForegroundColor Yellow
 
-    $AppTag = "$Registry/slime-arena-app:$Version"
-    $DbTag = "$Registry/slime-arena-db:$Version"
+    $AppTag = "$Registry/bonk-race-app:$Version"
+    $DbTag = "$Registry/bonk-race-db:$Version"
 
     Push-Location $ProjectRoot
     try {
@@ -137,7 +137,7 @@ function Build-AppDb {
             --platform $Platform `
             -f docker/db.Dockerfile `
             -t $DbTag `
-            -t "$Registry/slime-arena-db:latest" `
+            -t "$Registry/bonk-race-db:latest" `
             .
 
         if ($LASTEXITCODE -ne 0) { throw "DB build failed" }
@@ -148,7 +148,7 @@ function Build-AppDb {
             --platform $Platform `
             -f docker/app.Dockerfile `
             -t $AppTag `
-            -t "$Registry/slime-arena-app:latest" `
+            -t "$Registry/bonk-race-app:latest" `
             .
 
         if ($LASTEXITCODE -ne 0) { throw "App build failed" }
@@ -156,9 +156,9 @@ function Build-AppDb {
         if ($Push) {
             Write-Host "Pushing to registry..." -ForegroundColor Yellow
             docker push $AppTag
-            docker push "$Registry/slime-arena-app:latest"
+            docker push "$Registry/bonk-race-app:latest"
             docker push $DbTag
-            docker push "$Registry/slime-arena-db:latest"
+            docker push "$Registry/bonk-race-db:latest"
         }
 
         Write-Host "App + DB build complete" -ForegroundColor Green
@@ -172,7 +172,7 @@ function Build-AppDb {
 function Build-DbOnly {
     Write-Host "Building DB-only container..." -ForegroundColor Yellow
 
-    $Tag = "$Registry/slime-arena-db:$Version"
+    $Tag = "$Registry/bonk-race-db:$Version"
 
     Push-Location $ProjectRoot
     try {
@@ -180,14 +180,14 @@ function Build-DbOnly {
             --platform $Platform `
             -f docker/db.Dockerfile `
             -t $Tag `
-            -t "$Registry/slime-arena-db:latest" `
+            -t "$Registry/bonk-race-db:latest" `
             .
 
         if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
         if ($Push) {
             docker push $Tag
-            docker push "$Registry/slime-arena-db:latest"
+            docker push "$Registry/bonk-race-db:latest"
         }
 
         Write-Host "DB build complete: $Tag" -ForegroundColor Green

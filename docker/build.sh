@@ -135,8 +135,8 @@ build_monolith() {
 build_app_db() {
     echo -e "${YELLOW}Building App + DB containers...${NC}"
 
-    local APP_TAG="${REGISTRY}/slime-arena-app:${VERSION}"
-    local DB_TAG="${REGISTRY}/slime-arena-db:${VERSION}"
+    local APP_TAG="${REGISTRY}/bonk-race-app:${VERSION}"
+    local DB_TAG="${REGISTRY}/bonk-race-db:${VERSION}"
 
     # Build DB container
     echo -e "${BLUE}Building DB container...${NC}"
@@ -144,7 +144,7 @@ build_app_db() {
         --platform "${PLATFORM}" \
         -f docker/db.Dockerfile \
         -t "${DB_TAG}" \
-        -t "${REGISTRY}/slime-arena-db:latest" \
+        -t "${REGISTRY}/bonk-race-db:latest" \
         ..
 
     # Build App container
@@ -153,14 +153,14 @@ build_app_db() {
         --platform "${PLATFORM}" \
         -f docker/app.Dockerfile \
         -t "${APP_TAG}" \
-        -t "${REGISTRY}/slime-arena-app:latest" \
+        -t "${REGISTRY}/bonk-race-app:latest" \
         ..
 
     if [ "${PUSH}" = true ]; then
         docker push "${APP_TAG}"
-        docker push "${REGISTRY}/slime-arena-app:latest"
+        docker push "${REGISTRY}/bonk-race-app:latest"
         docker push "${DB_TAG}"
-        docker push "${REGISTRY}/slime-arena-db:latest"
+        docker push "${REGISTRY}/bonk-race-db:latest"
     fi
 
     echo -e "${GREEN}App + DB build complete${NC}"
@@ -171,18 +171,18 @@ build_app_db() {
 build_db_only() {
     echo -e "${YELLOW}Building DB-only container...${NC}"
 
-    local TAG="${REGISTRY}/slime-arena-db:${VERSION}"
+    local TAG="${REGISTRY}/bonk-race-db:${VERSION}"
 
     docker build \
         --platform "${PLATFORM}" \
         -f docker/db.Dockerfile \
         -t "${TAG}" \
-        -t "${REGISTRY}/slime-arena-db:latest" \
+        -t "${REGISTRY}/bonk-race-db:latest" \
         ..
 
     if [ "${PUSH}" = true ]; then
         docker push "${TAG}"
-        docker push "${REGISTRY}/slime-arena-db:latest"
+        docker push "${REGISTRY}/bonk-race-db:latest"
     fi
 
     echo -e "${GREEN}DB build complete: ${TAG}${NC}"

@@ -11,7 +11,7 @@ FROM alpine:3.19
 LABEL org.opencontainers.image.title="Slime Arena DB"
 LABEL org.opencontainers.image.description="Slime Arena database bundle: PostgreSQL 16 + Redis"
 LABEL org.opencontainers.image.vendor="komleff"
-LABEL org.opencontainers.image.source="https://github.com/komleff/slime-arena"
+LABEL org.opencontainers.image.source="https://github.com/komleff/bonk-race"
 LABEL org.opencontainers.image.version="0.6.4"
 LABEL org.opencontainers.image.licenses="MIT"
 
