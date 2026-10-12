@@ -86,3 +86,14 @@ Browser QA использует внешний Playwright/Chrome: `PLAYWRIGHT_MO
 CI `TugLab checks and artifact` только проверяет и выдаёт tar/SHA/source manifest/QA evidence, без публикации и secrets. Run 37047921348 для HEAD `16158ea` прошёл на Node 20/Linux. Действующий workflow BonkLab не изменён. Generated dist/cache игнорируются Git, серверный API не нужен.
 
 Схема Caddy: `docs/deploy/tuglab-vps.md`, production не изменён. DNS 83.217.202.233 готов, HTTPS ещё не опубликован. Реальный Android отдельно, touch emulation не считается устройством.
+
+
+## Поезд в существующем U2TagLab — интеграция 12 октября 2026
+
+По последнему указанию оператора продуктовая точка входа — существующая `client/u2taglab.html` / собранная `/u2taglab/`; команды `dev:u2taglab` и `build:u2taglab`. Отдельные HTML/Vite/JSX dashboard TugLab-2 удаляются из feature-ветки. Переиспользуемые численные библиотеки остаются в `client/src/tuglab2/`; `test:tuglab2`/`typecheck:tuglab2` и offline matrix остаются инструментами проверки, а не отдельным приложением.
+
+`build:pages` собирает BonkLab, TugLab и U2TagLab в `client/dist-pages`, с относительными ресурсами всех трёх страниц. Общий readonly CI сохраняет QA evidence даже при отказе; публичного deploy в рамках PR нет. Системный сервер5175 принадлежит прежнему checkout `bonk-race-tuglab` и не останавливается. Собранная текущая ветка отдаётся отдельным HTTP5177; при необходимости dev этой ветки использует свободный5178.
+
+Игровой адаптер `client/src/lab/LabTrain.ts` интегрируется в текущий BonkLab и не ограничивает маршрут обязательной записью или experiment timeout60. Начальные ссылки ABC имеют отдельный `#u2train=`/model, обычные `#u2tag=` схемы сохраняются. Сессия/recording/replay schema1 остаются проверочными API: trusted identity задаётся тестом/CLI, UTF8≤32MiB/14400 accepted ticks+events,256 объектов мира/5млн узлов. Удалённый worker dashboard не является текущим пользовательским интерфейсом.
+
+Browser/plotting QA инструменты изолированы от продуктовых зависимостей. Историческая preliminary квалификация сохранена в `docs/reports/tuglab2-qualification.md`:466 случаев,15replay/63CCD, но последний дополнительный checker не был загружен тем процессом. Приёмка новой интеграции ещё выполняется; физический Android остаётся OPEN.

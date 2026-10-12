@@ -47,11 +47,40 @@ export class TelemetryHUD {
         // нечего инициализировать
     }
 
+    private renderTrain(ctx: CanvasRenderingContext2D, state: SandboxState): void {
+        const train = state.train!;
+        const n = (value: number) => Number.isFinite(value) ? value.toFixed(1) : '—';
+        const bodies = { A: { position: { x: state.x, y: state.y }, velocity: { x: state.vx, y: state.vy }, angle: state.angle, angularVelocity: state.angularVelocity, radius: state.radius }, B: train.B, C: train.C };
+        let rows = [`ABC · ${train.paused ? 'Пауза' : 'Полёт'} · ${formatTime(state.elapsedTime)}`];
+        for (const id of ['A', 'B', 'C'] as const) {
+            const b = bodies[id]; rows.push(`${id} ${n(Math.hypot(b.velocity.x, b.velocity.y))} м/с · ω ${n(b.angularVelocity * RAD2DEG)}°/с`);
+        }
+        for (const l of train.connections) {
+            const a = bodies[l.bodyA], b = bodies[l.bodyB], sa = l.attachmentA === 'nose' ? 1 : -1, sb = l.attachmentB === 'nose' ? 1 : -1;
+            const d = Math.hypot(b.position.x + Math.cos(b.angle) * b.radius * sb - a.position.x - Math.cos(a.angle) * a.radius * sa,
+                b.position.y + Math.sin(b.angle) * b.radius * sb - a.position.y - Math.sin(a.angle) * a.radius * sa);
+            rows.push(`${l.id} ${l.connected ? 'ON' : 'OFF'} · d/l₀ ${n(d)}/${n(l.restLength)} м`);
+        }
+        rows.push(`C: ${{ coast: 'Накат', guard: 'Страховка', brake: 'Помощь при торможении' }[train.settings.mode]} · g ${n(train.settings.g * 100)}% · Δt ${n(train.settings.delay)} с`);
+        const c = train.commandC; rows.push(`Команды C: R ${n(c.retro * 100)}% L ${n(c.lateral * 100)}%`); rows.push(`Момент C ${n(c.yaw * 100)}% · марш 0`);
+        rows.push(`Двигатели сейчас ${train.paused ? 'OFF' : 'ON'} · принятые средние:`);
+        for (const id of ['A', 'C'] as const) { const w = train.engineWrenches[id]; rows.push(`${id} F ${n(w ? Math.hypot(w.force.x, w.force.y) / 1000 : 0)} кН · τ ${n((w?.torque ?? 0) / 1000)} кН·м`); }
+        if (ctx.canvas.clientHeight < 350) {
+            const speeds = (['A', 'B', 'C'] as const).map(id => `${id} ${n(Math.hypot(bodies[id].velocity.x, bodies[id].velocity.y))}`).join(' · ');
+            rows = [rows[0], `${speeds} м/с`, rows[4], rows[5], rows[6], `C: ретро ${n(c.retro * 100)}% · бок ${n(c.lateral * 100)}%`, `Момент ${n(c.yaw * 100)}% · ${train.paused ? 'двигатели выкл.' : 'двигатели вкл.'}`];
+        }
+        ctx.save(); ctx.scale(ctx.canvas.width / (ctx.canvas.clientWidth || ctx.canvas.width), ctx.canvas.height / (ctx.canvas.clientHeight || ctx.canvas.height));
+        const width = Math.min(235, (ctx.canvas.clientWidth || 390) - SPACE_OVERLAY_HEIGHT - 16), height = rows.length * 14 + 12;
+        this.roundRect(ctx, 5, 5, width, height, 4); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill(); ctx.font = '11px monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillStyle = '#eee';
+        rows.forEach((row, i) => ctx.fillText(row, 11, 11 + i * 14, width - 12)); ctx.restore();
+    }
+
     render(
         ctx: CanvasRenderingContext2D,
         state: SandboxState,
         params: Record<string, number | boolean | string>,
     ): void {
+        if (state.train) { this.renderTrain(ctx, state); return; }
         const space = Boolean(state.spaceWorld);
         const pad = space ? PAD / 2 : PAD;
         const panelW = space ? SPACE_OVERLAY_WIDTH : PANEL_W;

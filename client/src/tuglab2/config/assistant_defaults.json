@@ -1,0 +1,8 @@
+{
+  "mode": "coast", "g": 1, "delay": 0.25,
+  "Td": 2, "Tv": 1, "Tlat": 2, "Tyaw": 1, "epsilon": 0.02, "yawDamping": 2,
+  "guardRetroLimit": 0.25, "brakeRetroLimit": 1, "lateralLimit": 0.5, "yawLimit": 0.5,
+  "stopSpeed": 1, "stopYaw": 0.017453292519943295, "stopHold": 2, "timeout": 60,
+  "maxRecordingTicks": 14400, "maxImportBytes": 33554432, "maxObjects": 256,
+  "maxShareBytes": 131072
+}

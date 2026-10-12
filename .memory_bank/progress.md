@@ -1,3 +1,60 @@
+## Задний пилот и финиш по грузу — 12 октября 2026
+
+Последнее требование оператора реализовано в существующем U2TagLab: C направлен носом вперёд к хвосту B, своими ограниченными двигателями корректирует путь груза и служит его тормозом. Исходная геометрия, управление A, масштаб A–B и solver сохранены. B пассивен; автоматической маршевой тяги C и скрытых сил нет.
+
+Controller source34979e8: causal accepted A-path tracker с окном8км; реакция на общий B/C и отдельный B занос; signed продольные ошибки; Brake учитывает скорость груза; retro не толкает состав вперёд при аварийном развороте C. Standard40 Brake: side431→39м, residual29→0.391м/с; заранее выбранный moderate45 поворот: ошибка пути375→158м. Все12standard всё ещё timeout60 по критерию полного углового покоя. Guard40/B-only могут сильнее вращать B, Guard80 допускает обгон. Подробности/отрицательные результаты: docs/reports/u2taglab-assistant-fix.md. Продолжение настройки выделено в OPEN .13; физический Android .5 остаётся OPEN.
+
+Finish source2ddbfd3, .12 CLOSED: TugLabAB/U2AB/U2ABC засчитывают только forward swept пересечение центром B финишной плоскости внутри прежней полосы, независимо от A/C. Автор18+480 и независимые18+3 actual physics probes PASS. После объединения PM480/480 PASS.
+
+На34979e8 fresh93/93 core и45/45 host/finish, frontend typecheck и четыре независимых probe группы PASS; Core review APPROVED. Формат optional track и bound пути независимо APPROVED. PM cold build:pages (BonkLab/TugLab/U2TagLab), browser root/common nested и пять native-touch экранов PASS; фактический масштаб A–B сохранён, page errors[]. Architecture независимо APPROVED34979e8 по пяти адресным lifecycle/force/replay gates; все три scoped reviewer APPROVED, .8 CLOSED. Окончательная свежая численная matrix/CI/source identity фиксируются в PR47 перед передачей. Исторический matrixdc51 сохраняется отдельно и не выдаётся за проверку нового контроллера.
+
+## Исправление масштаба текущего U2TagLab (12 октября 2026)
+
+По прямому замечанию оператора commit370baf9 восстановил прежнюю камеру по A–B. C больше не отдаляет вид; основной пилотаж не менялся. Исправленная локальная игра уже открыта пользователю; есть реальное renderer RED→GREEN, полёт и пять размеров экрана. Это заменяет первоначальное требование вмещать весь поезд.
+
+Свежая квалификация ядра выполнена на чистом dc51e1b:466/466,42stopped/424timeout,0hard failures,15replay/recompute,63CCD,72tests и plots PASS; processwall412.806с. Core/QA после camera commit byte-identical; provenance исходных артефактов не переписан. Все standard40/80 — timeout; turn90 passage0/6. Техническая квалификация не является приёмкой всех23 критериев. Android.5 и калибровка.8 остаются OPEN. Независимый Architecture-аудит fresh данных PASS, три scoped camera reviews APPROVED; PM cold3-app build и root/common5native-touch browser PASS. .4/.11 CLOSED, .5/.8 OPEN; finalHEAD/CI фиксируются в PR47.
+
+Ниже сохранена история; сведения о незавершённом свежем matrix run заменены этим результатом.
+
+## Поезд в текущем U2TagLab — уточнённая поставка (12 октября 2026)
+
+Последний прямой выбор оператора — существующая космическая `/u2taglab/`, старое управление A и маршрут с препятствиями. Реализованы ABC, второй тягач C, BC, самостоятельные параметры/сцепки и видимый live режим C; неправильная отдельная UI/entry удалена. Product7f1d175, предыдущая cleanup9e816a9. Реальный станционный участок23.45с — intermediate evidence, не весь18км. Свежие462/462+72/72 и3-app сборка PASS; два независимых P2 исправлены RED→GREEN, три scoped reviews APPROVED, финальный root/common5nativeviewports PASS; .7/.9/.10 CLOSED. CI9e816a9 SUCCESS, окончательный docs-only HEAD/CI фиксируются в PR47. Расширенная квалификация.4, реальный Android.5 и калибровка.8 остаются OPEN.
+
+Ниже исторические этапы отдельной оболочки: они не являются текущей поставкой и их approvals не заменяют ревью новой интеграции.
+
+## TugLab-2 — первый играбельный поезд (11 октября 2026)
+
+## TugLab-2 — полная оболочка Task 3 (12 октября 2026)
+
+Developer передаёт UI на независимое ревью: TrainSession, основные/экспертные настройки, независимые профили/сцепки, safe multitouch/lifecycle, камера/мир, HUD/итоги/принятые графики, strict worker import/replay/compare, JSON/CSV/share и PNG. Step записывает resume→tick→pause; replay — финальный кадр без продолжения приватной истории. Большие журналы разбираются/проверяются в worker, UI принимает только проверенные данные и конечные состояния.
+
+68/68 pure, полный клиентский TSX typecheck, npm test и четыре build:pages PASS. Собственный static root+nested browser PASS; пять экранов 1280×800/820×1180/1180×820/390×844/844×390, native Chrome два пальца, no overlap/all44/no overflow/errors[]. Большой accepted журнал1000тиков/2.86MB: cancel сохраняет опыт, import+heartbeat PASS. Отчёт docs/reports/tuglab2-ui.md, справка docs/TugLab2-Guide.md. Это Developer scope до независимого review/finalSHA; Task4 матрица/AC23 и физический Android не заявляются. Root владеет workflow/package/final artifact/push; старые исходники/физика не менялись UI.
+
+Исправлены замечания core-review F1/F2 одним исправлением класса валидации и численной границы захвата. Поведенческий RED3 → полный GREEN26/26; общий typecheck/npm test PASS. Отчёт дополнен `docs/reports/tuglab2-core.md`; приёмка этапа зависит от scoped re-review и независимой браузерной проверки.
+
+PR47 draft, core d82e9d3: общий транзакционный шаг A/B/C/двух пружин/world CCD,22physics/435legacy/npmtest PASS. Независимый core-review GPT6-Astra идёт. Single ровно один read-only advanceSpaceWorld, limitCountsExact=false (н/д); train=true. Первый coast main.tsx наследуетLabInput/spaceInputFrame и enginesA, Czero. Browser missingpageRED→GREEN; keyboardfocusRED→GREEN с assert speedA>1. Живой Chrome D600мс далA11.85/B3.05/C1.24м/с. Началоpaused, правильныеports/360м, независимыеlinks/Restart. LAN5176/tuglab2.html HTTP200; общая buildPages fourappsPASS, собранная5177/tuglab2/ browserPASS. Это рабочий coast, ассистент/replay/матрица/Android ещё впереди.
+
+Отчёты: docs/reports/tuglab2-core.md и tuglab2-baseline-qa.md. Независимый legacy QA8U2 suites/74checks +TugLabsmoke/share/lifecycle +BonkLabmouse/preset PASS,95PNG. Первый concurrent lifecycle timeout сохранён, повтор неизменённогоPASS, причина не доказана. Новых указаний PR46/47 нет. Merge/release/deploy не выполнялись.
+
+## TugLab-2 — реализация (11 октября 2026)
+
+Результат Developer .1: совместная физика A–B–C, профили и захват исполняются; core typecheck и 22/22physics PASS, общий npm test PASS. Угол/положение single повторяют контрольный legacy-прогон ровно; для train симметричные пружинные импульсы и совместная матрица демпферов. Этап не заменяет будущую квалификационную матрицу/ревью и Android. Счётчики ограничителей train точные; single помечает `limitCountsExact=false`, поскольку прежнее ядро не возвращает этих данных.
+
+Принятое ТЗ f5cfdbea перенесено cherry-pick -x в изолированную feat/u2-tuglab2 от свежего c048de7. План/Verification Contract: docs/superpowers/plans/2026-10-11-tuglab2.md. bonk-race-tug2 IN_PROGRESS, этапы .1 физика/.2 ассистент+запись/.3 оболочка/.4 квалификация/.5 Android. Developer GPT-6.1-Sol пишет общий шаг; независимые проверки последуют. Opus/Gemini недоступны, внешние платные API не запускаются.
+
+Legacy bd0.49.6 проверен по официальному SHA256; backup основной SQLite перед additive import59created/0updated/31unchanged. tug2 реально импортирован и прочитан из БД; миграций нет. Branch JSONL сохраняет прежние записи и только относящиеся к tug2 изменения. Worktree hooks используют прежний no-db механизм, БД синхронизируется явными legacy командами. Основной checkout/stash сохранены.
+
+Исходная регрессия: npm test,435/435 TugLab и общая build PASS после сборки shared (первый npm test в свежем worktree до shared/dist дал module-not-found). Node20.20.2 локально /tmp, официальный SHA256; системный Node25 не меняется. Android ещё не запускался; LAN en0 192.168.68.65, стенд планируется5176. Merge/release/deploy не разрешены.
+
+## TugLab-2 — ТЗ на поезд с задним ассистентом (11 октября 2026)
+
+- По поручению оператора подготовлено и передаётся в отдельную ветку/PR [ТЗ TugLab-2 v0.1](../docs/tz/spec_u2_tuglab2_v0.1.md). Учёт: `bonk-race-tug2-spec`; следующая реализация — `bonk-race-tug2`.
+- Принятая схема: передний тягач A, пассивный груз B, задний тягач C; A-хвост/B-нос и B-хвост/C-нос, только пружины, одно крепление — одна сцепка. A ведёт игрок, C — ограниченный ассистент с реальными двигателями и наблюдаемой задержкой.
+- Рекомендуется отдельная `/tuglab2/` в том же репозитории, с физическими профилями U2TagLab и сохранением `/tuglab/`, `/u2taglab/` и опорного релиза v0.6.4. Новый deploy не должен заменять старые страницы.
+- Ассистент: накат, страховка, помощь при торможении; независимые параметры C/двух связей, сравнение одинакового ввода A и двумерные торможения тяжёлого груза. Отсутствие C и накат C — разные составы. Числа регулятора и численные AC — предложения для квалификации, не результаты испытаний.
+- Передаётся только документация и учёт задач. Игра, версия, CI/Pages и исходники U2 не меняются; реализация, численная/игровая QA и выпуск TugLab-2 не выполнены. PM/PL далее готовят план реализации и Verification Contract; задачу разработки не объявлять начатой по публикации ТЗ.
+- Облачный режим: `bd` недоступен; сохранён Git-native снимок Beads с добавлением новых записей, существующие записи не изменены. Синхронизация с локальной БД выполняется штатным Beads после получения ветки.
+
 ## U2TagLab0.2.0 опубликован — BonkRacev0.6.4 (4 октября 2026)
 
 Оператор одобрил выпуск. PR44 слит; annotated tag v0.6.4 и GitHub Release опубликованы на SOURCE_SHA058fcc0e6d09673a4b1e0eaec8fede8b7bf488f9. Публичная игра: https://komleff.github.io/bonk-race/u2taglab/. Доступны жёсткая COM-сцепка front/rear, nearest4 свободный захват, исправленная повторная ссылка и компактная масса кг/т/кт/Мт. BonkLab и TugLab0.1.1 сохранены.
@@ -320,3 +377,27 @@ Round1 review: три Important исправлены; 205/205 TugLab PASS, brows
 ---
 
 *История slime-arena: `.memory_bank/archive/`*
+
+### TugLab-2 Task2 — 2026-10-11
+
+- Реализованы чистые assistant/session/recording/telemetry/scenes и JSON коэффициенты; Beads `bonk-race-tug2.2` остаётся in_progress до independent review PM.
+- Accepted-history и actual force mean используют журнал core05f91f5; engine/external разделены. Strict same-build JSON, replay без bot, causal recompute, сравнение фиксированного режима, параметры Share и SI CSV готовы.
+- Метрики обеих связей/каналов, initial-heading primary B deviation, brake path baseline, stop hold всех кораблей и timeout после первого brake покрыты тестами.
+- Ограниченный журнал проверяется до принятия тика: переполнение сохраняет импортируемый accepted prefix. 7200 ticks за 60с@120Hz проходят импорт.
+- 59/59 TugLab-2 тестов; typecheck/build и общая regression PASS. Отчёт `docs/reports/tuglab2-session.md`; UI/матрица/Android впереди, эффективность ассистента пока не квалифицирована.
+- Independent review a8d668e:4P2 CHANGES_REQUESTED. Все4 классовых дефекта и найденный compare ordinary-settings/detach-latch исправлены с RED→GREEN;66/66 (31core+35session), fresh typecheck/build:tuglab2 PASS. Результат ждёт scoped re-review, задача не закрыта. Существующие physics algorithms/fields не менялись; createTrain лишь выводит радиусы полей из текущих корпусов.
+
+- TugLab-2 Task2 gate573e490 independently APPROVED:66/66, causal/import/fields/terminal/latch scopedprobesPASS. Отчёт первоначального ревью и повторного preserved в docs/reports/tuglab2-session-review.md; .2CLOSED,.3fullUIin_progress.
+- CSV follow-up `bonk-race-tug2.6`: shared header/cell escaping и literal formula text реализованы с двумя RED→GREEN tests на независимом Python csv.reader;68/68, fresh typecheck/build:tuglab2/npm test PASS. Новые зависимости/physics/JSON не менялись; независимое адресное подтверждение CSV и Task4 gate остаются PM.
+
+CSV gate f5efe2c independently APPROVED (core_review, Codex/GPT-6; exact runtime model-id unavailable):68/68 tests, fresh typecheck,23 ID +23 imported reasons +28 direct cells checked by Python csv.reader(strict=True). SI negatives/JSON unchanged. bonk-race-tug2.6 CLOSED; permanent evidence docs/reports/tuglab2-csv-review.md. Полная UI и квалификация ещё выполняются.
+
+Task3 frozen1564: independent commonPages QA PASS4apps×2mounts/14legacy suites/5viewports+CDP2touch,128PNG; package --base=./ verified andcommitteda83be8a. Independentcode review CHANGES_REQUESTED2P2: pausedlinkHUD staleON/force/l0; replaypreview hidesrealnumericalstop reason andsaysrunning. ScopedUIfix underway, .3remainsin_progress/Task4notstarted. Initialreports preserved docs/reports/tuglab2-ui-review.md +tuglab2-full-ui-qa.md.
+
+Task3 gate433078a independent APPROVED (core_review),68/68 +freshfullTSX/stampedbuild/ownR1R2browserprobes. OFFT0/livecapturel0 andnumerical129tickreason restored; acceptedticks/graphunchanged. RootcoldbuildPages andownHUDrootnestedPASS. .3CLOSED/.4in_progressDeveloper: исполнениеfrozen466+15sourcefixtures/plots; AC23/Androidещёнеизмерены. InitialnegativeUIreview preserved withscopedclosure.
+## Актуальная поставка — интеграция поезда в U2TagLab (12 октября 2026)
+
+- По прямому уточнению оператора отдельный стенд заменён расширением существующего U2TagLab. `bonk-race-tug2.7` IN_PROGRESS; план `docs/superpowers/plans/2026-10-12-u2taglab-train-integration.md`.
+- Проверенные train physics/assistant сохраняются для переиспользования. Играбельный ABC в текущей оболочке/маршруте, независимое review и новая приёмка ещё выполняются.
+- Предварительная матрица отдельной оболочки сохранена, но не доказывает новую интеграцию. Фактический Android остаётся OPEN; безопасное торможение всех режимов/масс не заявляется.
+

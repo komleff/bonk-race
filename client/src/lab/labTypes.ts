@@ -7,6 +7,8 @@
 
 import type { TowingSnapshot } from "../tuglab/labTowing";
 import type { SpaceWorld } from "../u2taglab/world";
+import type { TrainBody, TrainConnection, TrainDiagnostics, TrainWrench } from '../tuglab2/types';
+import type { AssistantResult, AssistantSettings, CommandC } from '../tuglab2/assistant';
 
 import type { Arena } from "@bonk-race/shared";
 
@@ -26,7 +28,14 @@ export interface SandboxOrb {
 
 // ─── SandboxState ────────────────────────────────────────────────────────────
 
+export interface LabTrainSnapshot {
+    B: TrainBody; C: TrainBody; connections: TrainConnection[]; diagnostics: TrainDiagnostics;
+    commandC: CommandC; assistant: AssistantResult; settings: AssistantSettings;
+    engineWrenches: Record<string, TrainWrench>; paused: boolean; needsRestart: boolean;
+    rearBrake: boolean; reason?: string;
+}
 export interface SandboxState {
+    train?: LabTrainSnapshot;
     towing?: TowingSnapshot;
     spaceWorld?: SpaceWorld;
     /** Фактическая команда тормоза, включая независимое удержание Space. */

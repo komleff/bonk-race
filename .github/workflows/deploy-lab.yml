@@ -7,12 +7,14 @@ on:
       - 'client/src/lab/**'
       - 'client/src/tuglab/**'
       - 'client/src/u2taglab/**'
+      - 'client/src/tuglab2/**'
       - 'client/lab.html'
       - 'client/tuglab.html'
       - 'client/u2taglab.html'
       - 'client/vite.config.lab.ts'
       - 'client/vite.config.tuglab.ts'
       - 'client/vite.config.u2taglab.ts'
+      - 'scripts/assemble-lab-pages.cjs'
       - 'shared/src/**'
       - 'config/balance.json'
       - 'version.json'
@@ -26,12 +28,14 @@ on:
       - 'client/src/lab/**'
       - 'client/src/tuglab/**'
       - 'client/src/u2taglab/**'
+      - 'client/src/tuglab2/**'
       - 'client/lab.html'
       - 'client/tuglab.html'
       - 'client/u2taglab.html'
       - 'client/vite.config.lab.ts'
       - 'client/vite.config.tuglab.ts'
       - 'client/vite.config.u2taglab.ts'
+      - 'scripts/assemble-lab-pages.cjs'
       - 'shared/src/**'
       - 'config/balance.json'
       - 'version.json'
@@ -61,22 +65,11 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build --workspace=@bonk-race/shared
-
-      - run: npm run build:lab --workspace=client
-
-      - run: npm run build:tuglab
-
-      - run: npm run build:u2taglab
-
-      # Все сборки закончены: очистка dist-lab больше не удалит дочерние оболочки.
-      - run: mv client/dist-lab/lab.html client/dist-lab/index.html
-      - run: mv client/dist-tuglab client/dist-lab/tuglab
-      - run: mv client/dist-u2taglab client/dist-lab/u2taglab
+      - run: npm run build:pages
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: client/dist-lab
+          path: client/dist-pages
 
   deploy:
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')

@@ -10,6 +10,7 @@ import { LabToolbar } from "./ui/LabToolbar";
 import tuglabCss from "./ui/tuglab.css?raw";
 import { injectStyles } from "../ui/utils/injectStyles";
 import { decodeSpaceShareFragment } from "../u2taglab/share";
+import { decodeTrainShareFragment } from "../u2taglab/trainShare";
 import { decodeShareFragment, validateShareSnapshot } from "../tuglab/share";
 import { PRESETS, DEFAULT_PRESET_IDX } from "./ui/presets";
 
@@ -65,7 +66,8 @@ if (towing) lab.reset();
 let startupError = "";
 const sharedLaunch = towing && location.hash.length > 0;
 if (sharedLaunch) {
-    try { if (space) lab.applySpaceShareSnapshot(decodeSpaceShareFragment(location.hash));
+    try { if (space) { if (location.hash.startsWith("#u2train=")) lab.applyTrainShareSnapshot(decodeTrainShareFragment(location.hash));
+        else lab.applySpaceShareSnapshot(decodeSpaceShareFragment(location.hash)); }
         else lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
     catch (error) { startupError = error instanceof Error ? error.message : "Повреждённая ссылка TugLab"; lab.pause(); }
 }
@@ -92,6 +94,35 @@ onResize(); // начальный размер
 let syncTrigger = 0;        // toolbar → panel: перечитать параметры
 let paramChangeCounter = 0; // panel → toolbar: пометить пресет как «Свой»
 
+const canvasPointers = new Set<number>();
+function clearFlightInput(): void {
+    canvasPointers.clear();
+    input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail();
+    if (space) {
+        lab.setSpaceBrake(false, 'pointer'); lab.setSpaceBrake(false, 'keyboard');
+        lab.setTrainRearBrake(false, 'pointer'); lab.setTrainRearBrake(false, 'keyboard');
+    }
+}
+// Штатный pointerup снимает учёт до автоматического lostpointercapture браузера.
+function onCanvasPointerDown(event: PointerEvent): void { if (lab.towingComposition === 'ABC') canvasPointers.add(event.pointerId); }
+function onCanvasPointerUp(event: PointerEvent): void { canvasPointers.delete(event.pointerId); }
+function onCanvasPointerLost(event: PointerEvent): void {
+    const wasActive = canvasPointers.delete(event.pointerId);
+    if (lab.towingComposition !== 'ABC' || (event.type === 'lostpointercapture' && !wasActive)) return;
+    clearFlightInput(); lab.pause(); renderToolbar();
+}
+canvas.addEventListener('pointerdown', onCanvasPointerDown);
+canvas.addEventListener('pointercancel', onCanvasPointerLost);
+canvas.addEventListener('lostpointercapture', onCanvasPointerLost);
+window.addEventListener('pointerup', onCanvasPointerUp);
+function onOrientationChanged(): void { if (space) { clearFlightInput(); lab.pause(); renderToolbar(); } }
+function onEditableFocused(event: FocusEvent): void {
+    if (lab.towingComposition !== 'ABC') return;
+    const target = event.target as HTMLElement;
+    if (target?.matches('input, select, textarea, [contenteditable="true"]')) clearFlightInput();
+}
+if (space) { window.addEventListener('orientationchange', onOrientationChanged); document.addEventListener('focusin', onEditableFocused); }
+
 function renderToolbar(): void {
     render(
         h(LabToolbar, {
@@ -101,7 +132,7 @@ function renderToolbar(): void {
             startupError,
             onStartupRecovered: () => { startupError = ""; renderToolbar(); },
             onPanelVisibilityChanged: onResize,
-            onClearInput: towing ? () => { input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail(); } : undefined,
+            onClearInput: towing ? clearFlightInput : undefined,
             onParamsChanged: () => renderPanel(),
             externalParamChange: paramChangeCounter,
         }),
@@ -110,10 +141,12 @@ function renderToolbar(): void {
 }
 
 function clearStaleShareFragment(): void {
-    if (!towing || !(space ? location.hash.startsWith("#u2tag=") : location.hash.startsWith("#tug="))) return;
+    if (!towing || !(space ? location.hash.startsWith("#u2tag=") || location.hash.startsWith("#u2train=") : location.hash.startsWith("#tug="))) return;
     try {
-        const shared = space ? decodeSpaceShareFragment(location.hash) : decodeShareFragment(location.hash, lab.getDefaults());
-        const current = space ? lab.exportSpaceShareSnapshot() : validateShareSnapshot(lab.exportShareSnapshot(), lab.getDefaults());
+        const trainShare = space && location.hash.startsWith("#u2train=");
+        if (space && trainShare !== (lab.towingComposition === "ABC")) { history.replaceState(null, "", location.pathname + location.search); return; }
+        const shared = trainShare ? decodeTrainShareFragment(location.hash) : space ? decodeSpaceShareFragment(location.hash) : decodeShareFragment(location.hash, lab.getDefaults());
+        const current = trainShare ? lab.exportTrainShareSnapshot() : space ? lab.exportSpaceShareSnapshot() : validateShareSnapshot(lab.exportShareSnapshot(), lab.getDefaults());
         // Устаревший fragment блокировал повторный переход к той же ссылке: hashchange не возникал.
         if (JSON.stringify(current) !== JSON.stringify(shared)) {
             history.replaceState(history.state, "", location.pathname + location.search);
@@ -143,10 +176,11 @@ function renderPanel(): void {
 // Повторный переход к fragment той же оболочки не перезагружает страницу.
 function onShareHashChanged(): void {
     if (!towing) return;
-    input.clear(); lab.setInput(0, 0, 0); renderer.clearTrail();
+    clearFlightInput();
     startupError = "";
     if (location.hash) {
-        try { if (space) lab.applySpaceShareSnapshot(decodeSpaceShareFragment(location.hash));
+        try { if (space) { if (location.hash.startsWith("#u2train=")) lab.applyTrainShareSnapshot(decodeTrainShareFragment(location.hash));
+        else lab.applySpaceShareSnapshot(decodeSpaceShareFragment(location.hash)); }
         else lab.applyShareSnapshot(decodeShareFragment(location.hash, lab.getDefaults())); }
         catch (error) { startupError = error instanceof Error ? error.message : "Повреждённая ссылка TugLab"; lab.pause(); }
     }
@@ -162,7 +196,7 @@ if (layoutObserver) {
     toolbarContainer.querySelectorAll(".lab-toolbar, .tug-status").forEach(el => layoutObserver.observe(el));
     onResize();
 }
-let wasPaused = lab.getState().towing?.paused ?? false;
+let wasPaused = lab.getState().train?.paused ?? lab.getState().towing?.paused ?? false;
 let wasRespawning = false;
 
 // Доступ из консоли разработчика
@@ -199,7 +233,7 @@ function frame(): void {
     const alpha = lab.update(frameDt);
     if (towing) {
         const state = lab.getState();
-        const paused = state.towing!.paused;
+        const paused = state.train?.paused ?? state.towing?.paused ?? true;
         const respawning = state.deathTimer > 0 || state.respawnCountdown > 0;
         // Снять удержание также в заморозке смерти и на границе выхода из Go!.
         if ((paused && !wasPaused) || respawning || wasRespawning) {
@@ -233,13 +267,17 @@ function frame(): void {
 
     // Получить интерполированное состояние и отрисовать
     const state = lab.getInterpolatedState(alpha);
-    if (space && state.towing) {
-        // Сохраняем экранную опору ввода A; zoom вмещает B с запасом у всех длин сцепки.
-        const b = state.towing.B, dx = b.position.x - state.x, dy = b.position.y - state.y;
+    if (space && (state.train || state.towing)) {
+        // Прежний масштаб U2TagLab определяется A/B; удаление C не отдаляет игровую камеру.
+        const bodies = [state.train?.B ?? state.towing!.B];
         const shortest = Math.min(canvasRect.width, canvasRect.height);
-        renderer.setViewRange(Math.max(400, (dy + b.radius) * shortest / (0.56 * canvasRect.height),
-            (-dy + b.radius) * shortest / (1.16 * canvasRect.height),
-            (Math.abs(dx) + b.radius) * shortest / (0.88 * canvasRect.width)));
+        const ranges = bodies.flatMap(b => {
+            const dx = b.position.x - state.x, dy = b.position.y - state.y;
+            return [(dy + b.radius) * shortest / (0.56 * canvasRect.height),
+                (-dy + b.radius) * shortest / (1.16 * canvasRect.height),
+                (Math.abs(dx) + b.radius) * shortest / (0.88 * canvasRect.width)];
+        });
+        renderer.setViewRange(Math.max(400, ...ranges));
     }
     renderer.render(state, inputState);
 
@@ -262,8 +300,13 @@ if (import.meta.hot) {
     import.meta.hot.dispose(() => {
         layoutObserver?.disconnect();
         window.removeEventListener("hashchange", onShareHashChanged);
+        window.removeEventListener("orientationchange", onOrientationChanged); document.removeEventListener("focusin", onEditableFocused);
         lab.stop();
         window.removeEventListener("keydown", onBrakeKey); window.removeEventListener("keyup", onBrakeKey);
+        canvas.removeEventListener('pointerdown', onCanvasPointerDown);
+        canvas.removeEventListener('pointercancel', onCanvasPointerLost);
+        canvas.removeEventListener('lostpointercapture', onCanvasPointerLost);
+        window.removeEventListener('pointerup', onCanvasPointerUp);
         input.destroy();
         cancelAnimationFrame(rafId!);
         window.removeEventListener("resize", onResize);

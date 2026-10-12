@@ -31,7 +31,12 @@
     "build:u2taglab": "npm run build:u2taglab --workspace=client",
     "test:u2taglab:ui": "node tests/tuglab/u2taglab-ui.cjs",
     "qa:u2taglab:browser": "node tests/tuglab/u2taglab-built-browser.cjs",
-    "qa:u2taglab:matrix": "tsc -p client/tsconfig.tuglab-test.json && node tests/tuglab/u2taglab-qa-matrix.cjs"
+    "qa:u2taglab:matrix": "tsc -p client/tsconfig.tuglab-test.json && node tests/tuglab/u2taglab-qa-matrix.cjs",
+    "test:tuglab2": "tsc -p client/tsconfig.tuglab2-test.json && node --test tests/tuglab2/*.test.cjs",
+    "typecheck:tuglab2": "tsc -p client/tsconfig.tuglab2-test.json --noEmit",
+    "qa:tuglab2:matrix": "tsc -p client/tsconfig.tuglab2-test.json && node tests/tuglab2/qa-matrix.cjs",
+    "build:pages": "npm run build --workspace=shared && npm run build:lab --workspace=client -- --base=./ && npm run build:tuglab && npm run build:u2taglab && node scripts/assemble-lab-pages.cjs",
+    "qa:u2taglab:train": "node tests/tuglab/u2taglab-train-browser.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

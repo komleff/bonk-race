@@ -63,3 +63,10 @@ client/dist-u2taglab/
 
 # Артефакты проверок отдельной космической оболочки.
 .cache/u2taglab-qa/
+
+# Сборка и локальные доказательства TugLab-2.
+client/dist-tuglab2/
+client/dist-pages/
+.cache/tuglab2-tests/
+.cache/tuglab2-qa/
+.cache/u2taglab-train-qa/
