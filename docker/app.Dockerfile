@@ -22,6 +22,8 @@ COPY client/package.json client/
 COPY server/package.json server/
 COPY shared/package.json shared/
 COPY admin-dashboard/package.json admin-dashboard/
+# postinstall запускает scripts/install-hooks.js; вне git-репозитория он пропускает установку хуков
+COPY scripts/install-hooks.js scripts/
 
 # Install ALL dependencies (dev deps needed for build)
 RUN npm ci
@@ -76,6 +78,8 @@ COPY client/package.json client/
 COPY server/package.json server/
 COPY shared/package.json shared/
 COPY admin-dashboard/package.json admin-dashboard/
+# postinstall запускает scripts/install-hooks.js; вне git-репозитория он пропускает установку хуков
+COPY scripts/install-hooks.js scripts/
 RUN npm ci --omit=dev
 
 # Copy built artifacts from builder stage
