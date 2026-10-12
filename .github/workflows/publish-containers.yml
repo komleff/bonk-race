@@ -1,9 +1,8 @@
 name: Publish Docker Containers
 
 on:
+  # Публикация только по тегу релиза или вручную: push в main контейнеры не собирает
   push:
-    branches:
-      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -19,8 +18,9 @@ permissions:
 
 env:
   GHCR_REGISTRY: ghcr.io
-  IMAGE_NAME_APP: slime-arena-app
-  IMAGE_NAME_DB: slime-arena-db
+  # Собственные пакеты bonk-race: slime-arena-* принадлежат репозиторию slime-arena
+  IMAGE_NAME_APP: bonk-race-app
+  IMAGE_NAME_DB: bonk-race-db
 
 jobs:
   publish:

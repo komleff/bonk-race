@@ -63,7 +63,7 @@ FROM node:20-alpine AS runtime
 LABEL org.opencontainers.image.title="Slime Arena App"
 LABEL org.opencontainers.image.description="Slime Arena game server bundle: MetaServer + MatchServer + Client + Admin Dashboard"
 LABEL org.opencontainers.image.vendor="komleff"
-LABEL org.opencontainers.image.source="https://github.com/komleff/slime-arena"
+LABEL org.opencontainers.image.source="https://github.com/komleff/bonk-race"
 LABEL org.opencontainers.image.version="0.6.4"
 LABEL org.opencontainers.image.licenses="MIT"
 
